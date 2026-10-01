@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Equipment Sprites — Click to Commit</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#060b14; color:#c8d0e0;
+  font-family:'Courier New',monospace; padding:32px;
+}
+h1 { font-size:14px; letter-spacing:3px; color:#4a6fa5; text-transform:uppercase; margin-bottom:6px; }
+.subtitle { font-size:11px; color:#3a4a5a; margin-bottom:8px; }
+.import-note {
+  font-size:10px; color:#2a4060; margin-bottom:44px; line-height:1.7;
+  border-left:2px solid #1a2a40; padding-left:10px;
+}
+.import-note span { color:#4a7090; }
+
+.section { margin-bottom:60px; }
+.section-title {
+  font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  color:#3a5070; border-bottom:1px solid #0e1a28;
+  padding-bottom:8px; margin-bottom:16px;
+}
+.section-note { font-size:9px; color:#2a3a4a; margin-bottom:12px; letter-spacing:.05em; }
+
+.grid-wrap   { display:flex; flex-direction:column; gap:0; }
+.col-header  { display:flex; margin-bottom:3px; padding-left:64px; }
+.col-lbl     { font-size:8px; color:#1e3040; letter-spacing:1px; text-transform:uppercase; text-align:center; }
+.row-wrap    { display:flex; align-items:center; gap:0; }
+.row-lbl     { font-size:8px; color:#1e3040; letter-spacing:1px; text-transform:uppercase; width:64px; text-align:right; padding-right:10px; flex-shrink:0; }
+.canvas-frame { border:1px solid #0c1820; background:#040810; display:inline-block; }
+
+.icon-row { display:flex; gap:1px; margin-bottom:1px; }
+.v2-sheet-row { margin-bottom:10px; }
+.v2-header { display:flex; margin-bottom:3px; padding-left:64px; }
+.contact-grid {
+  display:grid;
+  grid-template-columns:repeat(8, 80px);
+  gap:6px;
+  align-items:start;
+}
+.contact-cell {
+  width:80px;
+  min-height:96px;
+  border:1px solid #0c1820;
+  background:#040810;
+  padding:4px 4px 5px;
+}
+.contact-cell canvas { display:block; width:70px; height:70px; margin:0 auto 4px; }
+.contact-label {
+  font-size:7px;
+  color:#3a5070;
+  text-align:center;
+  line-height:1.25;
+  text-transform:uppercase;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+</style>
+</head>
+<body>
+
+<h1>Equipment Sprites</h1>
+<p class="subtitle">Click to Commit — 장비 메뉴 Unity 에셋 · 섹션별 캡쳐 후 Unity 슬라이스</p>
+<div class="import-note">
+  <span>SECTION 01</span> — Card Frames (192×256 per cell · 3 eras × 4 states = 12 cells · 768×1024 sheet)<br>
+  → Unity: Texture Type <span>Sprite (2D and UI)</span> · Sprite Mode <span>Multiple</span> · Slice Grid <span>192×256</span><br>
+  <span>SECTION 02</span> — Slot Icons (64×64 per cell · 7 slots × 3 states = 21 cells · 448×192 sheet)<br>
+  → Unity: Texture Type <span>Sprite (2D and UI)</span> · Sprite Mode <span>Multiple</span> · Slice Grid <span>64×64</span><br>
+  <span>SECTION 02B</span> — Equipment Tier Sheets (320×320 per cell · 7 slots × 8 cells = 56 + chrome 4 = <span>60 cells</span>)<br>
+  → <span>equip_{cpu,gpu,mb,cooler,ram,ssd,psu}.png</span> 2560×320 · <span>equip_chrome.png</span> 1280×320<br>
+  → Unity: Sprite Mode <span>Multiple</span> · Slice Grid <span>320×320</span> · 셀 계약 <span>[0]=미보유 · [1..7]=T1..T7</span><br>
+  → equip_* 는 폭 2560 이라 <span>maxTextureSize 4096</span> 필요(2048 이면 셀이 256 으로 다운스케일)<br>
+  <span>SECTION 02C</span> — Contact Sheet (캡처 대상 아님 · 60셀 육안 검토용 그리드)<br>
+  <span>SECTION 03</span> — Era Badges (96×32 per cell · 3 eras = 3 cells · 288×32 sheet)<br>
+  → Unity: Texture Type <span>Sprite (2D and UI)</span> · Sprite Mode <span>Multiple</span> · Slice Grid <span>96×32</span><br>
+  저장 경로: <span>Assets/Resources/Sprites/Equipment/</span>
+</div>
+
+<!-- ── SECTION 01: Card Frame Sprites ── -->
+<div class="section">
+  <div class="section-title">01 — Card Frame Sprites · 192×256 per cell · 4 states × 3 eras</div>
+  <div class="section-note">States: LOCKED / REVEALED / SELECTED / EQUIPPED(MAX)</div>
+  <div class="grid-wrap">
+    <div class="col-header">
+      <div class="col-lbl" style="width:192px;">LOCKED</div>
+      <div class="col-lbl" style="width:192px;">REVEALED</div>
+      <div class="col-lbl" style="width:192px;">SELECTED</div>
+      <div class="col-lbl" style="width:192px;">EQUIPPED</div>
+    </div>
+    <div class="row-wrap"><div class="row-lbl">LEGACY</div>  <div class="canvas-frame"><canvas id="cf-legacy"  width="768" height="256"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">MID</div>     <div class="canvas-frame"><canvas id="cf-mid"     width="768" height="256"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">CURRENT</div> <div class="canvas-frame"><canvas id="cf-current" width="768" height="256"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ── SECTION 02: Slot Icons ── -->
+<div class="section">
+  <div class="section-title">02 — Slot Icons · 64×64 per cell · 7 slots × 3 states</div>
+  <div class="section-note">States: UNOWNED / OWNED(LEGACY) / OWNED(MID) / OWNED(CURRENT) — pick columns as needed</div>
+  <div class="grid-wrap">
+    <div class="col-header" style="padding-left:64px;">
+      <div class="col-lbl" style="width:64px;">UNOWN</div>
+      <div class="col-lbl" style="width:64px;">LEGACY</div>
+      <div class="col-lbl" style="width:64px;">MID</div>
+      <div class="col-lbl" style="width:64px;">CURRENT</div>
+    </div>
+    <div class="row-wrap"><div class="row-lbl">CPU</div>    <div class="canvas-frame"><canvas id="si-cpu"    width="256" height="64"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">GPU</div>    <div class="canvas-frame"><canvas id="si-gpu"    width="256" height="64"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">MB</div>     <div class="canvas-frame"><canvas id="si-mb"     width="256" height="64"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">COOLER</div> <div class="canvas-frame"><canvas id="si-cooler" width="256" height="64"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">RAM</div>    <div class="canvas-frame"><canvas id="si-ram"    width="256" height="64"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">SSD</div>    <div class="canvas-frame"><canvas id="si-ssd"    width="256" height="64"></canvas></div></div>
+    <div class="row-wrap"><div class="row-lbl">PSU</div>    <div class="canvas-frame"><canvas id="si-psu"    width="256" height="64"></canvas></div></div>
+  </div>
+</div>
+
+<!-- 신규 SECTION 02B: Equipment Tier Sheets -->
+<div class="section">
+  <div class="section-title">02B - Equipment Tier Sheets - 320x320 per cell - [0]=UNOWNED / [1..7]=T1..T7</div>
+  <div class="section-note">Enum slot order: CPU / GPU / MB / COOLER / RAM / SSD / PSU. Capture targets: equip_*.png and equip_chrome.png.</div>
+  <div class="grid-wrap">
+    <div class="v2-header">
+      <div class="col-lbl" style="width:320px;">UNOWN</div>
+      <div class="col-lbl" style="width:320px;">T1</div>
+      <div class="col-lbl" style="width:320px;">T2</div>
+      <div class="col-lbl" style="width:320px;">T3</div>
+      <div class="col-lbl" style="width:320px;">T4</div>
+      <div class="col-lbl" style="width:320px;">T5</div>
+      <div class="col-lbl" style="width:320px;">T6</div>
+      <div class="col-lbl" style="width:320px;">T7</div>
+    </div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">CPU</div>    <div class="canvas-frame"><canvas id="equip_cpu"    width="2560" height="320"></canvas></div></div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">GPU</div>    <div class="canvas-frame"><canvas id="equip_gpu"    width="2560" height="320"></canvas></div></div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">MB</div>     <div class="canvas-frame"><canvas id="equip_mb"     width="2560" height="320"></canvas></div></div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">COOLER</div> <div class="canvas-frame"><canvas id="equip_cooler" width="2560" height="320"></canvas></div></div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">RAM</div>    <div class="canvas-frame"><canvas id="equip_ram"    width="2560" height="320"></canvas></div></div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">SSD</div>    <div class="canvas-frame"><canvas id="equip_ssd"    width="2560" height="320"></canvas></div></div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">PSU</div>    <div class="canvas-frame"><canvas id="equip_psu"    width="2560" height="320"></canvas></div></div>
+    <div class="v2-header">
+      <div class="col-lbl" style="width:320px;">LOCK</div>
+      <div class="col-lbl" style="width:320px;">BOX</div>
+      <div class="col-lbl" style="width:320px;">HEADER</div>
+      <div class="col-lbl" style="width:320px;">SPARE</div>
+    </div>
+    <div class="row-wrap v2-sheet-row"><div class="row-lbl">CHROME</div> <div class="canvas-frame"><canvas id="equip_chrome" width="1280" height="320"></canvas></div></div>
+  </div>
+</div>
+
+<!-- 신규 SECTION 02C: Contact Sheet -->
+<div class="section">
+  <div class="section-title">02C - Contact Sheet - 60 cells</div>
+  <div class="section-note">Human review grid: 56 equipment tier cells + 4 chrome cells.</div>
+  <div id="contact-sheet" class="contact-grid"></div>
+</div>
+
+<!-- ── SECTION 03: Era Badges ── -->
+<div class="section">
+  <div class="section-title">03 — Era Badges · 96×32 per cell · 3 eras</div>
+  <div class="section-note">카드 하단 시대 표시 라벨</div>
+  <div class="canvas-frame"><canvas id="era-badges" width="288" height="32"></canvas></div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// SHARED CONSTANTS
+// ═══════════════════════════════════════════════════
+
+const ERA = {
+  legacy:  { bg1:'#141008', bg2:'#0a0804', border:'#9ca3af', glow:'rgba(156,163,175,0.5)', text:'#c4cad4', label:'LEGACY',  labelBg:'#1e2025', labelColor:'#9ca3af' },
+  mid:     { bg1:'#0a1428', bg2:'#060c1c', border:'#3b82f6', glow:'rgba(59,130,246,0.6)',  text:'#93c5fd', label:'MID-GEN', labelBg:'#0d1628', labelColor:'#60a5fa' },
+  current: { bg1:'#1a1208', bg2:'#0e0a04', border:'#f59e0b', glow:'rgba(245,158,11,0.7)',  text:'#fcd34d', label:'CURRENT', labelBg:'#1e1608', labelColor:'#fbbf24' },
+};
+
+const SLOT_IDS = ['cpu','gpu','mb','cooler','ram','ssd','psu'];
+
+// ── Utilities ──────────────────────────────────────
+
+function hex2rgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
+// v7.1 시대색 글로우용 — `color` 인자는 hex 전용이 아니다. `drawCardFrame`(:1229)이
+// `rgba(r,g,b,0.15)` 를 넘긴다. 그래서 `color + '24'` 같은 hex 접미 방식은 깨진다
+// (실제로 깼다 — addColorStop 이 'rgba(156,163,175,0.15)24' 로 SyntaxError).
+// 어떤 CSS 색이 와도 알파만 갈아끼워 돌려준다.
+function eraAlpha(color, alpha) {
+  if (typeof color === 'string' && color[0] === '#') {
+    const [r, g, b] = hex2rgb(color);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  const m = /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)/.exec(String(color));
+  if (m) {
+    return `rgba(${m[1]},${m[2]},${m[3]},${alpha})`;
+  }
+  return `rgba(148,163,184,${alpha})`; // 파싱 실패 시 중립 회색 — 그려지긴 해야 한다
+}
+
+function drawRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w,y, x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h, x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h, x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y, x+r,y);
+  ctx.closePath();
+}
+
+// ═══════════════════════════════════════════════════
+// CIRCUIT PATTERNS
+// ═══════════════════════════════════════════════════
+
+function drawCircuitLegacy(ctx, w, h, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+  const step = 22;
+  for (let x = step; x < w - 4; x += step * 2.2) {
+    const len = 22 + Math.floor((x * 7) % 32);
+    const y0 = 12 + Math.floor((x * 3) % (h - 44));
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0+len); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y0+len); ctx.lineTo(x+step, y0+len); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y0, 1.8, 0, Math.PI*2); ctx.fillStyle=color; ctx.fill();
+    ctx.beginPath(); ctx.arc(x+step, y0+len, 1.8, 0, Math.PI*2); ctx.fill();
+  }
+  for (let y = step; y < h-4; y += step*2.5) {
+    const len = 18 + Math.floor((y*5)%28);
+    const x0 = 10 + Math.floor((y*4)%(w-32));
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0+len, y); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x0, y, 1.5, 0, Math.PI*2); ctx.fillStyle=color; ctx.fill();
+  }
+}
+
+function drawCircuitMid(ctx, w, h, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.9;
+  const offsets = [18, 42, 66, 90, 118, 142, 166];
+  offsets.forEach((off, i) => {
+    const startX = (i%2===0) ? off : w-off;
+    const len = 28 + (i*9)%38;
+    ctx.beginPath();
+    if (i%2===0) { ctx.moveTo(startX,10); ctx.lineTo(startX+len,10+len); }
+    else         { ctx.moveTo(startX,10); ctx.lineTo(startX-len,10+len); }
+    ctx.stroke();
+    ctx.fillStyle=color;
+    const px = i%2===0 ? startX+len : startX-len;
+    ctx.fillRect(px-2.5, 10+len-2.5, 5,5);
+    ctx.fillRect(startX-2.5, 8, 5, 5);
+  });
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(14, h-42); ctx.lineTo(w-14, h-42); ctx.stroke();
+  for (let x=24; x<w-18; x+=26) {
+    ctx.beginPath(); ctx.arc(x, h-42, 2.2, 0, Math.PI*2); ctx.fillStyle=color; ctx.fill();
+  }
+}
+
+function drawCircuitCurrent(ctx, w, h, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 1.0;
+  const curves = [
+    [10, h*0.3, w*0.35, h*0.08, w*0.65, h*0.42, w-10, h*0.18],
+    [10, h*0.62,w*0.28, h*0.82, w*0.72, h*0.48, w-10, h*0.72],
+    [w*0.22, 10, w*0.42, h*0.38, w*0.52, h*0.58, w*0.28, h-10],
+    [w*0.72, 10, w*0.82, h*0.28, w*0.58, h*0.62, w*0.78, h-10],
+  ];
+  curves.forEach(c => {
+    ctx.beginPath(); ctx.moveTo(c[0],c[1]); ctx.bezierCurveTo(c[2],c[3],c[4],c[5],c[6],c[7]); ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.beginPath(); ctx.arc(c[0],c[1],2.2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c[6],c[7],2.2,0,Math.PI*2); ctx.fill();
+  });
+  // Holographic shimmer dots
+  ctx.globalAlpha = 0.5;
+  for (let i=0; i<12; i++) {
+    const x = 20 + (i*57)%( w-40);
+    const y = 20 + (i*83)%(h-40);
+    ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════════════
+// HARDWARE ICON DRAW (same as equipment-menu.html)
+// ═══════════════════════════════════════════════════
+
+function drawPinRows(ctx, x, y, w, h, count, len, lw) {
+  ctx.lineWidth = lw;
+  for (let i = 0; i < count; i++) {
+    const p = count === 1 ? 0.5 : i / (count - 1);
+    const px = x + w * p;
+    ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, y - len); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, y + h); ctx.lineTo(px, y + h + len); ctx.stroke();
+  }
+}
+
+function drawSidePins(ctx, x, y, w, h, count, len, lw) {
+  ctx.lineWidth = lw;
+  for (let i = 0; i < count; i++) {
+    const p = count === 1 ? 0.5 : i / (count - 1);
+    const py = y + h * p;
+    ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(x - len, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + w, py); ctx.lineTo(x + w + len, py); ctx.stroke();
+  }
+}
+
+function drawFan(ctx, x, y, r, blades, lw) {
+  ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r * 0.22, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < blades; i++) {
+    const a = Math.PI * 2 / blades * i;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * r * 0.28, y + Math.sin(a) * r * 0.28);
+    ctx.quadraticCurveTo(
+      x + Math.cos(a + 0.22) * r * 0.62,
+      y + Math.sin(a + 0.22) * r * 0.62,
+      x + Math.cos(a + 0.52) * r * 0.9,
+      y + Math.sin(a + 0.52) * r * 0.9
+    );
+    ctx.stroke();
+  }
+}
+
+function drawLineGrid(ctx, x, y, w, h, count, vertical, lw) {
+  ctx.lineWidth = lw;
+  for (let i = 1; i < count; i++) {
+    const p = i / count;
+    ctx.beginPath();
+    if (vertical) { ctx.moveTo(x + w * p, y); ctx.lineTo(x + w * p, y + h); }
+    else { ctx.moveTo(x, y + h * p); ctx.lineTo(x + w, y + h * p); }
+    ctx.stroke();
+  }
+}
+
+function drawSmallChips(ctx, x, y, cols, rows, cw, ch, gap, maxCount) {
+  let n = 0;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (maxCount && n >= maxCount) return;
+    ctx.strokeRect(x + c * (cw + gap), y + r * (ch + gap), cw, ch);
+    n++;
+  }
+}
+
+function drawHardwareIcon(ctx, slotId, tier, cx, cy, size, color) {
+  const t = Math.max(0, Math.min(7, tier || 0));
+  const s = size * 0.5;
+  const lw = Math.max(0.8, size / 110);
+  const dlw = Math.max(0.6, lw * 0.82);
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (t === 0) ctx.globalAlpha *= 0.42;
+
+  const isoFillPoly = (pts, fill, alpha = 1) => {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+  const isoTop = (x, y, rx, ry = rx * 0.5) => [
+    [x - rx, y],
+    [x, y - ry],
+    [x + rx, y],
+    [x, y + ry]
+  ];
+  const isoOffset = (pts, dx, dy) => pts.map(([px, py]) => [px + dx, py + dy]);
+  const isoSlab = (x, y, rx, thick, topFill, leftFill, rightFill, ry = rx * 0.5) => {
+    const topFace = isoTop(x, y, rx, ry);
+    isoFillPoly(topFace, topFill);
+    isoFillPoly([topFace[0], topFace[3], [topFace[3][0], topFace[3][1] + thick], [topFace[0][0], topFace[0][1] + thick]], leftFill);
+    isoFillPoly([topFace[3], topFace[2], [topFace[2][0], topFace[2][1] + thick], [topFace[3][0], topFace[3][1] + thick]], rightFill);
+    return topFace;
+  };
+  const isoBar = (x, y, len, width, angle, fill, alpha = 1) => {
+    const ux = Math.cos(angle);
+    const uy = Math.sin(angle);
+    const vx = -uy;
+    const vy = ux;
+    const hl = len * 0.5;
+    const hw = width * 0.5;
+    isoFillPoly([
+      [x - ux * hl - vx * hw, y - uy * hl - vy * hw],
+      [x + ux * hl - vx * hw, y + uy * hl - vy * hw],
+      [x + ux * hl + vx * hw, y + uy * hl + vy * hw],
+      [x - ux * hl + vx * hw, y - uy * hl + vy * hw]
+    ], fill, alpha);
+  };
+  const isoBlock = (x, y, rx, thick, topFill, leftFill, rightFill, ry = rx * 0.42) => {
+    const topFace = isoSlab(x, y, rx, thick, topFill, leftFill, rightFill, ry);
+    for (let i = 0; i < 3; i++) {
+      isoBar(x - rx * 0.28 + i * rx * 0.28, y, ry * 1.3, rx * 0.05, Math.PI * 0.5, rightFill, 0.45);
+    }
+    return topFace;
+  };
+
+  switch(slotId) {
+    case 'cpu': {
+      const boardRx = s * 0.7;
+      const boardRy = boardRx * 0.5;
+      const boardThick = s * 0.13;
+      const pcbFill = t >= 7 ? '#14181f' : '#1c4a3e';
+      const pcbLeft = t >= 7 ? '#10141a' : '#10352a';
+      const pcbRight = t >= 7 ? '#0a0d12' : '#0a2620';
+      const boardY = -s * 0.02;
+      const boardTop = isoTop(0, boardY, boardRx, boardRy);
+      const pinRows = t >= 2 ? 3 : 1;
+      const ihsRx = s * (t >= 7 ? 0.4 : t >= 6 ? 0.39 : t >= 5 ? 0.38 : t >= 4 ? 0.36 : 0.34);
+      const ihsRy = ihsRx * 0.5;
+      const ihsY = boardY - s * 0.12;
+
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 1.05);
+      glow.addColorStop(0, eraAlpha(color, 0.14)); // 시대색 글로우 중심
+      glow.addColorStop(1, eraAlpha(color, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.ellipse(0, s * 0.02, s * 0.9, s * 0.62, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      isoFillPoly(isoOffset(boardTop, s * 0.02, s * 0.38), '#000000', 0.4);
+      isoSlab(0, boardY, boardRx, boardThick, pcbFill, pcbLeft, pcbRight, boardRy);
+      isoFillPoly([boardTop[0], boardTop[3], [boardTop[3][0], boardTop[3][1] + s * 0.03], [boardTop[0][0], boardTop[0][1] + s * 0.03]], color, 0.5);
+      isoFillPoly([boardTop[3], boardTop[2], [boardTop[2][0], boardTop[2][1] + s * 0.03], [boardTop[3][0], boardTop[3][1] + s * 0.03]], color, 0.35);
+
+      // Tier 0: unowned CPU silhouette only, with the caller's existing alpha reduction.
+      if (t === 0) {
+        isoSlab(0, ihsY, s * 0.34, s * 0.09, '#2c3444', '#202737', '#171d2a', s * 0.17);
+        break;
+      }
+
+      isoFillPoly([[boardTop[0][0] + s * 0.08, boardTop[0][1] + s * 0.05], [boardTop[0][0] + s * 0.19, boardTop[0][1]], [boardTop[0][0] + s * 0.16, boardTop[0][1] + s * 0.15], [boardTop[0][0] + s * 0.05, boardTop[0][1] + s * 0.19]], '#ffc94a');
+      for (let i = 0; i < 4; i++) {
+        const padX = -s * 0.36 + i * s * 0.24;
+        const padY = boardY + s * (i % 2 === 0 ? 0.18 : -0.18);
+        isoFillPoly(isoTop(padX, padY, s * 0.045, s * 0.022), '#c9a227');
+      }
+
+      const drawDipPins = () => {
+        for (let i = 0; i < 8; i++) {
+          const y = boardY - s * 0.25 + i * s * 0.07;
+          isoBar(-s * 0.62, y, s * 0.16, s * 0.025, -Math.PI * 0.08, '#ffc94a');
+          isoBar(s * 0.62, y, s * 0.16, s * 0.025, Math.PI * 1.08, '#ffc94a');
+        }
+      };
+      const drawPgaPins = () => {
+        for (let row = 0; row < pinRows; row++) {
+          for (let col = 0; col < 9; col++) {
+            const x = -s * 0.34 + col * s * 0.085 + row * s * 0.025;
+            const y = boardY + boardRy + s * 0.04 + row * s * 0.055;
+            isoFillPoly(isoTop(x, y, s * 0.025, s * 0.012), '#ffc94a');
+          }
+        }
+      };
+      const drawCpuIhs = (rx, ry, fill, leftFill, rightFill, marks) => {
+        const ihsTop = isoSlab(0, ihsY, rx, s * 0.11, fill, leftFill, rightFill, ry);
+        for (let i = 0; i < marks; i++) {
+          isoBar(-s * 0.02, ihsY + s * (-0.035 + i * 0.055), rx * 0.9, s * 0.012, -Math.PI * 0.15, '#ffffff', 0.16 - i * 0.025);
+        }
+        isoFillPoly([ihsTop[0], [ihsTop[0][0] + s * 0.3, ihsTop[0][1] - s * 0.15], [ihsTop[0][0] + s * 0.38, ihsTop[0][1] - s * 0.11], [ihsTop[0][0] + s * 0.08, ihsTop[0][1] + s * 0.04]], '#ffffff', 0.16);
+        isoFillPoly([ihsTop[0], [ihsTop[0][0] + s * 0.28, ihsTop[0][1] - s * 0.14], [ihsTop[0][0] + s * 0.33, ihsTop[0][1] - s * 0.12], [ihsTop[0][0] + s * 0.05, ihsTop[0][1] + s * 0.02]], '#ffffff', 0.09);
+      };
+
+      // Tier 1: DIP long body with pins along both long edges.
+      if (t === 1) {
+        isoSlab(0, boardY - s * 0.04, s * 0.38, s * 0.08, '#222a37', '#171d28', '#111722', s * 0.18);
+        drawDipPins();
+      }
+
+      // Tier 2: square PGA package with an underside pin grid.
+      if (t === 2) {
+        isoSlab(0, boardY - s * 0.04, s * 0.4, s * 0.08, '#252d3a', '#1a2130', '#121925', s * 0.2);
+        drawPgaPins();
+      }
+
+      // Tier 3: early LGA with a smaller notched IHS.
+      if (t === 3) {
+        drawCpuIhs(ihsRx, ihsRy, '#b3bfcc', '#7e8a9b', '#5f6b7d', 2);
+      }
+
+      // Tier 4: LGA package with a larger heat spreader.
+      if (t === 4) {
+        drawCpuIhs(ihsRx, ihsRy, '#b8c3cf', '#838f9f', '#657183', 3);
+      }
+
+      // Tier 5: enlarged IHS with stronger engraved text lines.
+      if (t === 5) {
+        drawCpuIhs(ihsRx, ihsRy, '#c0cad5', '#8b96a5', '#6a7687', 4);
+      }
+
+      // Tier 6: large notched IHS with clearer keyed corner.
+      if (t === 6) {
+        drawCpuIhs(ihsRx, ihsRy, '#cad2dc', '#929cab', '#707c8d', 5);
+      }
+
+      // Tier 7: premium black PCB with gold IHS.
+      if (t >= 7) {
+        drawCpuIhs(ihsRx, ihsRy, '#d9a441', '#9f7628', '#7a581c', 5);
+        isoBar(0, ihsY + s * 0.1, s * 0.34, s * 0.018, -Math.PI * 0.15, '#3a2b10', 0.55);
+      }
+      break;
+    }
+    case 'gpu': {
+      const gpuFillPoly = (pts, fill, alpha = 1) => {
+        ctx.save();
+        ctx.globalAlpha *= alpha;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i][0], pts[i][1]);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      };
+      const drawGpuFan = (x, y, r, rot) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#0d1119';
+        ctx.fill();
+        ctx.lineWidth = r * 0.1; // ring thickness: about 10% of the fan radius.
+        ctx.strokeStyle = '#4a5568';
+        ctx.stroke();
+        ctx.rotate(rot);
+        for (let i = 0; i < 4; i++) {
+          gpuFillPoly([
+            [r * 0.05, -r * 0.11],
+            [r * 0.75, -r * 0.34],
+            [r * 0.5, r * 0.16]
+          ], '#232b3a'); // large triangular fan blade.
+          ctx.rotate(Math.PI * 0.5);
+        }
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.29, 0, Math.PI * 2);
+        ctx.fillStyle = '#39435a';
+        ctx.fill();
+        ctx.save();
+        ctx.rotate(-rot);
+        ctx.fillStyle = '#c9d2dd';
+        ctx.fillRect(-r * 0.08, -r * 0.08, r * 0.16, r * 0.16);
+        ctx.restore();
+        ctx.restore();
+      };
+      const gpuFanRadius = (bodyHeight, mult = 0.34) => {
+        return bodyHeight * mult; // fan diameter stays around 62-72% of body height.
+      };
+      const gpuDrawGoldFingers = (x0, y0, count, scale) => {
+        for (let i = 0; i < count; i++) {
+          const x = x0 + i * scale * 0.12;
+          gpuFillPoly([
+            [x, y0],
+            [x + scale * 0.06, y0 - scale * 0.012],
+            [x + scale * 0.06, y0 + scale * 0.08],
+            [x, y0 + scale * 0.092]
+          ], '#ffc94a'); // required PCIe gold finger color.
+        }
+      };
+      const gpuDrawBracket = (x, yTop, yBottom, w) => {
+        gpuFillPoly([
+          [x, yTop],
+          [x + w, yTop - w * 0.22],
+          [x + w, yBottom - w * 0.22],
+          [x, yBottom]
+        ], '#77839a'); // required I/O bracket metal.
+        for (let i = 0; i < 3; i++) {
+          const y = yTop + (yBottom - yTop) * (0.2 + i * 0.25);
+          gpuFillPoly([
+            [x + w * 0.22, y],
+            [x + w * 0.78, y - w * 0.12],
+            [x + w * 0.78, y + w * 0.42],
+            [x + w * 0.22, y + w * 0.54]
+          ], '#161b26'); // dark port holes inside the bracket.
+        }
+      };
+      const gpuDrawPowerPlug = (x, y, pins) => {
+        const rows = pins > 6 ? 2 : 1;
+        const cols = pins / rows;
+        gpuFillPoly([
+          [x, y],
+          [x + s * 0.18, y - s * 0.035],
+          [x + s * 0.18, y + s * 0.12],
+          [x, y + s * 0.155]
+        ], '#101722'); // auxiliary power housing.
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const px = x + s * (0.035 + col * 0.035);
+            const py = y + s * (0.026 + row * 0.056);
+            gpuFillPoly([
+              [px, py],
+              [px + s * 0.018, py - s * 0.004],
+              [px + s * 0.018, py + s * 0.018],
+              [px, py + s * 0.022]
+            ], '#77839a'); // visible connector pins.
+          }
+        }
+      };
+      const len = t >= 6 ? 1.72 : t >= 4 ? 1.66 : t >= 2 ? 1.64 : 1.64;
+      const thick = t >= 7 ? 0.82 : t >= 5 ? 0.72 : t >= 3 ? 0.66 : 0.56;
+      const left = -s * len * 0.5;
+      const right = s * len * 0.5;
+      const topLeftY = -s * thick * 0.22;
+      const topRightY = topLeftY - s * 0.25;
+      const bottomLeftY = s * thick * 0.5;
+      const bottomRightY = bottomLeftY - s * 0.25;
+      const topLip = s * 0.08; // v7.1 top edge band thickness.
+      const fanCount = t >= 6 ? 3 : t >= 4 ? 2 : t >= 2 ? 1 : 0;
+      const fingerCount = t >= 6 ? 9 : t >= 4 ? 7 : t >= 2 ? 5 : 3;
+      const bodyTop = [
+        [left, topLeftY],
+        [right, topRightY],
+        [right - s * 0.06, topRightY - s * 0.1],
+        [left - s * 0.06, topLeftY - s * 0.1]
+      ];
+      const bodyFace = [
+        [left, topLeftY],
+        [right, topRightY],
+        [right, bottomRightY],
+        [left, bottomLeftY]
+      ];
+      const edgeBand = [
+        [left, topLeftY],
+        [right, topRightY],
+        [right, topRightY + topLip],
+        [left, topLeftY + topLip]
+      ];
+      const bottomRail = [
+        [left, bottomLeftY],
+        [right, bottomRightY],
+        [right, bottomRightY + s * 0.08],
+        [left, bottomLeftY + s * 0.08]
+      ];
+      const bodyHeight = bottomLeftY - topLeftY;
+
+      ctx.save();
+      const glow = ctx.createRadialGradient(0, s * 0.04, 0, 0, s * 0.04, s * 1.08);
+      glow.addColorStop(0, eraAlpha(color, 0.14)); // 시대색 글로우 중심
+      glow.addColorStop(1, eraAlpha(color, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.ellipse(0, s * 0.04, s * 0.98, s * 0.72, -0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      gpuFillPoly([
+        [left - s * 0.04, bottomLeftY + s * 0.18],
+        [right + s * 0.1, bottomRightY + s * 0.02],
+        [right + s * 0.22, bottomRightY + s * 0.1],
+        [left + s * 0.06, bottomLeftY + s * 0.28]
+      ], '#000000', 0.4);
+
+      // Tier 0: unowned GPU silhouette only, with the caller's existing alpha reduction.
+      if (t === 0) {
+        gpuFillPoly(bodyTop, '#2c3444');
+        gpuFillPoly(bodyFace, '#1d2431');
+        gpuFillPoly(edgeBand, '#262e3d');
+        gpuFillPoly(bottomRail, '#10141d'); // dark body tone separates the bottom contour.
+        gpuDrawBracket(left - s * 0.13, topLeftY - s * 0.02, bottomLeftY + s * 0.08, s * 0.12);
+        gpuDrawGoldFingers(left + s * 0.18, bottomLeftY + s * 0.02, fingerCount, s);
+        break;
+      }
+
+      gpuFillPoly(bodyTop, '#2c3444');
+      gpuFillPoly(bodyFace, '#1d2431');
+      gpuFillPoly(edgeBand, '#262e3d');
+      gpuFillPoly([
+        [left, topLeftY],
+        [right, topRightY],
+        [right, topRightY + s * 0.026],
+        [left, topLeftY + s * 0.026]
+      ], color, 0.8);
+      gpuFillPoly(bottomRail, '#10141d'); // dark body tone separates the bottom contour.
+      gpuFillPoly([
+        [left + s * 0.2, topLeftY - s * 0.02],
+        [left + s * 0.44, topLeftY - s * 0.07],
+        [left + s * 0.32, bottomLeftY - s * 0.06],
+        [left + s * 0.08, bottomLeftY - s * 0.01]
+      ], '#ffffff', 0.05);
+      gpuFillPoly([
+        [left + s * 0.62, topLeftY - s * 0.1],
+        [left + s * 0.72, topLeftY - s * 0.12],
+        [left + s * 0.6, bottomLeftY - s * 0.14],
+        [left + s * 0.5, bottomLeftY - s * 0.12]
+      ], '#ffffff', 0.035);
+      gpuDrawBracket(left - s * 0.13, topLeftY - s * 0.02, bottomLeftY + s * 0.08, s * 0.12);
+      gpuDrawGoldFingers(left + s * 0.18, bottomLeftY + s * 0.02, fingerCount, s);
+
+      // Tier 1: early 2D card, short board with no fan or heatsink.
+      if (t === 1) {
+        gpuFillPoly([
+          [left + s * 0.44, topLeftY + s * 0.1],
+          [left + s * 0.84, topLeftY + s * 0.02],
+          [left + s * 0.84, bottomLeftY - s * 0.12],
+          [left + s * 0.44, bottomLeftY - s * 0.04]
+        ], '#151c28'); // plain controller block for pre-3D cards.
+      }
+
+      // Tier 2: early 3D accelerator, one small fan and a longer board.
+      if (t === 2) {
+        drawGpuFan(left + s * 0.82, topLeftY + bodyHeight * 0.52, gpuFanRadius(bodyHeight, 0.31), -0.2);
+      }
+
+      // Tier 3: single fan plus straight heatsink fins, no auxiliary power.
+      if (t === 3) {
+        drawGpuFan(left + s * 0.82, topLeftY + bodyHeight * 0.52, gpuFanRadius(bodyHeight, 0.34), -0.06);
+        for (let i = 0; i < 6; i++) {
+          const x = left + s * (1.08 + i * 0.055);
+          gpuFillPoly([
+            [x, topLeftY + s * 0.04],
+            [x + s * 0.024, topLeftY + s * 0.035],
+            [x + s * 0.024, bottomLeftY - s * 0.12],
+            [x, bottomLeftY - s * 0.115]
+          ], '#30394a'); // heatsink fin stack.
+        }
+      }
+
+      // Tier 4: dual fan cooler with one 6-pin auxiliary power connector.
+      if (t === 4) {
+        drawGpuFan(left + s * 0.58, topLeftY + bodyHeight * 0.55, gpuFanRadius(bodyHeight, 0.33), -0.16);
+        drawGpuFan(left + s * 1.08, topLeftY + bodyHeight * 0.43, gpuFanRadius(bodyHeight, 0.33), 0.18);
+        gpuDrawPowerPlug(right - s * 0.28, topRightY + s * 0.06, 6);
+      }
+
+      // Tier 5: dual fan card with a flat backplate face and one 8-pin connector.
+      if (t === 5) {
+        gpuFillPoly([
+          [left + s * 0.3, topLeftY + s * 0.05],
+          [right - s * 0.26, topRightY],
+          [right - s * 0.26, bottomRightY - s * 0.05],
+          [left + s * 0.3, bottomLeftY]
+        ], '#263144'); // backplate plane: darker hardware tone.
+        drawGpuFan(left + s * 0.62, topLeftY + bodyHeight * 0.56, gpuFanRadius(bodyHeight, 0.33), -0.2);
+        drawGpuFan(left + s * 1.12, topLeftY + bodyHeight * 0.44, gpuFanRadius(bodyHeight, 0.33), 0.12);
+        gpuDrawPowerPlug(right - s * 0.3, topRightY + s * 0.06, 8);
+      }
+
+      // Tier 6: extended triple fan board with two 8-pin power connectors.
+      if (t === 6) {
+        for (let i = 0; i < fanCount; i++) {
+          drawGpuFan(left + s * (0.46 + i * 0.48), topLeftY + bodyHeight * (0.58 - i * 0.12), gpuFanRadius(bodyHeight, 0.31), -0.18 + i * 0.17);
+        }
+        gpuDrawPowerPlug(right - s * 0.38, topRightY + s * 0.05, 8);
+        gpuDrawPowerPlug(right - s * 0.2, topRightY + s * 0.02, 8);
+      }
+
+      // Tier 7: flagship triple fan, thicker body, emphasized era rim, dual 8-pin power.
+      if (t >= 7) {
+        gpuFillPoly([
+          [left, topLeftY + s * 0.035],
+          [right, topRightY + s * 0.035],
+          [right, topRightY + s * 0.075],
+          [left, topLeftY + s * 0.075]
+        ], color, 0.8);
+        for (let i = 0; i < fanCount; i++) {
+          drawGpuFan(left + s * (0.46 + i * 0.48), topLeftY + bodyHeight * (0.6 - i * 0.12), gpuFanRadius(bodyHeight, 0.33), -0.2 + i * 0.18);
+        }
+        gpuDrawPowerPlug(right - s * 0.4, topRightY + s * 0.05, 8);
+        gpuDrawPowerPlug(right - s * 0.21, topRightY + s * 0.015, 8);
+      }
+      break;
+    }
+    case 'mb': {
+      const boardRx = s * 0.88;
+      const boardRy = boardRx * 0.5;
+      const boardThick = s * 0.14;
+      const pcbFill = t >= 7 ? '#121722' : t >= 6 ? '#10141d' : '#1f4d3a';
+      const boardY = s * 0.02;
+      const boardTop = isoTop(0, boardY, boardRx, boardRy);
+      const ramSlots = t >= 3 ? 4 : t >= 2 ? 3 : 2;
+      const expansionSlots = t >= 5 ? 3 : t >= 2 ? 3 : 2;
+      const boardPt = (u, v) => [
+        (u - v) * boardRx * 0.5,
+        boardY + (u + v) * boardRy * 0.5
+      ];
+      const boardPoly = (pts) => pts.map(([u, v]) => boardPt(u, v));
+      const drawBoardSlab = (pts, topFill, leftFill, rightFill, thick = s * 0.026, alpha = 1) => {
+        const topFace = boardPoly(pts);
+        isoFillPoly(topFace, topFill, alpha);
+        isoFillPoly([
+          topFace[0],
+          topFace[3],
+          [topFace[3][0], topFace[3][1] + thick],
+          [topFace[0][0], topFace[0][1] + thick]
+        ], leftFill, alpha);
+        isoFillPoly([
+          topFace[3],
+          topFace[2],
+          [topFace[2][0], topFace[2][1] + thick],
+          [topFace[3][0], topFace[3][1] + thick]
+        ], rightFill, alpha);
+        return topFace;
+      };
+      const drawBoardRect = (u0, v0, u1, v1, topFill, insetFill, thick = s * 0.018) => {
+        drawBoardSlab([
+          [u0, v0],
+          [u1, v0],
+          [u1, v1],
+          [u0, v1]
+        ], '#8b98ab', '#657183', '#4b5567', thick);
+        isoFillPoly(boardPoly([
+          [u0 + 0.02, v0 + 0.01],
+          [u1 - 0.02, v0 + 0.01],
+          [u1 - 0.02, v1 - 0.01],
+          [u0 + 0.02, v1 - 0.01]
+        ]), insetFill || topFill);
+      };
+      const drawMbSocket = (u, v, r, fill = '#c9d2dd') => {
+        drawBoardSlab([
+          [u - r, v - r],
+          [u + r, v - r],
+          [u + r, v + r],
+          [u - r, v + r]
+        ], fill, '#8b98ab', '#657183', s * 0.035);
+        isoFillPoly(boardPoly([
+          [u - r * 0.46, v - r * 0.46],
+          [u + r * 0.46, v - r * 0.46],
+          [u + r * 0.46, v + r * 0.46],
+          [u - r * 0.46, v + r * 0.46]
+        ]), '#0d1119');
+      };
+      const drawMbRamSlots = (count) => {
+        for (let i = 0; i < count; i++) {
+          const v = -0.44 + i * 0.055;
+          drawBoardRect(-0.34, v - 0.016, 0.3, v + 0.016, '#8b98ab', '#0d1119', s * 0.012);
+        }
+      };
+      const drawMbExpansionSlots = (count) => {
+        for (let i = 0; i < count; i++) {
+          const u = -0.42 + i * 0.07;
+          drawBoardRect(u - 0.017, -0.05, u + 0.017, 0.42 - i * 0.03, '#8b98ab', '#0d1119', s * 0.012);
+        }
+      };
+      const drawM2 = (u, v) => {
+        drawBoardRect(u - 0.19, v - 0.018, u + 0.19, v + 0.018, '#c9d2dd', '#0d1119', s * 0.012);
+      };
+      const drawHeat = (u, v, ru, rv, fill = '#30394a') => {
+        drawBoardSlab([
+          [u - ru, v - rv],
+          [u + ru, v - rv],
+          [u + ru, v + rv],
+          [u - ru, v + rv]
+        ], fill, '#202737', '#171d2a', s * 0.04);
+        for (let i = 0; i < 3; i++) {
+          const fu = u - ru * 0.55 + i * ru * 0.55;
+          isoFillPoly(boardPoly([
+            [fu - 0.008, v - rv * 0.72],
+            [fu + 0.008, v - rv * 0.72],
+            [fu + 0.008, v + rv * 0.72],
+            [fu - 0.008, v + rv * 0.72]
+          ]), '#8b98ab', 0.28);
+        }
+      };
+      const drawIoShield = () => {
+        drawBoardSlab([
+          [-0.66, 0.12],
+          [-0.5, 0.12],
+          [-0.5, 0.35],
+          [-0.66, 0.35]
+        ], '#77839a', '#596477', '#40495a', s * 0.075);
+      };
+      const drawTrim = (u0, v0, u1, v1) => {
+        isoFillPoly(boardPoly([
+          [u0, v0],
+          [u1, v0],
+          [u1, v1],
+          [u0, v1]
+        ]), color, 0.8);
+      };
+
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 1.2);
+      glow.addColorStop(0, eraAlpha(color, 0.14)); // 시대색 글로우 중심
+      glow.addColorStop(1, eraAlpha(color, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.ellipse(0, s * 0.04, s * 1.06, s * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      isoFillPoly(isoOffset(boardTop, s * 0.04, s * 0.44), '#000000', 0.4);
+      isoSlab(0, boardY, boardRx, boardThick, pcbFill, '#1d2431', '#101722', boardRy);
+      isoFillPoly([
+        boardTop[0],
+        boardTop[3],
+        [boardTop[3][0], boardTop[3][1] + s * 0.035],
+        [boardTop[0][0], boardTop[0][1] + s * 0.035]
+      ], color, 0.5);
+      isoFillPoly([
+        boardTop[3],
+        boardTop[2],
+        [boardTop[2][0], boardTop[2][1] + s * 0.035],
+        [boardTop[3][0], boardTop[3][1] + s * 0.035]
+      ], color, 0.35);
+
+      // Tier 0: unowned motherboard silhouette only, with the caller's existing alpha reduction.
+      if (t === 0) {
+        drawMbSocket(-0.12, -0.16, 0.17, '#2c3444');
+        drawMbRamSlots(2);
+        drawMbExpansionSlots(2);
+        break;
+      }
+
+      isoFillPoly([
+        [boardTop[0][0] + s * 0.14, boardTop[0][1] + s * 0.03],
+        [boardTop[0][0] + s * 0.34, boardTop[0][1] - s * 0.07],
+        [boardTop[0][0] + s * 0.42, boardTop[0][1] - s * 0.03],
+        [boardTop[0][0] + s * 0.2, boardTop[0][1] + s * 0.08]
+      ], '#ffffff', 0.04);
+      drawMbSocket(-0.12, -0.16, t >= 2 ? 0.2 : 0.17);
+      drawMbRamSlots(ramSlots);
+      drawMbExpansionSlots(expansionSlots);
+
+      // Tier 1: small board with two RAM slots and two expansion slots.
+      if (t === 1) {
+        drawHeat(-0.5, -0.04, 0.11, 0.08, '#c9d2dd');
+      }
+
+      // Tier 2: larger socket with a third expansion slot.
+      if (t === 2) {
+        drawHeat(-0.5, -0.04, 0.14, 0.09, '#c9d2dd');
+      }
+
+      // Tier 3: four RAM slots plus one chipset heatsink.
+      if (t === 3) {
+        drawHeat(-0.5, -0.04, 0.16, 0.1);
+      }
+
+      // Tier 4: two heatsinks and one M.2 blade.
+      if (t === 4) {
+        drawHeat(-0.5, -0.04, 0.16, 0.1);
+        drawHeat(0.2, 0.18, 0.13, 0.08);
+        drawM2(0.05, 0.1);
+      }
+
+      // Tier 5: three heatsinks and two M.2 blades.
+      if (t === 5) {
+        drawHeat(-0.5, -0.04, 0.17, 0.1);
+        drawHeat(0.2, 0.18, 0.15, 0.08);
+        drawHeat(0.22, -0.34, 0.12, 0.07);
+        drawM2(0.05, 0.1);
+        drawM2(-0.18, 0.03);
+      }
+
+      // Tier 6: large heatsinks with a raised rear I/O shield.
+      if (t === 6) {
+        drawHeat(-0.48, -0.04, 0.21, 0.11);
+        drawHeat(0.18, 0.18, 0.2, 0.09);
+        drawIoShield();
+        drawM2(0.02, 0.09);
+      }
+
+      // Tier 7: full-cover heatsink layout with emphasized era trim.
+      if (t >= 7) {
+        drawHeat(-0.48, -0.04, 0.22, 0.12);
+        drawHeat(0.18, 0.18, 0.22, 0.1);
+        drawIoShield();
+        drawTrim(0.13, -0.39, 0.49, -0.35);
+        drawTrim(-0.22, 0.01, 0.15, 0.05);
+      }
+      break;
+    }
+    case 'cooler': {
+      if (t === 0) {
+        ctx.lineWidth=lw; drawRoundRect(ctx,-s*0.55,-s*0.55,s*1.1,s*1.1,s*0.05); ctx.stroke();
+        drawLineGrid(ctx,-s*0.44,-s*0.34,s*0.88,s*0.68,5,false,dlw);
+      } else if (t === 1) {
+        ctx.lineWidth=lw; drawRoundRect(ctx,-s*0.62,-s*0.62,s*1.24,s*1.24,s*0.05); ctx.stroke(); drawFan(ctx,0,0,s*0.42,5,dlw);
+      } else if (t <= 3) {
+        const w=s*0.78,h=s*1.36; ctx.lineWidth=lw; ctx.strokeRect(-w/2,-h/2,w,h); drawLineGrid(ctx,-w/2,-h/2,w,h,5+t,false,dlw);
+        for(let i=0;i<t;i++){ctx.beginPath();ctx.moveTo(-w*0.28+i*w*0.28,h/2);ctx.quadraticCurveTo(-w*0.18+i*w*0.28,h*0.12,-w*0.24+i*w*0.28,-h/2);ctx.stroke();}
+        if (t === 3) drawFan(ctx,w*0.72,0,s*0.28,6,dlw);
+      } else {
+        const radW=s*(t >= 6 ? 1.48 : 1.18), radH=s*0.46; ctx.lineWidth=lw; ctx.strokeRect(-radW/2,-s*0.56,radW,radH);
+        drawLineGrid(ctx,-radW/2,-s*0.56,radW,radH,6+t,true,dlw);
+        const fans = t >= 6 ? 3 : 2;
+        for(let i=0;i<fans;i++) drawFan(ctx,-radW*0.34+i*(radW*0.34),-s*0.33,s*0.16,5,dlw);
+        ctx.beginPath();ctx.moveTo(-s*0.25,-s*0.1);ctx.quadraticCurveTo(-s*0.55,s*0.34,-s*0.16,s*0.56);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(s*0.25,-s*0.1);ctx.quadraticCurveTo(s*0.55,s*0.34,s*0.16,s*0.56);ctx.stroke();
+        if (t >= 5) { ctx.strokeRect(-s*0.3,s*0.42,s*0.6,s*0.3); }
+        if (t >= 7) { ctx.beginPath();ctx.arc(0,s*0.58,s*0.24,0,Math.PI*2);ctx.stroke(); }
+      }
+      break;
+    }
+    case 'ram': {
+      const ramFillPoly = (pts, fill, alpha = 1) => {
+        ctx.save();
+        ctx.globalAlpha *= alpha;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i][0], pts[i][1]);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      };
+      const ramIsoRect = (x, y, w, h, skew) => {
+        return [
+          [x, y],
+          [x + w, y - skew],
+          [x + w, y + h - skew],
+          [x, y + h]
+        ];
+      };
+      const drawRamGlowAndShadow = (left, top, w, h, skew) => {
+        const glow = ctx.createRadialGradient(0, s * 0.02, 0, 0, s * 0.02, s * 1.05);
+        glow.addColorStop(0, eraAlpha(color, 0.14)); // 시대색 글로우 중심
+        glow.addColorStop(1, eraAlpha(color, 0));
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.ellipse(0, s * 0.02, s * 0.98, s * 0.62, -0.1, 0, Math.PI * 2);
+        ctx.fill();
+        ramFillPoly([
+          [left + s * 0.02, top + h + s * 0.16],
+          [left + w + s * 0.12, top + h - skew + s * 0.02],
+          [left + w + s * 0.24, top + h - skew + s * 0.1],
+          [left + s * 0.14, top + h + s * 0.26]
+        ], '#000000', 0.4);
+      };
+      const drawRamPcbBody = (left, top, w, h, skew, pcbFill) => {
+        ramFillPoly(ramIsoRect(left, top, w, h, skew), pcbFill);
+        ramFillPoly([
+          [left, top + h],
+          [left + w, top + h - skew],
+          [left + w, top + h - skew + s * 0.12],
+          [left, top + h + s * 0.12]
+        ], '#1d2431');
+        ramFillPoly([
+          [left + w, top - skew],
+          [left + w + s * 0.1, top - skew + s * 0.055],
+          [left + w + s * 0.1, top + h - skew + s * 0.175],
+          [left + w, top + h - skew + s * 0.12]
+        ], '#262e3d');
+        ramFillPoly([
+          [left, top],
+          [left + w, top - skew],
+          [left + w, top - skew + s * 0.026],
+          [left, top + s * 0.026]
+        ], color, 0.8);
+      };
+      const drawRamGoldFingers = (left, y, w, count, skew) => {
+        const notchIndex = Math.floor(count * 0.62); // offset notch: visibly not centered.
+        const fingerW = w / count;
+        for (let i = 0; i < count; i++) {
+          if (i === notchIndex) {
+            continue;
+          }
+          ramFillPoly(ramIsoRect(left + i * fingerW, y, fingerW * 0.68, s * 0.075, skew * 0.04), '#ffc94a');
+        }
+        ramFillPoly(ramIsoRect(left + notchIndex * fingerW, y - s * 0.002, fingerW * 0.78, s * 0.095, skew * 0.04), '#10141d');
+      };
+      const drawRamChips = (left, top, w, h, skew, count) => {
+        for (let i = 0; i < count; i++) {
+          ramFillPoly(ramIsoRect(left + w * (0.08 + i * 0.1), top + h * 0.28, w * 0.065, h * 0.28, skew * 0.18), '#10141d');
+        }
+      };
+      const drawRamFinStack = (left, top, w, h, skew, tall, alpha = 1) => {
+        const tooth = w / 8;
+        const pts = [];
+        pts.push([left, top + h * 0.24]);
+        for (let i = 0; i <= 8; i++) {
+          const x = left + i * tooth;
+          const y = top + (i % 2 === 0 ? 0 : -tall);
+          pts.push([x, y]);
+        }
+        pts.push([left + w, top + h - skew]);
+        pts.push([left, top + h]);
+        ramFillPoly(pts, '#2c3444', alpha);
+        ramFillPoly([
+          [left, top + h * 0.72],
+          [left + w, top + h * 0.72 - skew],
+          [left + w, top + h - skew],
+          [left, top + h]
+        ], '#1d2431', alpha);
+      };
+      const drawRamSticker = (left, top, w, h, skew) => {
+        ramFillPoly(ramIsoRect(left, top, w, h, skew), '#c9d2dd', 0.85);
+        ramFillPoly(ramIsoRect(left + w * 0.14, top + h * 0.35, w * 0.54, s * 0.018, skew * 0.08), '#1d2431', 0.35);
+      };
+      const bodyW = s * (t <= 1 ? 1.46 : 1.68);
+      const bodyH = s * (t >= 6 ? 0.58 : t >= 3 ? 0.52 : 0.42);
+      const skew = s * 0.18;
+      const left = -bodyW * 0.5;
+      const top = -bodyH * 0.48 + skew * 0.2;
+      const pcbFill = '#1f4d3a';
+
+      drawRamGlowAndShadow(left, top, bodyW, bodyH, skew);
+      drawRamPcbBody(left, top, bodyW, bodyH, skew, pcbFill);
+
+      // Tier 0: unowned RAM silhouette only, with the caller's existing alpha reduction.
+      if (t === 0) {
+        drawRamGoldFingers(left + bodyW * 0.08, top + bodyH + s * 0.02, bodyW * 0.84, 12, skew);
+        break;
+      }
+
+      ramFillPoly([
+        [left + bodyW * 0.12, top + bodyH * 0.14],
+        [left + bodyW * 0.34, top + bodyH * 0.08],
+        [left + bodyW * 0.22, top + bodyH * 0.88],
+        [left + bodyW * 0.02, top + bodyH * 0.94]
+      ], '#ffffff', 0.04);
+      drawRamGoldFingers(left + bodyW * 0.08, top + bodyH + s * 0.02, bodyW * 0.84, 16 + t, skew);
+
+      // Tier 1: bare PCB with one visible row of memory chips.
+      if (t === 1) {
+        drawRamChips(left, top, bodyW, bodyH, skew, 6);
+      }
+
+      // Tier 2: bare PCB with two rows of memory chips.
+      if (t === 2) {
+        drawRamChips(left, top - s * 0.02, bodyW, bodyH, skew, 7);
+        drawRamChips(left, top + s * 0.12, bodyW, bodyH, skew, 7);
+      }
+
+      // Tier 3: thin heat spreader with a bright sticker face.
+      if (t === 3) {
+        ramFillPoly(ramIsoRect(left + bodyW * 0.06, top + bodyH * 0.12, bodyW * 0.88, bodyH * 0.52, skew * 0.42), '#2c3444');
+        drawRamSticker(left + bodyW * 0.34, top + bodyH * 0.2, bodyW * 0.28, bodyH * 0.24, skew * 0.18);
+      }
+
+      // Tier 4: zigzag heat spreader with sticker face.
+      if (t === 4) {
+        drawRamFinStack(left + bodyW * 0.05, top + bodyH * 0.12, bodyW * 0.9, bodyH * 0.56, skew * 0.42, s * 0.12);
+        drawRamSticker(left + bodyW * 0.35, top + bodyH * 0.2, bodyW * 0.3, bodyH * 0.24, skew * 0.18);
+      }
+
+      // Tier 5: zigzag spreader plus small top fins.
+      if (t === 5) {
+        drawRamFinStack(left + bodyW * 0.05, top + bodyH * 0.1, bodyW * 0.9, bodyH * 0.58, skew * 0.42, s * 0.16);
+        drawRamSticker(left + bodyW * 0.35, top + bodyH * 0.2, bodyW * 0.3, bodyH * 0.24, skew * 0.18);
+      }
+
+      // Tier 6: taller heat spreader with a larger label panel.
+      if (t === 6) {
+        drawRamFinStack(left + bodyW * 0.04, top + bodyH * 0.04, bodyW * 0.92, bodyH * 0.66, skew * 0.46, s * 0.22);
+        drawRamSticker(left + bodyW * 0.32, top + bodyH * 0.2, bodyW * 0.36, bodyH * 0.28, skew * 0.18);
+      }
+
+      // Tier 7: flagship tall spreader with emphasized era rim.
+      if (t >= 7) {
+        drawRamFinStack(left + bodyW * 0.03, top - s * 0.02, bodyW * 0.94, bodyH * 0.72, skew * 0.48, s * 0.28);
+        ramFillPoly(ramIsoRect(left + bodyW * 0.08, top + bodyH * 0.02, bodyW * 0.84, s * 0.04, skew * 0.12), color, 0.8);
+        drawRamSticker(left + bodyW * 0.32, top + bodyH * 0.18, bodyW * 0.36, bodyH * 0.3, skew * 0.18);
+      }
+      break;
+    }
+    case 'ssd': {
+      if (t <= 3) {
+        const r=s*(t === 1 ? 0.43 : 0.5), w=s*(t === 1 ? 1.22 : 1.34), h=s*(t === 1 ? 0.92 : 1.02);
+        ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.04);ctx.stroke();
+        ctx.beginPath();ctx.arc(-w*0.12,-h*0.02,r,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-w*0.12,-h*0.02);ctx.lineTo(w*0.24,h*0.22);ctx.stroke();
+        if (t >= 2) ctx.strokeRect(w*0.22,-h*0.36,w*0.16,h*0.14);
+        if (t >= 3) drawLineGrid(ctx,-w*0.36,h*0.34,w*0.72,h*0.12,7,true,dlw);
+      } else if (t === 4) {
+        const w=s*1.28,h=s*0.72; ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.035);ctx.stroke();
+        ctx.lineWidth=dlw; ctx.strokeRect(w*0.36,-h*0.24,w*0.08,h*0.48); drawSmallChips(ctx,-w*0.36,-h*0.17,3,2,w*0.18,h*0.16,w*0.06);
+      } else {
+        const w=s*(t >= 7 ? 1.62 : 1.42), h=s*0.44; ctx.lineWidth=lw; ctx.strokeRect(-w/2,-h/2,w,h);
+        ctx.lineWidth=dlw; ctx.strokeRect(-w*0.48,-h*0.22,w*0.12,h*0.44);
+        // NAND 은 보드 안(|x| < w/2)에 들어와야 한다 — 4개일 때 폭·간격을 줄인다
+        const nand = 3 + (t>=7?1:0);
+        drawSmallChips(ctx,-w*0.30,-h*0.16,nand,1,w*(t>=7?0.13:0.16),h*0.32,w*(t>=7?0.05:0.07));
+        ctx.beginPath();ctx.arc(w*0.5,0,h*0.2,Math.PI*0.5,Math.PI*1.5);ctx.stroke();
+        if (t >= 6) { drawRoundRect(ctx,-w*0.08,-h*0.38,w*0.5,h*0.76,s*0.025); ctx.stroke(); drawLineGrid(ctx,-w*0.08,-h*0.38,w*0.5,h*0.76,5,false,dlw); }
+      }
+      break;
+    }
+    case 'psu': {
+      const w=s*(t >= 6 ? 1.48 : 1.28), h=s*0.9; ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.045);ctx.stroke();
+      drawFan(ctx,-w*0.22,0,s*(t >= 5 ? 0.34 : 0.28),5 + (t >= 4 ? 1 : 0),dlw);
+      const ports = Math.min(8, 2 + t);
+      for(let i=0;i<ports;i++) ctx.strokeRect(w*0.18 + (i%2)*w*0.17, -h*0.3 + Math.floor(i/2)*h*0.16, w*0.12, h*0.08);
+      if (t >= 4) { ctx.strokeRect(-w*0.42,-h*0.38,w*0.18,h*0.12); }
+      if (t >= 5) drawLineGrid(ctx,-w*0.48,h*0.34,w*0.96,h*0.08,8,true,dlw);
+      if (t >= 7) { for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(w*0.48,-h*0.3+i*h*0.18);ctx.quadraticCurveTo(s*0.9,-h*0.24+i*h*0.18,s*0.98,-h*0.08+i*h*0.12);ctx.stroke();} }
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 01 — CARD FRAMES
+// States: LOCKED(0) / REVEALED(1) / SELECTED(2) / EQUIPPED(3)
+// Each state is 192×256 in a 768-wide strip
+// ═══════════════════════════════════════════════════
+
+function drawCardFrame(ctx, ox, oy, w, h, era, state) {
+  const eraData = ERA[era];
+  const [r,g,b] = hex2rgb(eraData.border);
+
+  // state: 0=locked, 1=revealed, 2=selected, 3=equipped
+
+  if (state === 0) {
+    // Locked — dark, minimal
+    const grad = ctx.createLinearGradient(ox, oy, ox, oy+h);
+    grad.addColorStop(0,'#0c1118'); grad.addColorStop(1,'#060a10');
+    ctx.fillStyle = grad;
+    drawRoundRect(ctx,ox,oy,w,h,8); ctx.fill();
+    ctx.strokeStyle='#1a2a3a'; ctx.lineWidth=1.5;
+    drawRoundRect(ctx,ox+0.75,oy+0.75,w-1.5,h-1.5,8); ctx.stroke();
+    // Lock symbol
+    ctx.strokeStyle='#1e2e3e'; ctx.lineWidth=2;
+    const lx=ox+w/2, ly=oy+h/2-8;
+    // shackle
+    ctx.beginPath(); ctx.arc(lx, ly-10, 12, Math.PI, 0); ctx.stroke();
+    // body
+    ctx.strokeRect(lx-10, ly-4, 20, 18);
+    ctx.strokeStyle='#141e28'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(lx, ly+4, 3, 0, Math.PI*2); ctx.stroke();
+    return;
+  }
+
+  // Backgrounds
+  const grad = ctx.createLinearGradient(ox, oy, ox, oy+h);
+  grad.addColorStop(0, eraData.bg1); grad.addColorStop(1, eraData.bg2);
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx,ox,oy,w,h,8); ctx.fill();
+
+  // Top band
+  const bandGrad = ctx.createLinearGradient(ox, oy, ox, oy+32);
+  bandGrad.addColorStop(0, `rgba(${r},${g},${b},0.2)`);
+  bandGrad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = bandGrad;
+  ctx.fillRect(ox, oy, w, 32);
+
+  // Circuit
+  ctx.save(); ctx.beginPath();
+  drawRoundRect(ctx,ox,oy,w,h,8); ctx.clip();
+  ctx.globalAlpha = 0.09;
+  const col = `rgba(${r},${g},${b},1)`;
+  ctx.save(); ctx.translate(ox, oy);
+  if (era === 'legacy')  drawCircuitLegacy(ctx,w,h,col);
+  if (era === 'mid')     drawCircuitMid(ctx,w,h,col);
+  if (era === 'current') drawCircuitCurrent(ctx,w,h,col);
+  ctx.restore(); ctx.restore();
+
+  // Border + glow
+  ctx.save();
+  ctx.shadowColor = eraData.glow;
+  ctx.shadowBlur  = state >= 2 ? 18 : 10;
+  ctx.strokeStyle = eraData.border;
+  ctx.lineWidth   = state >= 2 ? 2.2 : 1.5;
+  drawRoundRect(ctx,ox+0.75,oy+0.75,w-1.5,h-1.5,8); ctx.stroke();
+  ctx.restore();
+
+  // Selected: extra inner highlight
+  if (state === 2) {
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.35)`;
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx,ox+3,oy+3,w-6,h-6,6); ctx.stroke();
+  }
+
+  // Equipped: fill top band more + tick mark
+  if (state === 3) {
+    ctx.fillStyle = `rgba(${r},${g},${b},0.12)`;
+    ctx.fillRect(ox,oy,w,40);
+    // Tick
+    ctx.strokeStyle = eraData.border; ctx.lineWidth = 2.5;
+    ctx.save(); ctx.shadowColor = eraData.glow; ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(ox+w/2-9, oy+22); ctx.lineTo(ox+w/2-2, oy+30); ctx.lineTo(ox+w/2+12, oy+12);
+    ctx.stroke(); ctx.restore();
+  }
+
+  // Icon area placeholder (slot 3 only, hardware silhouette hint)
+  const iconColor = `rgba(${r},${g},${b},0.15)`;
+  ctx.save(); ctx.globalAlpha = 0.6;
+  drawHardwareIcon(ctx, 'cpu', 3, ox+w/2, oy+h*0.3, Math.min(w,h)*0.38, iconColor);
+  ctx.restore();
+
+  // Middle divider
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.18)`; ctx.lineWidth=0.8;
+  ctx.beginPath(); ctx.moveTo(ox+14, oy+h*0.52); ctx.lineTo(ox+w-14, oy+h*0.52); ctx.stroke();
+
+  // Stat lines placeholder
+  ctx.fillStyle = `rgba(${r},${g},${b},0.25)`; ctx.beginPath();
+  ctx.roundRect(ox+20, oy+h*0.56, w-40, 7, 2); ctx.fill();
+  ctx.fillStyle = `rgba(${r},${g},${b},0.15)`; ctx.beginPath();
+  ctx.roundRect(ox+28, oy+h*0.67, w-72, 5, 2); ctx.fill();
+  ctx.fillStyle = `rgba(${r},${g},${b},0.35)`; ctx.beginPath();
+  ctx.roundRect(ox+w/2-22, oy+h*0.76, 44, 10, 2); ctx.fill();
+
+  // Footer era badge
+  ctx.fillStyle = eraData.labelBg;
+  ctx.beginPath(); ctx.roundRect(ox+10, oy+h-28, w-20, 20, 3); ctx.fill();
+  ctx.fillStyle = eraData.labelColor;
+  ctx.font = 'bold 8px Courier New'; ctx.textAlign='center';
+  ctx.fillText(eraData.label, ox+w/2, oy+h-14);
+}
+
+// ── Draw all card frames ──
+
+['legacy','mid','current'].forEach((era, rowIdx) => {
+  const canvas = document.getElementById('cf-' + era);
+  const ctx = canvas.getContext('2d');
+  const W=192, H=256;
+  [0,1,2,3].forEach(state => {
+    drawCardFrame(ctx, state*W, 0, W, H, era, state);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// SECTION 02 — SLOT ICONS
+// 4 columns per slot: unowned / legacy / mid / current
+// Each cell: 64×64
+// ═══════════════════════════════════════════════════
+
+function drawSlotIconCell(ctx, ox, oy, slotId, era) {
+  const w=64, h=64;
+  const iconColor = era ? ERA[era].border : '#2a3a4a';
+  const tier = era === 'legacy' ? 1 : era === 'mid' ? 3 : era === 'current' ? 6 : 0;
+  ctx.globalAlpha = era ? 0.95 : 0.42;
+  drawHardwareIcon(ctx, slotId, tier, ox+w/2, oy+h/2, w*0.84, iconColor);
+  ctx.globalAlpha = 1;
+}
+
+SLOT_IDS.forEach(slotId => {
+  const canvas = document.getElementById('si-' + slotId);
+  const ctx = canvas.getContext('2d');
+  // col 0: unowned, col 1: legacy, col 2: mid, col 3: current
+  drawSlotIconCell(ctx,   0, 0, slotId, null);
+  drawSlotIconCell(ctx,  64, 0, slotId, 'legacy');
+  drawSlotIconCell(ctx, 128, 0, slotId, 'mid');
+  drawSlotIconCell(ctx, 192, 0, slotId, 'current');
+});
+
+// ═══════════════════════════════════════════════════
+// SECTION 02B — EQUIPMENT TIER SHEETS
+// 8 columns per slot: unowned / T1 / T2 / T3 / T4 / T5 / T6 / T7
+// Each cell: 320×320
+// ═══════════════════════════════════════════════════
+
+function tierColor(tier) {
+  if (tier <= 0) return '#2a3a4a';
+  if (tier <= 2) return ERA.legacy.border;
+  if (tier <= 5) return ERA.mid.border;
+  return ERA.current.border;
+}
+
+// 셀 320 · 콘텐츠 박스 272(85%) → 실측 최소 여백 25.6px(gpu T6·T7). tier 0 의 흐림은
+// drawHardwareIcon 안(globalAlpha *= 0.42)에서 한 번만 건다 — 여기서 또 곱하면 컨택트 시트와 값이 갈린다.
+function drawEquipmentTierCell(ctx, ox, oy, slotId, tier) {
+  const cell = 320;
+  ctx.save();
+  ctx.translate(ox, oy);
+  drawHardwareIcon(ctx, slotId, tier, cell/2, cell/2, 272, tierColor(tier));
+  ctx.restore();
+}
+
+function drawChromeIcon(ctx, kind, cx, cy, size, color) {
+  const s = size * 0.5;
+  const lw = Math.max(0.8, size / 110);
+  const dlw = Math.max(0.6, lw * 0.82);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (kind === 0) {
+    const w=s*0.92,h=s*1.22;
+    ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.05); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,-s*0.12,s*0.25,Math.PI,0); ctx.stroke();
+    ctx.strokeRect(-s*0.22,-s*0.1,s*0.44,s*0.34);
+    ctx.lineWidth=dlw; ctx.beginPath(); ctx.arc(0,s*0.05,s*0.035,0,Math.PI*2); ctx.stroke();
+  } else if (kind === 1) {
+    ctx.lineWidth=lw;
+    ctx.beginPath(); ctx.moveTo(-s*0.58,-s*0.08); ctx.lineTo(0,-s*0.36); ctx.lineTo(s*0.58,-s*0.08); ctx.lineTo(0,s*0.2); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-s*0.58,-s*0.08); ctx.lineTo(-s*0.58,s*0.42); ctx.lineTo(0,s*0.74); ctx.lineTo(0,s*0.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.58,-s*0.08); ctx.lineTo(s*0.58,s*0.42); ctx.lineTo(0,s*0.74); ctx.stroke();
+    ctx.lineWidth=dlw; ctx.beginPath(); ctx.moveTo(-s*0.58,-s*0.08); ctx.lineTo(-s*0.18,-s*0.42); ctx.lineTo(0,-s*0.36); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*0.58,-s*0.08); ctx.lineTo(s*0.18,-s*0.42); ctx.lineTo(0,-s*0.36); ctx.stroke();
+  } else if (kind === 2) {
+    ctx.lineWidth=lw;
+    ctx.beginPath(); ctx.moveTo(-s*0.62,s*0.44); ctx.lineTo(-s*0.14,-s*0.04); ctx.stroke();
+    ctx.beginPath(); ctx.arc(s*0.16,-s*0.34,s*0.28,-0.65,Math.PI*1.1); ctx.stroke();
+    ctx.lineWidth=dlw;
+    ctx.strokeRect(-s*0.05,s*0.02,s*0.42,s*0.32);
+    drawLineGrid(ctx,-s*0.05,s*0.02,s*0.42,s*0.32,4,true,dlw);
+  } else {
+    // [3] 예비 — 장식 없는 중립 칩 실루엣(빈 셀 아님). 미보유 흐림을 물려받지 않도록
+    // drawHardwareIcon(tier 0) 을 쓰지 않고 여기서 직접 그린다.
+    const b = s*0.66;
+    ctx.lineWidth=lw; drawRoundRect(ctx,-b,-b,b*2,b*2,s*0.05); ctx.stroke();
+    ctx.lineWidth=dlw; drawRoundRect(ctx,-b*0.52,-b*0.52,b*1.04,b*1.04,s*0.03); ctx.stroke();
+    drawSidePins(ctx,-b,-b,b*2,b*2,6,s*0.12,dlw);
+    drawPinRows(ctx,-b,-b,b*2,b*2,6,s*0.12,dlw);
+  }
+  ctx.restore();
+}
+
+function drawChromeCell(ctx, ox, oy, kind) {
+  const color = kind === 0 ? '#2a3a4a' : kind === 1 ? ERA.current.border : kind === 2 ? ERA.mid.border : '#2a3a4a';
+  drawChromeIcon(ctx, kind, ox + 160, oy + 160, 250, color);
+}
+
+SLOT_IDS.forEach(slotId => {
+  const canvas = document.getElementById('equip_' + slotId);
+  const ctx = canvas.getContext('2d');
+  for (let tier = 0; tier <= 7; tier++) {
+    drawEquipmentTierCell(ctx, tier * 320, 0, slotId, tier);
+  }
+});
+
+{
+  const canvas = document.getElementById('equip_chrome');
+  const ctx = canvas.getContext('2d');
+  for (let i = 0; i < 4; i++) drawChromeCell(ctx, i * 320, 0, i);
+}
+
+function buildContactSheet() {
+  const sheet = document.getElementById('contact-sheet');
+  const labels = ['UNOWN','T1','T2','T3','T4','T5','T6','T7'];
+  SLOT_IDS.forEach(slotId => {
+    for (let tier = 0; tier <= 7; tier++) {
+      const cell = document.createElement('div');
+      cell.className = 'contact-cell';
+      const canvas = document.createElement('canvas');
+      canvas.width = 70; canvas.height = 70;
+      const ctx = canvas.getContext('2d');
+      drawHardwareIcon(ctx, slotId, tier, 35, 35, 58, tierColor(tier));
+      const label = document.createElement('div');
+      label.className = 'contact-label';
+      label.textContent = slotId + ' ' + labels[tier];
+      cell.appendChild(canvas);
+      cell.appendChild(label);
+      sheet.appendChild(cell);
+    }
+  });
+  ['LOCK','BOX','HEADER','SPARE'].forEach((labelText, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'contact-cell';
+    const canvas = document.createElement('canvas');
+    canvas.width = 70; canvas.height = 70;
+    const ctx = canvas.getContext('2d');
+    drawChromeIcon(ctx, i, 35, 35, 58, i === 1 ? ERA.current.border : i === 2 ? ERA.mid.border : '#2a3a4a');
+    const label = document.createElement('div');
+    label.className = 'contact-label';
+    label.textContent = 'chrome ' + labelText;
+    cell.appendChild(canvas);
+    cell.appendChild(label);
+    sheet.appendChild(cell);
+  });
+}
+
+buildContactSheet();
+
+// ═══════════════════════════════════════════════════
+// SECTION 03 — ERA BADGES
+// 3 cells: legacy / mid / current — 96×32 each
+// ═══════════════════════════════════════════════════
+
+function drawEraBadge(ctx, ox, oy, era) {
+  const w=96, h=32;
+  const eraData = ERA[era];
+  const [r,g,b] = hex2rgb(eraData.border);
+
+  // Background
+  ctx.fillStyle = eraData.labelBg;
+  ctx.beginPath(); ctx.roundRect(ox+1,oy+1,w-2,h-2,4); ctx.fill();
+
+  // Border
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.4)`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(ox+0.5,oy+0.5,w-1,h-1,4); ctx.stroke();
+
+  // Left accent bar
+  ctx.fillStyle = eraData.border;
+  ctx.save(); ctx.shadowColor = eraData.glow; ctx.shadowBlur = 4;
+  ctx.fillRect(ox+4, oy+8, 3, h-16);
+  ctx.restore();
+
+  // Label
+  ctx.fillStyle = eraData.labelColor;
+  ctx.font = 'bold 9px Courier New';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(eraData.label, ox+12, oy+h/2 - 2);
+
+  // Tier hint
+  const tierHints = { legacy:'T1–T2', mid:'T3–T5', current:'T6–T7' };
+  ctx.fillStyle = `rgba(${r},${g},${b},0.45)`;
+  ctx.font = '7px Courier New';
+  ctx.fillText(tierHints[era], ox+12, oy+h/2 + 8);
+}
+
+const badgeCtx = document.getElementById('era-badges').getContext('2d');
+drawEraBadge(badgeCtx,   0, 0, 'legacy');
+drawEraBadge(badgeCtx,  96, 0, 'mid');
+drawEraBadge(badgeCtx, 192, 0, 'current');
+</script>
+</body>
+</html>

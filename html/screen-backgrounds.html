@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Screen Backgrounds — 메인 메뉴 · 런 배경 컨셉</title>
+<style>
+:root{
+  /* ui-prototype.html :root 와 동일 토큰 (신규 색 금지) */
+  --bg:#0b1218; --panel:#111b24; --border:#c9a227;
+  --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859; --purple:#bf9cfe;
+  --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#64748b;
+  /* 현행 엔진 실측값 (재현용) */
+  --now-camera:#314D79;   /* SampleScene.unity:203 — Unity 기본값, 미디자인 */
+  --now-field:#C9AB68;    /* Setup.cs:78 */
+  --now-grid:rgba(97,71,38,.42); /* Setup.cs:93 */
+}
+*{box-sizing:border-box}
+body{margin:0;background:#070c11;color:var(--text);
+  font-family:ui-monospace,"JetBrains Mono",Consolas,monospace;font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:22px;margin:0 0 6px}
+h2{font-size:17px;margin:44px 0 4px;padding-bottom:8px;border-bottom:1px solid #1b2836;color:var(--teal)}
+h3{font-size:14px;margin:0 0 2px}
+.lede{color:var(--muted);margin:0 0 8px}
+.note{background:#0d151d;border-left:3px solid var(--border);padding:10px 14px;margin:14px 0;color:#b6c2d0;font-size:13px}
+.note b{color:var(--gold)}
+.grid{display:grid;gap:22px;margin-top:18px}
+@media(min-width:900px){.grid.two{grid-template-columns:1fr 1fr}}
+.card{background:#0a1017;border:1px solid #1b2836;border-radius:10px;overflow:hidden}
+.card>header{padding:11px 14px;border-bottom:1px solid #1b2836;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.card>header .tag{font-size:11px;color:var(--muted);white-space:nowrap}
+.card>footer{padding:10px 14px;border-top:1px solid #1b2836;font-size:12px;color:#93a4b5}
+.card>footer b{color:var(--teal)}
+
+/* ---------- 16:9 스테이지 ---------- */
+/* container-type: 스테이지 폭 기준 단위(cqw)를 쓰기 위함.
+   실제 게임은 1920 가상 캔버스이므로 1cqw = 19.2px 로 환산해 크기를 잡는다.
+   (vw 를 쓰면 브라우저 창 크기에 따라 달라져 목업이 실제 비율을 못 보여준다) */
+.stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#000;container-type:inline-size}
+/* 전면 레이어 기본값 — 아래에서 개별 요소가 inset:auto 로 되돌린다 */
+.stage>*{position:absolute;inset:0}
+/* inset:0 을 상속하면 안 되는 고정 위치 UI — 리셋 규칙이 .field/.lbl 보다 명시도가 높으므로
+   geometry 를 여기에 함께 선언해야 한다(따로 두면 left/top 까지 auto 로 덮인다). */
+.stage>.field{inset:auto;left:8.4%;top:12.5%;width:83.2%;height:75%}
+.stage>.lbl{inset:auto;left:8px;bottom:6px}
+.stage>.mm-ver{inset:auto;right:2%;bottom:3%}
+.stage>.hud.top{inset:auto;left:50%;top:2.6%;transform:translateX(-50%)}
+.stage>.hud.left{inset:auto;left:2.2%;top:24%;width:12%;height:34%}
+.stage>.hud.right{inset:auto;right:2.2%;top:24%;width:12%;height:34%}
+.lbl{position:absolute;left:8px;bottom:6px;z-index:99;font-size:10px;color:rgba(226,232,240,.5);
+  background:rgba(0,0,0,.45);padding:2px 6px;border-radius:3px}
+
+/* ---------- 공용 배경 레이어 (스킬트리 4겹 스택 계승) ---------- */
+.l-deep{background:radial-gradient(ellipse at 50% 38%, #12202c 0%, #0b1218 55%, #070c11 100%)}
+.l-circuit{opacity:.055;background-image:
+  repeating-linear-gradient(0deg, var(--teal) 0 1px, transparent 1px 40px),
+  repeating-linear-gradient(90deg, var(--teal) 0 1px, transparent 1px 40px)}
+.l-circuit.fine{opacity:.04;background-size:auto;background-image:
+  repeating-linear-gradient(0deg, var(--teal) 0 1px, transparent 1px 20px),
+  repeating-linear-gradient(90deg, var(--teal) 0 1px, transparent 1px 20px)}
+.l-vignette{background:radial-gradient(ellipse at center, transparent 46%, rgba(4,8,12,.82) 100%)}
+.l-scan{background:linear-gradient(180deg,transparent,rgba(87,209,184,.5),transparent);
+  height:2px!important;inset:0 0 auto 0;animation:scan 7s linear infinite}
+@keyframes scan{0%{top:-2%;opacity:0}12%{opacity:.75}88%{opacity:.75}100%{top:102%;opacity:0}}
+.fog{position:absolute;border-radius:50%;filter:blur(2px)}
+.fog.a{width:34%;aspect-ratio:1;left:8%;top:14%;
+  background:radial-gradient(circle,rgba(87,209,184,.17),transparent 70%);animation:fogA 11s ease-in-out infinite}
+.fog.b{width:26%;aspect-ratio:1;right:10%;top:34%;
+  background:radial-gradient(circle,rgba(191,156,254,.14),transparent 70%);animation:fogB 14s ease-in-out infinite}
+.fog.c{width:22%;aspect-ratio:1;left:38%;bottom:8%;
+  background:radial-gradient(circle,rgba(201,162,39,.13),transparent 70%);animation:fogC 17s ease-in-out infinite}
+@keyframes fogA{0%,100%{opacity:.10;transform:translate(0,0)}50%{opacity:.20;transform:translate(6%,-4%)}}
+@keyframes fogB{0%,100%{opacity:.09;transform:translate(0,0)}50%{opacity:.18;transform:translate(-5%,5%)}}
+@keyframes fogC{0%,100%{opacity:.08;transform:translate(0,0)}50%{opacity:.16;transform:translate(3%,-6%)}}
+
+/* 회로 트레이스(Manhattan 배선) — equipment-menu.html drawCircuit 계열의 CSS 근사 */
+.l-trace{opacity:.5}
+.l-trace svg{width:100%;height:100%;display:block}
+.tr{stroke:var(--teal);fill:none;stroke-width:1.1;opacity:.16}
+.tr.gold{stroke:var(--border);opacity:.13}
+.via{fill:var(--teal);opacity:.3}
+.via.gold{fill:var(--border);opacity:.26}
+.pulse{stroke:var(--cyan);stroke-width:1.6;fill:none;opacity:.85;
+  stroke-dasharray:16 620;animation:flow 5.5s linear infinite}
+.pulse.d2{animation-delay:2.2s;stroke:var(--gold)}
+.pulse.d3{animation-delay:3.9s;stroke:var(--purple)}
+@keyframes flow{to{stroke-dashoffset:-636}}
+
+/* ---------- 메인 메뉴 요소 ---------- */
+.mm{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;z-index:5}
+.mm-title{font-size:5.4cqw;font-weight:800;letter-spacing:.05em;line-height:1.05;
+  color:#eaf3f2;text-shadow:0 0 22px rgba(87,209,184,.35),0 3px 0 rgba(0,0,0,.5)}
+.mm-title .br{color:var(--border)}
+.mm-cursor{display:inline-block;width:.5em;height:.92em;background:var(--teal);
+  margin-left:.12em;vertical-align:-.08em;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.mm-sub{font-size:1.25cqw;color:var(--muted);letter-spacing:.18em;margin-top:.7em}
+.mm-menu{margin-top:5.5%;display:flex;flex-direction:column;gap:1.4%;width:31%}
+.mm-btn{padding:3.2% 0;text-align:center;font-size:1.5cqw;border-radius:5px;
+  background:linear-gradient(175deg,#16202c,#0e1620);border:1px solid #26384a;color:#c9d6e2}
+.mm-btn.primary{background:linear-gradient(175deg,#2a2008,#1a1505);border-color:#7a6420;color:var(--gold);
+  box-shadow:0 0 16px rgba(201,162,39,.16)}
+.mm-ver{position:absolute;right:2%;bottom:3%;font-size:.95cqw;color:#3d4c5c;z-index:6}
+/* 좌하단 앵커 배치 */
+.stage>.mm-anchor{inset:auto;left:5.5%;bottom:7%;width:33%;z-index:7;display:flex;flex-direction:column;gap:1.6%}
+/* 줄바꿈은 <br> 로 고정한다 — 폭에 맡기면 "Click / to / Commit" 처럼 3줄로 쪼개진다 */
+.mm-anchor .mm-title{font-size:6.4cqw;text-align:left;letter-spacing:.02em;white-space:nowrap}
+.mm-anchor .mm-btn{padding:4% 0 4% 8%;text-align:left}
+.mm-anchor .mm-sub{text-align:left;font-size:1.15cqw}
+/* 우측 무기 쇼케이스 — 슬롯은 "현재 장착 무기"로 추상화(아트만 교체 가능) */
+.stage>.showcase{inset:auto;right:5%;top:50%;transform:translateY(-50%);width:40%;z-index:6;
+  display:flex;flex-direction:column;align-items:center}
+.sc-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);width:100%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,rgba(201,162,39,.16),rgba(87,209,184,.06) 45%,transparent 70%)}
+.sc-art{position:relative;width:100%;
+  filter:drop-shadow(0 14px 30px rgba(0,0,0,.66)) drop-shadow(0 0 20px rgba(201,162,39,.18))}
+/* 키보드(가로형)는 살짝 눕혀 히어로 샷처럼 */
+.sc-art.kb{transform:perspective(900px) rotateX(11deg)}
+.sc-name{position:relative;margin-top:4%;font-size:1.35cqw;color:#b9c6d3;letter-spacing:.05em}
+.sc-name b{color:var(--gold)}
+.sc-sockets{position:relative;display:flex;align-items:center;gap:.7cqw;margin-top:2.4%;font-size:1.05cqw;color:var(--muted)}
+.sc-sockets i{width:.9cqw;aspect-ratio:1;border-radius:50%;
+  border:1px solid rgba(201,162,39,.45);background:rgba(255,255,255,.04)}
+.sc-sockets i.on{background:var(--teal);box-shadow:0 0 7px var(--teal);border-color:var(--teal)}
+/* 진행 요약 */
+.stage>.stats{inset:auto;right:5%;top:6%;z-index:7;display:flex;gap:2.4cqw;
+  font-size:1.05cqw;color:var(--muted)}
+.stats>div{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
+.stats b{color:#cfdae6;font-size:1.5cqw}
+
+/* ---------- 런 필드 ---------- */
+.field{position:absolute;inset:auto;left:8.4%;top:12.5%;width:83.2%;height:75%}
+.field.now{background:var(--now-field);
+  background-image:repeating-linear-gradient(0deg,var(--now-grid) 0 1px,transparent 1px 12.5%),
+                   repeating-linear-gradient(90deg,var(--now-grid) 0 1px,transparent 1px 8.333%)}
+.field.slate{border-radius:6px;
+  background:linear-gradient(175deg,#132030,#0c1621 70%,#0a121b);
+  box-shadow:0 0 0 1px rgba(201,162,39,.30), 0 14px 36px rgba(0,0,0,.62), inset 0 0 60px rgba(0,0,0,.5);
+  background-image:repeating-linear-gradient(0deg,rgba(87,209,184,.11) 0 1px,transparent 1px 12.5%),
+                   repeating-linear-gradient(90deg,rgba(87,209,184,.11) 0 1px,transparent 1px 8.333%),
+                   linear-gradient(175deg,#132030,#0c1621 70%,#0a121b)}
+.field.strata{border-radius:6px;
+  box-shadow:0 0 0 1px rgba(201,162,39,.34), 0 16px 40px rgba(0,0,0,.66);
+  background:
+    repeating-linear-gradient(0deg,rgba(87,209,184,.09) 0 1px,transparent 1px 12.5%),
+    repeating-linear-gradient(90deg,rgba(87,209,184,.09) 0 1px,transparent 1px 8.333%),
+    linear-gradient(180deg,#1b2a1e 0%,#16242b 26%,#101d29 58%,#0b1520 100%)}
+.field-frame{position:absolute;inset:-6px;border-radius:9px;pointer-events:none;
+  border:2px solid rgba(201,162,39,.42);box-shadow:0 0 22px rgba(201,162,39,.12)}
+/* 필드 '바깥'만 어둡게. DOM 상 필드보다 '먼저' 깔아 노드를 덮지 않게 한다.
+   ⚠ 현행 DrawRunBackdrop 은 boardRect 전체를 칠해 필드를 덮는다(:223/:226, 그리고 :227
+   DrawRoundedRectOutline 이 이름과 달리 inner 를 backgroundColor 로 채운다).
+   플랜 T5 스펙: fieldRect 내부는 한 픽셀도 칠하지 않고, 액자는 boardRect - fieldRect 링에만 그린다. */
+.outmask{background:radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(3,6,10,.74) 100%)}
+.stars{opacity:.5;background-image:
+  radial-gradient(1px 1px at 6% 12%,#fff0c2,transparent),radial-gradient(1px 1px at 15% 78%,#fff0c2,transparent),
+  radial-gradient(1px 1px at 27% 34%,#fff0c2,transparent),radial-gradient(1px 1px at 41% 88%,#fff0c2,transparent),
+  radial-gradient(1px 1px at 58% 8%,#fff0c2,transparent),radial-gradient(1px 1px at 69% 62%,#fff0c2,transparent),
+  radial-gradient(1px 1px at 83% 26%,#fff0c2,transparent),radial-gradient(1px 1px at 92% 71%,#fff0c2,transparent),
+  radial-gradient(1px 1px at 3% 52%,#fff0c2,transparent),radial-gradient(1px 1px at 49% 47%,#fff0c2,transparent)}
+/* 노드 더미 (가독성 확인용 — 배경이 노드를 잡아먹지 않는지 판정) */
+.node{position:absolute;width:6.2%;aspect-ratio:1;border-radius:5px;display:flex;align-items:center;
+  justify-content:center;font-size:1.05cqw;color:#04121a;font-weight:700;
+  box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.node.py{background:linear-gradient(160deg,#5aa9e6,#3776ab)}
+.node.js{background:linear-gradient(160deg,#ffe066,#f0db4f)}
+.node.go{background:linear-gradient(160deg,#7fd8f7,#00add8)}
+.node.rs{background:linear-gradient(160deg,#e8a87c,#ce422b);color:#fff}
+.hud{position:absolute;z-index:8;background:rgba(20,28,38,.94);border-radius:6px;
+  border:1px solid rgba(201,162,39,.22);font-size:1.15cqw;color:#c9d6e2;padding:1.1% 1.6%}
+.hud.top{left:50%;transform:translateX(-50%);top:2.6%}
+.hud.left{left:2.2%;top:24%;width:12%;height:34%}
+.hud.right{right:2.2%;top:24%;width:12%;height:34%}
+
+.cmp{display:grid;gap:10px;margin-top:10px}
+@media(min-width:760px){.cmp{grid-template-columns:repeat(3,1fr)}}
+.sw{border:1px solid #1b2836;border-radius:7px;overflow:hidden}
+.sw .chip{height:44px}
+.sw .cap{padding:6px 9px;font-size:11px;color:#93a4b5;background:#0a1017}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #16222e;vertical-align:top}
+th{color:var(--teal);font-weight:600;white-space:nowrap}
+code{background:#111b24;padding:1px 5px;border-radius:3px;color:#9fe8d5;font-size:12px}
+.bad{color:var(--red)} .ok{color:var(--green)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Screen Backgrounds — 메인 메뉴 · 런 배경 컨셉</h1>
+<p class="lede">기준 문서: <code>html/ui-prototype.html</code> · 색은 그 파일의 <code>:root</code> 토큰만 사용(신규 팔레트 0)</p>
+
+<div class="note">
+<b>왜 만들었나</b> — <code>html/</code> 22개 목업에 <b>메인 메뉴 화면과 런 플레이 필드 배경 디자인이 존재하지 않는다.</b>
+런 화면 목업(<code>ui-prototype.html</code> 게임 레이아웃 탭)은 배경이 <code>#080d12</code> 단색이고,
+메인 메뉴는 전환 데모의 회색 placeholder 라벨로만 언급된다. 즉 <b>지금까지 아무도 디자인한 적이 없는 두 화면</b>이다.
+</div>
+
+<div class="note">
+<b>엔진 실측에서 나온 3가지 결함</b> (배경 작업 전에 알아야 함)<br>
+① 카메라 배경 <code>#314D79</code>는 <b>Unity 기본 청회색</b>이다. <code>Setup.cs:44</code>에 색 지정이 있으나
+씬에 카메라가 이미 있어 <code>_ownsRuntimeCamera == false</code> → <span class="bad">한 번도 적용된 적 없는 죽은 경로</span>.<br>
+② <code>RunField</code>(모래색 판 + 격자)가 <b>메인 메뉴·설정에서도 꺼지지 않는다</b> — 메뉴 뒤에 게임 보드가 그대로 비친다.<br>
+③ <code>DrawRunBackdrop</code>(<code>UI.cs:219-266</code>)이 액자 테두리·드롭섀도·별점 64개까지 <b>완성돼 있는데 호출부가 0곳</b>이다.
+</div>
+
+<!-- ================= 현재 상태 ================= -->
+<h2>0. 현재 상태 (재현)</h2>
+<p class="lede">비교 기준. 실측 색값 그대로 재현했다.</p>
+
+<div class="grid two">
+  <div class="card">
+    <header><h3>현재 — 메인 메뉴</h3><span class="tag">UI.cs:295 DrawMainMenu</span></header>
+    <div class="stage">
+      <div style="background:var(--now-camera)"></div>
+      <div class="field now" style="border-radius:0"></div>
+      <div class="mm" style="justify-content:center">
+        <div style="width:27%;background:rgba(20,28,38,.94);border-radius:8px;padding:4% 3%;
+             display:flex;flex-direction:column;gap:6%">
+          <div style="font-size:clamp(7px,1.3vw,13px);color:#eaf3f2;font-weight:700">클릭 투 커밋</div>
+          <div style="font-size:clamp(5px,.9vw,9px);color:#8fa0b0;line-height:1.5">데이터 레이크에서 지식을 채굴합니다.<br>노드 화면으로 이동하거나…</div>
+          <div class="mm-btn" style="padding:5% 0">노드 화면으로 이동</div>
+          <div class="mm-btn" style="padding:5% 0">장비 메뉴</div>
+          <div class="mm-btn" style="padding:5% 0">장착 무기</div>
+          <div class="mm-btn" style="padding:5% 0">런 시작</div>
+          <div class="mm-btn" style="padding:5% 0">설정</div>
+        </div>
+      </div>
+      <span class="lbl">배경 연출 0 · 뒤에 게임 보드 노출</span>
+    </div>
+    <footer><b class="bad">문제</b> — 타이틀 아트 없음, 전체화면 배경 없음, 패널 뒤로 모래판이 그대로 보임</footer>
+  </div>
+
+  <div class="card">
+    <header><h3>현재 — 런</h3><span class="tag">Setup.cs:76-80</span></header>
+    <div class="stage">
+      <div style="background:var(--now-camera)"></div>
+      <div class="field now">
+        <div class="node py" style="left:14%;top:22%">PY</div>
+        <div class="node js" style="left:52%;top:16%">JS</div>
+        <div class="node go" style="left:34%;top:58%">GO</div>
+        <div class="node rs" style="left:72%;top:64%">RS</div>
+      </div>
+      <div class="hud top">골드 1,240 · 커밋 88 · 23초</div>
+      <span class="lbl">카메라 #314D79 + 필드 #C9AB68 + 격자</span>
+    </div>
+    <footer><b class="bad">문제</b> — 모래색 판이 <code>ui_ux.md</code>의 에디터 다크 테마와 정면 충돌. 여백은 Unity 기본색 그대로</footer>
+  </div>
+</div>
+
+<div class="cmp">
+  <div class="sw"><div class="chip" style="background:var(--now-camera)"></div><div class="cap">#314D79 카메라 — 미디자인 기본값</div></div>
+  <div class="sw"><div class="chip" style="background:var(--now-field)"></div><div class="cap">#C9AB68 필드 — 테마 이탈</div></div>
+  <div class="sw"><div class="chip" style="background:var(--bg)"></div><div class="cap">#0b1218 프로젝트 정본 배경</div></div>
+</div>
+
+<!-- ================= 메인 메뉴 ================= -->
+<h2>1. 메인 메뉴 컨셉</h2>
+<p class="lede">공통 원칙 — 전체화면 배경을 반드시 그리고, <code>RunField</code>는 메뉴에서 끈다.</p>
+
+<div class="grid two">
+
+  <div class="card">
+    <header><h3>A안 · 메인보드</h3><span class="tag">스킬트리 언어 계승</span></header>
+    <div class="stage">
+      <div class="l-deep"></div>
+      <div class="l-circuit"></div>
+      <div class="l-trace">
+        <svg viewBox="0 0 320 180" preserveAspectRatio="none">
+          <path class="tr" d="M0,44 H86 V22 H176 V58 H320"/>
+          <path class="tr" d="M0,120 H58 V152 H150 V128 H240 V160 H320"/>
+          <path class="tr gold" d="M0,86 H120 V104 H210 V78 H320"/>
+          <path class="tr" d="M44,0 V38 H96 V0"/>
+          <path class="tr gold" d="M262,180 V140 H286 V96"/>
+          <circle class="via" cx="86" cy="44" r="2.4"/><circle class="via" cx="176" cy="22" r="2.4"/>
+          <circle class="via" cx="150" cy="128" r="2.4"/><circle class="via gold" cx="210" cy="104" r="2.4"/>
+          <circle class="via gold" cx="286" cy="140" r="2.4"/><circle class="via" cx="58" cy="120" r="2.4"/>
+          <path class="pulse" d="M0,44 H86 V22 H176 V58 H320"/>
+          <path class="pulse d2" d="M0,86 H120 V104 H210 V78 H320"/>
+          <path class="pulse d3" d="M0,120 H58 V152 H150 V128 H240 V160 H320"/>
+        </svg>
+      </div>
+      <div><span class="fog a"></span><span class="fog b"></span><span class="fog c"></span></div>
+      <div class="l-scan"></div>
+      <div class="l-vignette"></div>
+      <div class="mm">
+        <div class="mm-title">Click to <span class="br">Commit</span><span class="mm-cursor"></span></div>
+        <div class="mm-sub">MINE&nbsp;THE&nbsp;STACK</div>
+        <div class="mm-menu">
+          <div class="mm-btn primary">런 시작</div>
+          <div class="mm-btn">연구소</div>
+          <div class="mm-btn">뽑기</div><div class="mm-btn">도전과제</div>
+          <div class="mm-btn">설정</div>
+        </div>
+      </div>
+      <span class="mm-ver">v0.1 · phase-1</span>
+    </div>
+    <footer><b>구성</b> 딥 그라디언트 → 회로 격자 → 트레이스 배선 + <b>데이터 펄스 3줄</b> → 안개 3점 → 스캔라인 → 비네트.
+      스킬트리 배경과 같은 언어라 <b>화면 간 연속성</b>이 생긴다. 신규 아트 0.</footer>
+  </div>
+
+  <div class="card">
+    <header><h3>B안 · 광맥 단면</h3><span class="tag">채굴 메타포 강조</span></header>
+    <div class="stage">
+      <div style="background:linear-gradient(180deg,#0a1620 0%,#0d1c1a 38%,#131f16 70%,#0a1410 100%)"></div>
+      <div class="l-circuit fine" style="opacity:.03"></div>
+      <div class="l-trace" style="opacity:.85">
+        <svg viewBox="0 0 320 180" preserveAspectRatio="none">
+          <path class="tr gold" style="stroke-width:2.2;opacity:.20" d="M-10,150 C60,132 90,158 150,140 C210,122 250,148 330,130"/>
+          <path class="tr gold" style="stroke-width:1.4;opacity:.14" d="M-10,164 C70,150 110,170 170,154 C230,138 270,160 330,146"/>
+          <path class="tr" style="stroke-width:1.2;opacity:.12" d="M-10,26 C70,40 120,16 190,32 C250,46 280,24 330,36"/>
+          <circle class="via gold" cx="90" cy="145" r="3"/><circle class="via gold" cx="150" cy="140" r="2.4"/>
+          <circle class="via gold" cx="250" cy="140" r="2.6"/><circle class="via" cx="190" cy="32" r="2.2"/>
+          <path class="pulse d2" d="M-10,150 C60,132 90,158 150,140 C210,122 250,148 330,130"/>
+        </svg>
+      </div>
+      <div><span class="fog c" style="left:14%;bottom:6%;width:30%"></span><span class="fog a" style="opacity:.5"></span></div>
+      <div class="l-vignette" style="background:radial-gradient(ellipse at 50% 42%, transparent 40%, rgba(3,8,6,.86) 100%)"></div>
+      <div class="mm">
+        <div class="mm-title" style="text-shadow:0 0 24px rgba(201,162,39,.34),0 3px 0 rgba(0,0,0,.55)">Click to <span class="br">Commit</span><span class="mm-cursor" style="background:var(--border)"></span></div>
+        <div class="mm-sub" style="color:#7d8a72">DIG&nbsp;·&nbsp;BUILD&nbsp;·&nbsp;SHIP</div>
+        <div class="mm-menu">
+          <div class="mm-btn primary">런 시작</div>
+          <div class="mm-btn">연구소</div>
+          <div class="mm-btn">뽑기</div><div class="mm-btn">도전과제</div>
+          <div class="mm-btn">설정</div>
+        </div>
+      </div>
+      <span class="mm-ver">v0.1 · phase-1</span>
+    </div>
+    <footer><b>구성</b> 위(하늘/코드)→아래(암반)로 내려가는 수직 그라디언트에 <b>금맥 광맥선</b>이 흐른다.
+      게임의 채굴 정체성이 더 직접적. 다만 스킬트리(청록 회로)와 <b>톤이 갈린다</b>.</footer>
+  </div>
+
+</div>
+
+<!-- ================= 메뉴 배치 패턴 ================= -->
+<h2>1-b. 메뉴 배치 — 중앙 vs 좌하단 앵커</h2>
+<p class="lede">배경은 A안(메인보드)으로 고정하고 <b>메뉴 배치만</b> 바꿔 비교한다.</p>
+
+<div class="note">
+<b>"좌하단 메뉴" 패턴의 정체</b> — 정식으로는 <b>키 아트 앵커(key-art anchored) 레이아웃</b>이다.
+LoL·엘든 링·데스티니가 쓰는 그 구조인데, <b>스타일 선택이 아니라 결과</b>다:
+화면 중앙~우측에 <b>보여줄 그림</b>(캐릭터 렌더·스플래시 아트·실시간 3D 씬)이 있고,
+메뉴가 그걸 가리지 않으려고 구석으로 밀려난 것이다. 부수 효과로 ①패드 상하 이동이 짧고
+②TV 세이프에어리어에 안전하며 ③울트라와이드에서 중앙만 크롭해도 UI가 안 흔들린다.
+<br><br>
+<b class="bad">함정</b> — 채울 그림 없이 메뉴만 옮기면 중앙이 비어 <b>구도가 무너지고 미완성으로 읽힌다</b>.
+아래 B에서 그 상태를 그대로 보여준다. 즉 이 패턴은 <b>"공간을 비우는" 게 아니라 "공간을 쓰는" 결정</b>이다.
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <header><h3>A · 중앙 정렬 (원안)</h3><span class="tag">보여줄 아트가 없을 때의 정답</span></header>
+    <div class="stage">
+      <div class="l-deep"></div><div class="l-circuit"></div>
+      <div><span class="fog a"></span><span class="fog b"></span><span class="fog c"></span></div>
+      <div class="l-scan"></div><div class="l-vignette"></div>
+      <div class="mm">
+        <div class="mm-title">Click to <span class="br">Commit</span><span class="mm-cursor"></span></div>
+        <div class="mm-sub">MINE&nbsp;THE&nbsp;STACK</div>
+        <div class="mm-menu">
+          <div class="mm-btn primary">런 시작</div>
+        <div class="mm-btn">연구소</div>
+        <div class="mm-btn">뽑기</div>
+        <div class="mm-btn">도전과제</div>
+        <div class="mm-btn">설정</div>
+        </div>
+      </div>
+      <span class="mm-ver">v0.1 · phase-1</span>
+    </div>
+    <footer>대칭 구도라 <b>빈 곳이 없다</b>. 타이틀이 곧 주인공. 구현 비용 최저</footer>
+  </div>
+
+  <div class="card">
+    <header><h3>B · 좌하단만 이동 (반례)</h3><span class="tag">채울 게 없으면 이렇게 된다</span></header>
+    <div class="stage">
+      <div class="l-deep"></div><div class="l-circuit"></div>
+      <div><span class="fog a"></span><span class="fog b"></span><span class="fog c"></span></div>
+      <div class="l-scan"></div><div class="l-vignette"></div>
+      <div class="mm-anchor">
+        <div class="mm-title">Click to<br><span class="br">Commit</span><span class="mm-cursor"></span></div>
+        <div class="mm-sub" style="margin:.3em 0 6% 0">MINE&nbsp;THE&nbsp;STACK</div>
+        <div class="mm-btn primary">런 시작</div><div class="mm-btn">연구소</div>
+        <div class="mm-btn">뽑기</div><div class="mm-btn">도전과제</div><div class="mm-btn">설정</div>
+      </div>
+      <span class="mm-ver">v0.1 · phase-1</span>
+    </div>
+    <footer><b class="bad">우측 2/3이 그냥 빈 배경</b>. 무게중심이 한쪽으로 쏠려 화면이 기울어 보인다</footer>
+  </div>
+</div>
+
+<div class="grid" style="margin-top:22px">
+  <div class="card">
+    <header><h3>C · 좌하단 앵커 + 장착 무기 쇼케이스 <span style="color:var(--gold)">← 이 패턴을 쓰려면 이렇게</span></h3>
+      <span class="tag">기존 에셋 재사용 · 신규 아트 0</span></header>
+    <div class="stage">
+      <div class="l-deep"></div><div class="l-circuit"></div>
+      <div class="l-trace">
+        <svg viewBox="0 0 320 180" preserveAspectRatio="none">
+          <path class="tr" d="M0,44 H86 V22 H176 V58 H320"/>
+          <path class="tr gold" d="M0,86 H120 V104 H210 V78 H320"/>
+          <circle class="via" cx="176" cy="22" r="2.4"/><circle class="via gold" cx="210" cy="104" r="2.4"/>
+          <path class="pulse" d="M0,44 H86 V22 H176 V58 H320"/>
+          <path class="pulse d2" d="M0,86 H120 V104 H210 V78 H320"/>
+        </svg>
+      </div>
+      <div><span class="fog a"></span><span class="fog b" style="right:22%"></span></div>
+      <div class="l-scan"></div>
+
+      <!-- 우측: 현재 장착 무기 슬롯(추상화 — 아트만 교체) + 진행 요약 -->
+      <div class="showcase">
+        <div class="sc-glow"></div>
+        <img class="sc-art kb" src="../Assets/Resources/Sprites/Armament/kb_hacker.png" alt="현재 장착 무기">
+        <div class="sc-name">해커 키보드 · <b>Lv.6</b></div>
+        <div class="sc-sockets"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><span>소켓 3 / 4</span></div>
+      </div>
+      <div class="stats">
+        <div><span>총 커밋</span><b>12,480</b></div>
+        <div><span>최고 티어</span><b>T4</b></div>
+        <div><span>도전과제</span><b>7 / 15</b></div>
+      </div>
+
+      <div class="l-vignette"></div>
+      <div class="mm-anchor">
+        <div class="mm-title">Click to<br><span class="br">Commit</span><span class="mm-cursor"></span></div>
+        <div class="mm-sub" style="margin:.3em 0 6% 0">MINE&nbsp;THE&nbsp;STACK</div>
+        <div class="mm-btn primary">런 시작</div><div class="mm-btn">연구소</div>
+        <div class="mm-btn">뽑기</div><div class="mm-btn">도전과제</div><div class="mm-btn">설정</div>
+      </div>
+      <span class="mm-ver">v0.1 · phase-1</span>
+    </div>
+    <footer><b>우측을 현재 장착 무기가 채운다.</b> owner 확정(2026-08-02) — <b>무기의 최종형은 키보드</b>이므로
+      쇼케이스에 티어 플랜 산출물 <code>kb_hacker.png</code>(512×208)를 그대로 올렸다. <b>신규 아트 0.</b><br>
+      키보드 아트에 <b>소켓 모양(원·세모·육각·별)이 키캡으로 이미 들어가 있어</b>, 쇼케이스가 곧 소켓 구성
+      설명이 된다 — 별도 아이콘을 만들 필요가 없다. 방치형이라 <b>메뉴에서 진행도가 보이는 게 실이득</b>이고,
+      "무기를 키운다"는 축이 첫 화면에서 바로 읽힌다.<br>
+      <b class="bad">비용</b> — 무기 레벨·소켓·통계를 읽어야 하므로 <code>DrawMainMenu</code>가 아마먼트/도전과제
+      상태에 의존하게 된다(현재는 재화만 읽음).<br>
+      <b>슬롯 추상화</b> — 이 자리는 "현재 장착 무기" 슬롯이므로 <b>아트만 교체하면 된다</b>.
+      티어 플랜(P0) 전에는 shipped된 <code>weapon_main.png</code>로, 이후에는 장착 키보드로 자동 승계.
+      ⚠ <code>kb_*.png</code> 10종은 <b><code>.meta</code>가 미커밋</b>이므로(QA F-8) 참조 전에 먼저 커밋해야 한다.</footer>
+  </div>
+</div>
+
+<table>
+<tr><th>판단</th><th>내용</th></tr>
+<tr><td>아트가 없다면</td><td><b>A(중앙)</b>. 좌하단은 빈 공간을 만들 뿐이다</td></tr>
+<tr><td>아트가 있다면</td><td><b>C(좌하단+쇼케이스)</b> ← <b class="ok">owner 확정</b>. 쇼케이스 = <b>현재 장착 무기(최종형: 키보드)</b></td></tr>
+<tr><td>절대 하지 말 것</td><td><b>B</b> — 패턴만 흉내내고 공간을 안 채우는 것</td></tr>
+</table>
+
+<!-- ================= 런 배경 ================= -->
+<h2>2. 런 배경 컨셉</h2>
+<p class="lede">하드 제약 — <b>필드 안쪽은 절대 덧칠하지 않는다</b>(노드 가독성). 액자·여백·질감만 다룬다.</p>
+
+<div class="grid two">
+
+  <div class="card">
+    <header><h3>A안 · 다크 기판</h3><span class="tag">테마 통일</span></header>
+    <div class="stage">
+      <div class="l-deep"></div>
+      <div class="l-circuit" style="opacity:.045"></div>
+      <div><span class="fog a" style="opacity:.4"></span><span class="fog b" style="opacity:.4"></span></div>
+      <div class="outmask"></div>
+      <div class="field slate">
+        <div class="field-frame"></div>
+        <div class="node py" style="left:14%;top:22%">PY</div>
+        <div class="node js" style="left:52%;top:16%">JS</div>
+        <div class="node go" style="left:34%;top:58%">GO</div>
+        <div class="node rs" style="left:72%;top:64%">RS</div>
+      </div>
+      <div class="hud top">골드 1,240 · 커밋 88 · 23초</div>
+      <div class="hud left"></div><div class="hud right"></div>
+      <span class="lbl">필드=다크 슬레이트 · 격자=틸 · 골드 액자</span>
+    </div>
+    <footer><b>변경</b> <code>_fieldFill.color</code> → 다크 슬레이트, <code>CreateFieldGrid</code> 라인색 → 틸 저알파,
+      <code>DrawRunBackdrop</code> 부활(액자+외곽 마스크). <b class="ok">노드 대비가 크게 올라간다</b>(밝은 노드 ↔ 어두운 판).</footer>
+  </div>
+
+  <div class="card">
+    <header><h3>B안 · 지층</h3><span class="tag">깊이감 · 채굴감</span></header>
+    <div class="stage">
+      <div style="background:radial-gradient(ellipse at 50% 40%, #14212c 0%, #0a121a 60%, #060b10 100%)"></div>
+      <div class="stars"></div>
+      <div class="outmask"></div>
+      <div class="field strata">
+        <div class="field-frame"></div>
+        <div class="node py" style="left:14%;top:22%">PY</div>
+        <div class="node js" style="left:52%;top:16%">JS</div>
+        <div class="node go" style="left:34%;top:58%">GO</div>
+        <div class="node rs" style="left:72%;top:64%">RS</div>
+      </div>
+      <div class="hud top">골드 1,240 · 커밋 88 · 23초</div>
+      <div class="hud left"></div><div class="hud right"></div>
+      <span class="lbl">필드=지층 그라디언트 · 여백=별점</span>
+    </div>
+    <footer><b>변경</b> 필드에 <b>위(이끼 낀 표토)→아래(심층 암반)</b> 세로 그라디언트.
+      여백엔 <code>DrawRunBackdrop</code>의 <b>별점 64개를 그대로 사용</b>(이미 구현돼 있음).
+      A안보다 정보량이 많아 <span class="bad">노드가 많아지면 시끄러울 수 있다</span>.</footer>
+  </div>
+
+</div>
+
+<!-- ================= 구현 매핑 ================= -->
+<h2>3. 구현 매핑</h2>
+<table>
+<tr><th>대상</th><th>지점</th><th>내용</th><th>리스크</th></tr>
+<tr><td>카메라 배경</td><td><code>SampleScene.unity:203</code></td>
+    <td>#314D79 → <code>#070c11</code>. <b>씬에서 고쳐야 한다</b></td>
+    <td><code>Setup.cs:39</code> 가드를 푸는 방식은 <code>orthographicSize</code>도 5→5.4로 바꿔 레이아웃 전체가 흔들린다 — <b>씬 수정 권장</b></td></tr>
+<tr><td>메뉴 배경</td><td><code>UI.cs:297</code> 진입부</td>
+    <td>전체화면 배경 그리기(허브 <code>SkillTreeScreen.cs:443</code> 패턴)</td>
+    <td>letterbox 여백은 IMGUI가 못 덮는다 → 카메라색을 같은 톤으로 맞춰야 이음매가 안 보인다</td></tr>
+<tr><td>메뉴 뒤 보드</td><td><code>Run.cs:46/27/64</code></td>
+    <td><code>RunField</code> 루트를 메뉴/허브/설정에서 <code>SetActive(false)</code>, <code>StartRun</code>에서 true</td>
+    <td>근본 해결책. <code>_fieldFill</code> 참조가 <code>Setup.cs</code>에만 있어 비교적 안전</td></tr>
+<tr><td>런 액자</td><td><code>UI.cs:219</code> <code>DrawRunBackdrop</code></td>
+    <td><b class="bad">호출만 추가하면 안 된다 — 재작성 필요.</b> <code>:223</code>/<code>:226</code>이 <code>boardRect</code>(=<code>fieldRect</code>+14px) 전체를 채우고, <code>:227</code> <code>DrawRoundedRectOutline</code>은 <b>이름과 달리 inner를 <code>backgroundColor</code>로 채운다</b>(<code>Rendering.cs:1477</code>) → 셋 다 노드를 덮는다. <b>4방향 ring(밴드+코너)으로 재작성</b>한 뒤 <code>DrawRunHud</code>에서 호출</td>
+    <td>필드 <b>안쪽</b>을 한 픽셀도 칠하면 안 된다. 드로우콜은 fill 1개가 밴드 4개가 되어 증가 — 피버(66콜)와 합산 실측 필요</td></tr>
+<tr><td>필드 질감</td><td><code>Setup.cs:76-80</code></td>
+    <td><code>_fieldFill.color</code> + <code>CreateFieldGrid</code> 라인색/굵기</td>
+    <td>월드 배경은 <b>카메라 셰이크에 같이 흔들린다</b> — 새 스프라이트는 오버스캔 필요</td></tr>
+<tr><td>색 상수</td><td><code>MvpGameController.cs:142~</code></td>
+    <td>배경 색 리터럴을 팔레트 상수로 추출(선행 리팩토링)</td>
+    <td><code>PanelBackgroundColor</code>와 <code>s_panelTexture</code>가 <b>같은 값 이중 정의</b> — 한쪽만 고치면 어긋난다</td></tr>
+</table>
+
+<div class="note" style="margin-top:22px">
+<b>버튼 세트에 대한 주의</b> — 위 목업의 버튼 라벨·개수는 <code>lab-ia-plan</code> 확정치
+(<code>런 시작 / 연구소 / 뽑기 / 도전과제 / 설정</code> 5개)를 반영한 <b>예시</b>다.
+<b>배경 플랜은 버튼 세트를 정하지 않는다</b> — 앵커 위치·스타일·<b>최대 5행이 들어가는 레이아웃</b>만 확정하며
+개수·라벨·목적지는 <code>lab-ia-plan</code> T4/T5 소관이다(배경 플랜 D13 · T2(b-2)).
+</div>
+
+<div class="note" style="margin-top:22px">
+<b>추천</b> — 메인 메뉴 <b>A안(메인보드)</b> + 런 <b>A안(다크 기판)</b>.
+둘 다 스킬트리에 이미 있는 회로 언어를 써서 <b>화면 전환 시 이질감이 없고</b>, 신규 아트가 0이며,
+런 필드를 어둡게 바꾸는 것만으로 노드 대비가 올라간다.
+B안들은 채굴 정체성이 강하지만 스킬트리와 톤이 갈려 <b>둘 다 채택하면 화면마다 세계관이 달라 보인다</b>.
+</div>
+
+</div>
+</body>
+</html>

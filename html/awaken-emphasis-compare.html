@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>각성 강조 축별 아웃셋 — 현행 vs ⓐ vs ⓑ 비교본 (owner 확인용)</title>
+<!--
+  awaken-emphasis-compare.html
+  ---------------------------------------------------------------------------
+  용도  : awaken-emphasis-axis-outset-plan **T2** 산출물.
+          "강조 띠가 축마다 다르다"를 어느 값으로 균일화할지 눈으로 확인한다.
+          실조작/게임 로직 없음.
+  소유  : docs/plans/02-in-progress/phase-1/awaken-emphasis-axis-outset-plan.md T2
+  게이트: 게이트1 Codex 3라운드 종결
+          (docs/reviews/2026-09-09-awaken-emphasis-axis-outset-plan.md)
+          누적 10건 중 8 반영 / 2 반박 — 반박 2건은 리뷰어가 다음 라운드에서 직접 인정.
+
+  [!] 이 비교본은 판정 아티팩트의 방향을 뒤집는다
+      owner 판정용 아티팩트는 "가로 1.94 를 3px 로 키운다"로 그렸는데 방향이 반대였다.
+      실제로 빡빡한 축은 세로이고, 균일화는 세로를 줄이는 방향이다.
+
+  [!] 좌표는 전부 코드 실측값이다 (최소 줌 0.35 기준). 눈대중 0.
+        셀 간격      126 x 0.35                        = 44.1
+        각성 카드    max(36, 78x0.35x1.5x1.18)         = 48.321
+        이웃 카드    max(36, 78x0.35x1.0x1.18=32.214)  = 36  (하한 클램프)
+        카드 간 빈틈 44.1 - (48.321+36)/2              = 1.9395
+        fill         102/128                           = 0.796875
+        실루엣 비율  awaken 68/128 x 102/128  <- T1 실측. 물려받은 66x100 은 틀렸다
+                     stat   102/128 x 102/128
+      띠 = 아웃셋 / fill x 비율
+         => 띠_가로 = 아웃셋_가로 x 68/102 . 띠_세로 = 아웃셋_세로 x 1.0
+
+  [!] 도형을 흉내내지 않았다 — Assets/Resources/Sprites/Nodes/shapes/{awaken,stat}_sheet.png
+      의 프레임 0 알파 실루엣을 그대로 인라인 임베드(CSS mask)했고, 요소 크기도
+      GetSkillTreeNodeSheetDrawRect 와 같은 1/fill 확대를 적용했다.
+
+  [!] 확대 x12 로 그렸다 — 서브픽셀 차이(0.06px)는 1:1 로 보이지 않는다. 하단에 1:1 스트립 병기.
+  정본  : html/ui-prototype.html 무수정(읽기만). .cs 무수정.
+  팔레트: ui-prototype 계열 토큰. 신규 raw 색 0(금색은 각성 금색 하나를 알파로 파생).
+  자기완결: 외부 요청 0 (시스템 폰트 + data URI 이미지).
+-->
+<style>
+:root{
+  --bg:#0b1218; --panel:#111b24; --line:#1e2b38; --text:#e2e8f0; --muted:#8c99ad;
+  --gold:#f5e859; --awaken:#f5c542; --teal:#57d1b8; --red:#ff6b6b;
+  --m-awaken:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAADpklEQVR42u2d0W3bQBBExwv3EXViqRLJlTiqJGYlOnXCVKJ8SAaCRECgyKZ2d94A/jZNzr135h3Jp9PpJOKb4BRQAEIBCAUgFIBQAEIBCAUgFIBQAEIBCAUgFKBx1pcf2zybF+BN0k9J8+UHAhiO/q0zBcL44r/9QYKV44l4Mt0Qcrgy6idJOwjgO/HbUgA/9F+bFK5QgBf65ayCAP1/5YUC+KH/96wu84EVCvBCv6UKAvR7qyBAv7cKuivg8Am3eVurIEC/twoC9HurIBov864/uVA7CuC9yaPlsnGA/ptU0G6tIEC/twqi2ehfYnS2UkE0Q/8SBWilgi4F2C08KtuoIJqM/pcH/N4WKgjQ762CAP3eKgjQ762CAP3eKqhcgHWy49lRgOVO9jbhcZVUQbUCZMZtSRUEs35vFVQqQJZZfysVVNkTuJL0o9CJHZJeVeCdA8Gs31sFwazfWwXZFVAN/eVUEKDfWwUB+r1VkFUB1dFfRgWR2P1dLn5qFYTZ1m5UUEABh8bv7UungmDW762CAP3eKgijp3oyTXB3WZaNA/R7UyBAvzfxghPhrYIA/d4qCNDvTcBIgEH3zDK+E7jTedHHORud7xBaEmDo/B4+14xHXvwMBZglvZt+sGlI2ovFIFsVbB49+jPdCXRTwchw8TMVwEkFKdCfcTHIhQL7LKM/436A90wnpzP6sxZgvoyQGfT77gnsqoJ9Rrpl3RXcTQUjK9Ui8f3xLioYmf+WSH7iOqhgykyz7M8GVlfByH78UWCptKoKRoVjjyInsqIKpgr0qvKGkGoqGFWONwrtmqmiglFJW1FsVFVQwbESraq9JzC7CsblGEUB/FRQ8j+WKPrvVUYVTBXvWVR9W3g2FYyqN6wqfz18rfM+wlUC9L9WLUAUv806Mev3/mbQo1VQbtbfSQGPVkFp9Hf6buCjVHDssGmly5dDl1ZBefR3UsDSKmiB/o5fD19KBXOn/YqdCrCECoYSbu1GAcupYNPtwZVuBPhKFYyOTy11LMBXqKAd+rsXYL5QYFbjp3oowL8pcAT9vgWQpO93Xry26HcpwL0q2Dd/XL19Ae5Rweh+8V0K8D8qaI9+twLcqoK9w+h3KsAtKhguF9+tAB8qmEG/Wq8F6I6XUm6cRr8jAT5UMLmj37kA11Rgh35nBVxTwcZx9EvSs2T9qvZJ0jfXi+9egLnLxk4UQJgEEgpAKAChAIQCEApAKAChAIQCEApAKAChAORqfgEYLhVJng6uOQAAAABJRU5ErkJggg==");
+  --m-stat:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAB2ElEQVR42u3ZwY2CQBSA4SfZQuxE6EQrMVbidqJ2QifsZU4bT86DGfX7EqInYpifNxh2y7IE32twCQSAABAAAkAACAABIAAEgAAQAB/tZ8Vz7/998rq5HG8RwBgRx4g4CCB98S8Rcc88+S7xdfAYEefyyXrumSFkBTBGxNXdvulUOGVEkBHAGBE3a9LEVBvBkHTn08a1dsutnQA3e34XzwRTiwkwWvwuVK1DTQBn174bx60D8LTfl8Ora1ITgAjiu98FCKAf+60nACYAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAACQAAIAAEgAASAABAAAkAACAABPDWXgz7MJoAA5q0nwMN1f/8pUDMBfl3zblxabAH3ctBW1ToMCeV5GGw79i81J9gty1L7I8aIuFmLJqbaKTwkjaDJJNj8zp8ytuAhcR86eSbYbM9Pu9YZW8CzLeFcvu/LQf3fu0f555V6k60RQFj8VQJYZYtdMwDCyyAEgAAQAAJAAAgAASAABIAAEABt/QE9zk3l0m68ewAAAABJRU5ErkJggg==");
+}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:var(--bg);color:var(--text);
+  font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif;line-height:1.6}
+h1{font-size:20px;margin:0 0 6px}
+.lead{color:var(--muted);font-size:13px;margin:0 0 22px;max-width:1000px}
+.lead b{color:var(--gold)}
+.cols{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;
+  flex:1 1 320px;min-width:320px}
+h2{font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:400;padding:2px 8px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted)}
+.badge.pick{border-color:var(--teal);color:var(--teal)}
+.badge.alt{border-color:#5b6b7f}
+.stage{position:relative;height:1270px;overflow:hidden;border:1px dashed var(--line);
+  border-radius:8px;background:radial-gradient(circle at 50% 50%, #16222e 0%, #0d151d 70%)}
+.origin{position:absolute;left:50%;top:50%}
+.node{position:absolute;-webkit-mask-size:100% 100%;mask-size:100% 100%;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.body{background:#2a3a4a}
+.nb{background:#22303e}
+.emph{background:var(--awaken);opacity:.62}
+.gapline{position:absolute;left:-216px;width:432px;
+  background:repeating-linear-gradient(45deg,rgba(87,209,184,.30) 0 6px,transparent 6px 12px);
+  border-top:1px solid rgba(87,209,184,.5);border-bottom:1px solid rgba(87,209,184,.5)}
+table.num{width:100%;border-collapse:collapse;margin:12px 0 8px;font-size:12px}
+table.num th{text-align:left;color:var(--muted);font-weight:400;padding:3px 0}
+table.num td{text-align:right;font-variant-numeric:tabular-nums}
+tr.good td{color:var(--teal)} tr.warn td{color:var(--gold)} tr.bad td{color:var(--red)}
+.note{font-size:12px;color:var(--muted);margin:0}
+.note b{color:var(--text)}
+.strip{margin-top:26px;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:16px}
+.oneone{position:relative;height:130px;display:flex;gap:72px;align-items:center;justify-content:center}
+.oneone .origin{position:relative;left:0;top:0;width:60px;height:120px}
+.legend{margin-top:18px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-block;margin-right:18px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+</style>
+</head>
+<body>
+<h1>각성 강조 띠 — 축별 아웃셋 비교
+  <span style="font-size:12px;color:var(--muted)">(최소 줌 0.35 · 코드 실측 좌표 · 확대 ×12)</span></h1>
+<p class="lead">
+카드 공간에 준 <b>등방 3px</b> 아웃셋이 시트 실루엣 비율(<b>68/128 × 102/128</b>, T1 실측)에 곱해지면서
+화면에서는 <b>가로 2.00px · 세로 3.00px</b> 로 갈린다. 세로는 자기 카드를 넘어
+이웃 몸통 사이의 빈틈(<b>1.9395px</b> · 초록 빗금)을 <b>1.06px 침범</b>한다.
+⚠ owner 판정용 아티팩트가 제시한 <b>“가로를 키운다”는 방향이 반대</b>였다 — 균일화는 <b>세로를 줄이는 쪽</b>이다.
+</p>
+<div class="cols">
+<section class="col">
+  <h2>현행 <span class="badge now">아웃셋 (3, 3)</span></h2>
+  <div class="stage"><div class="origin"><div class="node nb" style="left:-271.0588px;top:-800.2588px;width:542.1176px;height:542.1176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node nb" style="left:-271.0588px;top:258.1412px;width:542.1176px;height:542.1176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node emph" style="left:-409.0052px;top:-409.0052px;width:818.0104px;height:818.0104px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="node body" style="left:-363.8287px;top:-363.8287px;width:727.6574px;height:727.6574px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="gapline" style="top:289.9260px;height:23.2740px"></div><div class="gapline" style="top:-313.2000px;height:23.2740px"></div></div></div>
+  <table class="num">
+    <tr><th>띠 가로</th><td>2.0000 px</td></tr>
+    <tr><th>띠 세로</th><td>3.0000 px</td></tr>
+    <tr class="bad"><th>세로 이웃 침범</th><td>1.0605 px</td></tr>
+  </table>
+  <p class="note">띠가 <b>가로 2.00 / 세로 3.00</b> 으로 갈린다. 세로 강조가 이웃 몸통을 <b>1.06px 파고든다</b> — 초록 빗금(카드 간 빈틈 1.9395px)을 넘어선 부분이 그것이다.</p>
+</section>
+<section class="col">
+  <h2>ⓐ 세로를 가로에 <b>(채택)</b> <span class="badge pick">아웃셋 (3, 2)</span></h2>
+  <div class="stage"><div class="origin"><div class="node nb" style="left:-271.0588px;top:-800.2588px;width:542.1176px;height:542.1176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node nb" style="left:-271.0588px;top:258.1412px;width:542.1176px;height:542.1176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node emph" style="left:-409.0052px;top:-393.9464px;width:818.0104px;height:787.8927px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="node body" style="left:-363.8287px;top:-363.8287px;width:727.6574px;height:727.6574px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="gapline" style="top:289.9260px;height:23.2740px"></div><div class="gapline" style="top:-313.2000px;height:23.2740px"></div></div></div>
+  <table class="num">
+    <tr><th>띠 가로</th><td>2.0000 px</td></tr>
+    <tr><th>띠 세로</th><td>2.0000 px</td></tr>
+    <tr class="warn"><th>세로 이웃 침범</th><td>0.0605 px</td></tr>
+  </table>
+  <p class="note">가로는 <b>건드리지 않는다</b>(픽셀 무변경). 세로만 3.0 → 2.0. 침범이 <b>0.06px</b> 로 사실상 사라진다. 대신 띠가 세로로 1px 얇아 보인다.</p>
+</section>
+<section class="col">
+  <h2>ⓑ 가로를 세로에 <span class="badge alt">아웃셋 (4.5, 3)</span></h2>
+  <div class="stage"><div class="origin"><div class="node nb" style="left:-271.0588px;top:-800.2588px;width:542.1176px;height:542.1176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node nb" style="left:-271.0588px;top:258.1412px;width:542.1176px;height:542.1176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node emph" style="left:-431.5934px;top:-409.0052px;width:863.1868px;height:818.0104px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="node body" style="left:-363.8287px;top:-363.8287px;width:727.6574px;height:727.6574px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="gapline" style="top:289.9260px;height:23.2740px"></div><div class="gapline" style="top:-313.2000px;height:23.2740px"></div></div></div>
+  <table class="num">
+    <tr><th>띠 가로</th><td>3.0000 px</td></tr>
+    <tr><th>띠 세로</th><td>3.0000 px</td></tr>
+    <tr class="bad"><th>세로 이웃 침범</th><td>1.0605 px</td></tr>
+  </table>
+  <p class="note">띠를 3.00 으로 키운다 — 지금의 세로 두께가 유지되고 <b>가로가 굵어진다</b>. 다만 <b>세로 침범 1.06px 는 그대로</b> 남는다. 폐기된 ⓒ 도 계산하면 이 값과 <b>완전히 동일</b>하다.</p>
+</section></div>
+
+<div class="strip">
+  <h2>1:1 대조 <span class="badge">확대 없음 — 실제 최소 줌에서 이만하다</span></h2>
+  <p class="note" style="margin-bottom:10px">왼쪽부터 <b>현행 / ⓐ / ⓑ</b>.
+  이 크기에서 ⓐ 와 현행의 차이는 세로 1px 이고, ⓐ 와 ⓐ′(침범 정확히 0)의 차이
+  <b>0.06px 는 여기서 보이지 않는다</b> — 그래서 ⓐ′ 는 owner 판정 항목으로 올리지 않았다.</p>
+  <div class="oneone"><div class="origin"><div class="node nb" style="left:7.412px;top:-6.688px;width:45.176px;height:45.176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node nb" style="left:7.412px;top:81.512px;width:45.176px;height:45.176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node emph" style="left:-4.084px;top:25.916px;width:68.168px;height:68.168px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="node body" style="left:-0.319px;top:29.681px;width:60.638px;height:60.638px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div></div><div class="origin"><div class="node nb" style="left:7.412px;top:-6.688px;width:45.176px;height:45.176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node nb" style="left:7.412px;top:81.512px;width:45.176px;height:45.176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node emph" style="left:-4.084px;top:27.171px;width:68.168px;height:65.658px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="node body" style="left:-0.319px;top:29.681px;width:60.638px;height:60.638px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div></div><div class="origin"><div class="node nb" style="left:7.412px;top:-6.688px;width:45.176px;height:45.176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node nb" style="left:7.412px;top:81.512px;width:45.176px;height:45.176px;-webkit-mask-image:var(--m-stat);mask-image:var(--m-stat)"></div><div class="node emph" style="left:-5.966px;top:25.916px;width:71.932px;height:68.168px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div><div class="node body" style="left:-0.319px;top:29.681px;width:60.638px;height:60.638px;-webkit-mask-image:var(--m-awaken);mask-image:var(--m-awaken)"></div></div></div>
+</div>
+
+<div class="legend">
+  <span><i class="sw" style="background:#2a3a4a"></i>각성 몸통 (실루엣 68×102)</span>
+  <span><i class="sw" style="background:#22303e"></i>이웃 노드 (실루엣 102×102 · 카드 36)</span>
+  <span><i class="sw" style="background:#f5c542;opacity:.62"></i>강조 띠</span>
+  <span><i class="sw" style="background:rgba(87,209,184,.45)"></i>카드 간 빈틈 1.9395px — 넘으면 이웃 침범</span>
+</div>
+</body>
+</html>

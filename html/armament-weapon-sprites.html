@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Armament Weapon Sprite | Click to Commit</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#060b14; color:#c8d0e0;
+  font-family:'Courier New',monospace; padding:32px;
+}
+h1 { font-size:14px; letter-spacing:3px; color:#4a6fa5; text-transform:uppercase; margin-bottom:6px; }
+.subtitle { font-size:11px; color:#3a4a5a; margin-bottom:28px; }
+.layout { display:flex; gap:34px; align-items:flex-start; flex-wrap:wrap; }
+.panel-title {
+  font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  color:#3a5070; border-bottom:1px solid #0e1a28;
+  padding-bottom:8px; margin-bottom:12px;
+}
+.canvas-frame {
+  border:1px solid #0c1820;
+  background:
+    linear-gradient(45deg, #050912 25%, transparent 25%),
+    linear-gradient(-45deg, #050912 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #050912 75%),
+    linear-gradient(-45deg, transparent 75%, #050912 75%),
+    #07101a;
+  background-position:0 0, 0 8px, 8px -8px, -8px 0;
+  background-size:16px 16px;
+  display:inline-block;
+}
+#weapon-main { width:256px; height:256px; display:block; }
+#weapon-preview { width:512px; height:512px; display:block; }
+.controls { margin-top:14px; font-size:11px; color:#5e7896; }
+.controls label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.controls input { accent-color:#c8a14a; }
+.anchor-readout {
+  margin-top:12px; color:#7189a4; font-size:10px; line-height:1.7;
+  white-space:pre; letter-spacing:.03em;
+}
+</style>
+</head>
+<body>
+<h1>Armament Weapon Sprite</h1>
+<p class="subtitle">Transparent 512x512 procedural weapon art with socket anchor overlay.</p>
+
+<div class="layout">
+  <section>
+    <div class="panel-title">Capture Canvas | 512x512 transparent</div>
+    <div class="canvas-frame"><canvas id="weapon-main" width="512" height="512"></canvas></div>
+    <div class="controls">
+      <label><input id="toggle-anchors" type="checkbox"> Show socket anchors</label>
+      <div id="anchor-readout" class="anchor-readout"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel-title">Preview | CSS 2x</div>
+    <div class="canvas-frame"><img id="weapon-preview" alt="Armament weapon preview"></div>
+  </section>
+</div>
+
+<script>
+'use strict';
+
+const SOCKET_ANCHORS_UV = [
+  [0.50, 0.26],
+  [0.50, 0.39],
+  [0.50, 0.52],
+  [0.50, 0.65],
+];
+
+function pathRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function pathGem(ctx, cx, cy, r) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.72, cy - r * 0.22);
+  ctx.lineTo(cx + r * 0.54, cy + r * 0.82);
+  ctx.lineTo(cx, cy + r);
+  ctx.lineTo(cx - r * 0.54, cy + r * 0.82);
+  ctx.lineTo(cx - r * 0.72, cy - r * 0.22);
+  ctx.closePath();
+}
+
+function drawWeapon(ctx, size) {
+  ctx.clearRect(0, 0, size, size);
+
+  const cx = size * 0.5;
+  const steel = ctx.createLinearGradient(cx - size * 0.12, 0, cx + size * 0.12, 0);
+  steel.addColorStop(0, '#08101a');
+  steel.addColorStop(0.22, '#1b2c3e');
+  steel.addColorStop(0.50, '#50697f');
+  steel.addColorStop(0.78, '#182638');
+  steel.addColorStop(1, '#050911');
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(25,50,75,0.55)';
+  ctx.shadowBlur = size * 0.035;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, size * 0.045);
+  ctx.lineTo(cx + size * 0.108, size * 0.165);
+  ctx.lineTo(cx + size * 0.082, size * 0.675);
+  ctx.lineTo(cx + size * 0.036, size * 0.755);
+  ctx.lineTo(cx - size * 0.036, size * 0.755);
+  ctx.lineTo(cx - size * 0.082, size * 0.675);
+  ctx.lineTo(cx - size * 0.108, size * 0.165);
+  ctx.closePath();
+  ctx.fillStyle = steel;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#8d743d';
+  ctx.lineWidth = size * 0.010;
+  ctx.stroke();
+
+  const fuller = ctx.createLinearGradient(cx - size * 0.020, 0, cx + size * 0.020, 0);
+  fuller.addColorStop(0, 'rgba(8,13,20,0.10)');
+  fuller.addColorStop(0.5, 'rgba(185,215,235,0.28)');
+  fuller.addColorStop(1, 'rgba(8,13,20,0.10)');
+  ctx.fillStyle = fuller;
+  pathRoundRect(ctx, cx - size * 0.020, size * 0.175, size * 0.040, size * 0.470, size * 0.012);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(219,178,83,0.45)';
+  ctx.lineWidth = size * 0.006;
+  for (let y = size * 0.245; y <= size * 0.655; y += size * 0.104) {
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.050, y);
+    ctx.lineTo(cx - size * 0.018, y + size * 0.030);
+    ctx.lineTo(cx + size * 0.018, y + size * 0.030);
+    ctx.lineTo(cx + size * 0.050, y);
+    ctx.stroke();
+  }
+
+  const gold = ctx.createLinearGradient(0, size * 0.68, 0, size * 0.86);
+  gold.addColorStop(0, '#f1d27a');
+  gold.addColorStop(0.32, '#9f782c');
+  gold.addColorStop(0.72, '#3c2b12');
+  gold.addColorStop(1, '#d8aa4d');
+
+  ctx.fillStyle = gold;
+  ctx.strokeStyle = '#1b1510';
+  ctx.lineWidth = size * 0.008;
+  ctx.beginPath();
+  ctx.moveTo(cx - size * 0.185, size * 0.724);
+  ctx.lineTo(cx - size * 0.070, size * 0.683);
+  ctx.lineTo(cx + size * 0.070, size * 0.683);
+  ctx.lineTo(cx + size * 0.185, size * 0.724);
+  ctx.lineTo(cx + size * 0.115, size * 0.768);
+  ctx.lineTo(cx - size * 0.115, size * 0.768);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#111925';
+  pathRoundRect(ctx, cx - size * 0.036, size * 0.744, size * 0.072, size * 0.155, size * 0.016);
+  ctx.fill();
+  ctx.strokeStyle = '#ad8138';
+  ctx.lineWidth = size * 0.007;
+  ctx.stroke();
+
+  for (let y = size * 0.775; y < size * 0.885; y += size * 0.028) {
+    ctx.strokeStyle = 'rgba(216,170,77,0.72)';
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.030, y);
+    ctx.lineTo(cx + size * 0.030, y - size * 0.014);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = gold;
+  pathGem(ctx, cx, size * 0.925, size * 0.050);
+  ctx.fill();
+  ctx.strokeStyle = '#1b1510';
+  ctx.lineWidth = size * 0.007;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawSocketAnchors(ctx, size, anchors) {
+  const radius = size * 0.062;
+  anchors.forEach(([u, v], index) => {
+    const x = u * size;
+    const y = v * size;
+    ctx.save();
+    ctx.shadowColor = 'rgba(245,195,88,0.85)';
+    ctx.shadowBlur = size * 0.020;
+    ctx.fillStyle = 'rgba(8,12,16,0.72)';
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#d8aa4d';
+    ctx.lineWidth = size * 0.010;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(140,230,255,0.72)';
+    ctx.lineWidth = size * 0.004;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.68, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#d8eaff';
+    ctx.font = `bold ${Math.round(size * 0.030)}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(index + 1), x, y + size * 0.002);
+    ctx.restore();
+  });
+}
+
+function render() {
+  const canvas = document.getElementById('weapon-main');
+  const ctx = canvas.getContext('2d');
+  const showAnchors = document.getElementById('toggle-anchors').checked;
+
+  drawWeapon(ctx, canvas.width);
+  if (showAnchors) {
+    drawSocketAnchors(ctx, canvas.width, SOCKET_ANCHORS_UV);
+  }
+
+  document.getElementById('weapon-preview').src = canvas.toDataURL('image/png');
+  document.getElementById('anchor-readout').textContent = showAnchors
+    ? SOCKET_ANCHORS_UV.map(([x, y], i) => `${i + 1}: [${x.toFixed(2)}, ${y.toFixed(2)}]`).join('\n')
+    : '';
+}
+
+document.getElementById('toggle-anchors').addEventListener('change', render);
+render();
+</script>
+</body>
+</html>

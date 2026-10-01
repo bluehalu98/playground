@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoubleJ Playground</title>
+<meta name="description" content="DoubleJ 가 만드는 게임 UI·연출 프로토타입을 프레임워크 없이 정적 HTML 로 모아둔 플레이그라운드.">
+<meta property="og:title" content="DoubleJ Playground">
+<meta property="og:description" content="게임 UI·연출 프로토타입 HTML 모음.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='48' font-size='48'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #07111a;
+    --panel: rgba(10, 21, 32, 0.92);
+    --line: rgba(114, 156, 189, 0.18);
+    --line-strong: rgba(114, 156, 189, 0.35);
+    --text: #e8f3ff;
+    --muted: #81a5c2;
+    --soft: #4f6f89;
+    --cyan: #69d3ff;
+    --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+    --radius: 22px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at top left, rgba(105, 211, 255, 0.16), transparent 32%),
+      radial-gradient(circle at top right, rgba(139, 231, 179, 0.12), transparent 28%),
+      linear-gradient(180deg, #08131d 0%, #07111a 48%, #050b11 100%);
+    padding: 40px 24px 64px;
+  }
+
+  .shell { max-width: 1240px; margin: 0 auto; }
+
+  .hero {
+    padding: 36px;
+    border: 1px solid var(--line);
+    border-radius: 32px;
+    background: linear-gradient(135deg, rgba(11, 25, 38, 0.96), rgba(6, 14, 22, 0.94)), var(--panel);
+    box-shadow: var(--shadow);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(105, 211, 255, 0.2);
+    background: rgba(105, 211, 255, 0.08);
+    color: var(--cyan);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .hero h1 {
+    margin: 18px 0 14px;
+    font-size: clamp(36px, 5vw, 62px);
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+  }
+
+  .hero p {
+    max-width: 760px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
+    gap: 28px;
+    align-items: end;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .stat {
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .stat strong {
+    display: block;
+    font-size: 26px;
+    margin-bottom: 6px;
+  }
+
+  .stat span {
+    color: var(--soft);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    margin-top: 28px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: rgba(7, 16, 26, 0.74);
+    backdrop-filter: blur(14px);
+  }
+
+  .search {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .filter-chip {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--muted);
+    padding: 11px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .filter-chip.active,
+  .filter-chip:hover {
+    color: var(--text);
+    border-color: var(--line-strong);
+    background: rgba(105, 211, 255, 0.11);
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 26px 0 18px;
+  }
+
+  .section-head h2 { margin: 0; font-size: 20px; }
+  .section-head p { margin: 0; color: var(--soft); font-size: 13px; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 220px;
+    padding: 22px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(15, 29, 42, 0.92), rgba(7, 15, 23, 0.96));
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .card:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-3px);
+  }
+
+  .card[hidden] { display: none; }
+  .card-top { display: flex; justify-content: space-between; gap: 16px; }
+  .card-category { font-size: 11px; color: var(--soft); letter-spacing: 0.08em; text-transform: uppercase; }
+  .card h3 { margin: 8px 0 0; font-size: 22px; letter-spacing: -0.03em; }
+  .card p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+
+  .card-icon {
+    width: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 22px;
+  }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .badge.reference {
+    color: #d9f4ff;
+    border-color: rgba(105, 211, 255, 0.35);
+    background: rgba(105, 211, 255, 0.12);
+  }
+
+  /* 내부 전용 — 로컬에서만 보인다. 공개 배포본(dist)에는 이 카드가 들어가지 않는다. */
+  .badge.internal {
+    color: #ffd9c9;
+    border-color: rgba(255, 150, 110, 0.4);
+    background: rgba(255, 150, 110, 0.14);
+  }
+
+  .empty {
+    display: none;
+    padding: 28px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    text-align: center;
+    color: var(--soft);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .footer {
+    margin-top: 22px;
+    color: var(--soft);
+    font-size: 12px;
+    text-align: right;
+  }
+
+  .prototype { border-top: 3px solid rgba(105, 211, 255, 0.48); }
+  .sprites { border-top: 3px solid rgba(139, 231, 179, 0.48); }
+  .effects { border-top: 3px solid rgba(255, 158, 176, 0.45); }
+  .tools { border-top: 3px solid rgba(255, 202, 115, 0.52); }
+
+  @media (max-width: 920px) {
+    .hero-grid, .controls { grid-template-columns: 1fr; }
+    .filter-row { justify-content: flex-start; }
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 18px 14px 42px; }
+    .hero { padding: 24px 20px; border-radius: 24px; }
+    .hero h1 { font-size: 34px; }
+    .cards { grid-template-columns: 1fr; }
+    .card { min-height: 0; padding: 18px; border-radius: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Single Entry Portal</div>
+        <h1>DoubleJ Playground</h1>
+        <p>
+          게임 UI·연출을 코드로 옮기기 전에 먼저 그려 보는 HTML 프로토타입 모음입니다.
+          기준 시안, 스프라이트 시트, 이펙트 실험, 보조 툴을 카테고리와 검색으로 바로 열 수 있습니다.
+        </p>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <strong id="pageCountStat">0</strong>
+          <span>바로 여는 페이지</span>
+        </div>
+        <div class="stat">
+          <strong id="categoryCountStat">0</strong>
+          <span>Prototype / Sprites / Effects / Tools</span>
+        </div>
+        <div class="stat" id="internalStat" hidden>
+          <strong id="internalCountStat">0</strong>
+          <span>내부 전용 — 공개 배포본에서 제외</span>
+        </div>
+        <div class="stat">
+          <strong>0</strong>
+          <span>빌드 의존성 — 정적 HTML 로만 유지</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="hub controls">
+    <input id="searchInput" class="search" type="search" placeholder="파일명, 설명, 태그로 검색" autocomplete="off">
+    <div class="filter-row" id="filterRow">
+      <button class="filter-chip active" type="button" data-filter="all">All</button>
+      <button class="filter-chip" type="button" data-filter="prototype">Prototype</button>
+      <button class="filter-chip" type="button" data-filter="sprites">Sprites</button>
+      <button class="filter-chip" type="button" data-filter="effects">Effects</button>
+      <button class="filter-chip" type="button" data-filter="tools">Tools</button>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <div>
+      <h2>HTML Pages</h2>
+      <p id="resultSummary">전체 0개 페이지를 표시 중</p>
+    </div>
+  </div>
+
+  <main class="cards" id="cardGrid"></main>
+
+  <div class="empty" id="emptyState">
+    조건에 맞는 페이지가 없습니다. 검색어를 줄이거나 다른 카테고리를 선택해보세요.
+  </div>
+
+  <div class="footer">Framework-free static hub for organized HTML references and tools.</div>
+</div>
+
+<script src="data/dev-hub/pages-data.js"></script>
+<script>
+  const searchInput = document.getElementById("searchInput");
+  const filterButtons = Array.from(document.querySelectorAll(".filter-chip"));
+  const cardGrid = document.getElementById("cardGrid");
+  const pageCountStat = document.getElementById("pageCountStat");
+  const summary = document.getElementById("resultSummary");
+  const emptyState = document.getElementById("emptyState");
+  const pages = Array.isArray(window.DEV_HUB_PAGES) ? window.DEV_HUB_PAGES : [];
+
+  let activeFilter = "all";
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function renderCards() {
+    cardGrid.innerHTML = pages.map((page) => {
+      const search = [page.title, page.description, ...(page.search || [])].join(" ").toLowerCase();
+      const badges = (page.visibility === "internal" ? ['<span class="badge internal">내부 전용</span>'] : [])
+        .concat((page.badges || []).map((badge) => {
+          const isReference = badge.toLowerCase() === "reference";
+          const className = isReference ? "badge reference" : "badge";
+          return '<span class="' + className + '">' + escapeHtml(badge) + "</span>";
+        })).join("");
+
+      return `
+        <a class="card ${escapeHtml(page.category)}" href="${escapeHtml(page.href)}" data-category="${escapeHtml(page.category)}" data-search="${escapeHtml(search)}">
+          <div class="card-top">
+            <div>
+              <div class="card-category">${escapeHtml(page.category)}</div>
+              <h3>${escapeHtml(page.title)}</h3>
+            </div>
+            <div class="card-icon" aria-hidden="true">${escapeHtml(page.icon)}</div>
+          </div>
+          <p>${escapeHtml(page.description)}</p>
+          <div class="badge-row">${badges}</div>
+        </a>
+      `;
+    }).join("");
+  }
+
+  renderCards();
+  pageCountStat.textContent = String(pages.length);
+  document.getElementById("categoryCountStat").textContent =
+    String(new Set(pages.map((page) => page.category)).size);
+  const internalCount = pages.filter((page) => page.visibility === "internal").length;
+  if (internalCount > 0) {
+    document.getElementById("internalCountStat").textContent = String(internalCount);
+    document.getElementById("internalStat").hidden = false;
+  }
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  function updateCards() {
+    const query = searchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+
+    cards.forEach((card) => {
+      const category = card.dataset.category;
+      const haystack = card.dataset.search.toLowerCase();
+      const matchesFilter = activeFilter === "all" || category === activeFilter;
+      const matchesQuery = query === "" || haystack.includes(query);
+      const visible = matchesFilter && matchesQuery;
+      card.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+
+    summary.textContent = query || activeFilter !== "all"
+      ? "검색 결과 " + visibleCount + "개"
+      : "전체 " + pages.length + "개 페이지를 표시 중";
+    emptyState.style.display = visibleCount === 0 ? "block" : "none";
+  }
+
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeFilter = button.dataset.filter;
+      filterButtons.forEach((chip) => chip.classList.toggle("active", chip === button));
+      updateCards();
+    });
+  });
+
+  searchInput.addEventListener("input", updateCards);
+  updateCards();
+</script>
+</body>
+</html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Click to Commit — Queue / Combo Prototype</title>
+<style>
+/* 팔레트는 html/ui-prototype.html 기준과 동일 */
+:root{
+  --bg:#0b1218; --panel:#111b24; --border:#c9a227;
+  --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859; --purple:#bf9cfe;
+  --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#64748b;
+  --atk:#ff6b6b; --spd:#52ffce; --opt:#bf9cfe;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Courier New',Courier,monospace;
+  margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center;
+}
+h1{font-size:16px; letter-spacing:1px; color:var(--gold); margin:14px 0 2px;}
+.sub{font-size:11px; color:var(--muted); margin-bottom:10px;}
+.wrap{display:flex; gap:14px; align-items:flex-start; padding:0 14px 24px;}
+.stage{position:relative; border:2px solid var(--border); border-radius:14px; overflow:hidden; background:#05080c;}
+canvas{display:block; cursor:none;}
+.side{width:300px; display:flex; flex-direction:column; gap:12px;}
+.card{background:var(--panel); border:1px solid #2a3a48; border-radius:10px; padding:12px 14px;}
+.card h2{font-size:12px; color:var(--teal); margin:0 0 8px; letter-spacing:.5px;}
+.row{display:flex; justify-content:space-between; font-size:12px; padding:3px 0;}
+.row b{color:var(--gold);}
+.legend{display:flex; flex-direction:column; gap:6px; font-size:12px;}
+.chip{display:inline-flex; align-items:center; gap:6px;}
+.dot{width:12px; height:12px; border-radius:3px; display:inline-block;}
+.rule{font-size:11px; line-height:1.55; color:#aab8c6;}
+.rule b{color:var(--cyan);}
+.ctrl{display:flex; align-items:center; gap:8px; font-size:11px; margin:6px 0;}
+.ctrl input[type=range]{flex:1;}
+.big{font-size:26px; color:var(--gold); text-align:center; padding:6px 0; font-weight:bold; text-shadow:0 0 12px rgba(245,232,89,.4);}
+.hint{font-size:11px; color:var(--amber); text-align:center; margin-top:4px;}
+button.reset{background:#1b2a38; color:var(--text); border:1px solid #2a3a48; border-radius:6px; padding:7px; font-family:inherit; font-size:11px; cursor:pointer; width:100%;}
+button.reset:hover{border-color:var(--teal);}
+kbd{background:#1b2a38; border:1px solid #33485a; border-radius:4px; padding:1px 6px; font-size:11px; color:var(--cyan);}
+</style>
+</head>
+<body>
+<h1>QUEUE / COMBO PROTOTYPE</h1>
+<div class="sub">자원을 깨면 확률로 버프 토큰이 커서 큐에 쌓인다 · <kbd>좌클릭</kbd> / <kbd>Space</kbd> 로 큐를 통째로 방출 · 같은 종류가 연속이면 콤보로 강력하게</div>
+<div class="wrap">
+  <div class="stage"><canvas id="field" width="720" height="540"></canvas></div>
+  <div class="side">
+    <div class="card">
+      <h2>방출 결과</h2>
+      <div class="big" id="lastPower">—</div>
+      <div class="hint" id="lastBreak">큐를 채우고 방출해보세요</div>
+    </div>
+    <div class="card">
+      <h2>세션 통계</h2>
+      <div class="row"><span>현재 큐 길이</span><b id="qlen">0</b> / <span id="qcap">12</span></div>
+      <div class="row"><span>방출 횟수</span><b id="releases">0</b></div>
+      <div class="row"><span>콤보 발동(2+연속)</span><b id="combos">0</b></div>
+      <div class="row"><span>누적 위력</span><b id="totalPower">0</b></div>
+      <div class="row"><span>최고 단일 방출</span><b id="bestPower">0</b></div>
+    </div>
+    <div class="card">
+      <h2>토큰 종류</h2>
+      <div class="legend">
+        <span class="chip"><span class="dot" style="background:var(--atk)"></span> ATK · 공격 증가 (base 10)</span>
+        <span class="chip"><span class="dot" style="background:var(--spd)"></span> SPD · 속도 증가 (base 8)</span>
+        <span class="chip"><span class="dot" style="background:var(--opt)"></span> OPT · 공격 옵션 (base 12)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>튜닝</h2>
+      <div class="ctrl">드랍률 <input id="dropRate" type="range" min="20" max="100" value="55"><span id="dropRateVal">55%</span></div>
+      <div class="ctrl">큐 최대 <input id="capRange" type="range" min="4" max="20" value="12"><span id="capVal">12</span></div>
+      <div class="ctrl"><label><input id="lowMotion" type="checkbox"> 연출 강도 낮춤 (모션 저감)</label></div>
+      <button class="reset" id="resetBtn">통계 리셋</button>
+    </div>
+    <div class="card rule">
+      <h2 style="color:var(--purple)">콤보 규칙 + 가독성</h2>
+      큐 안에서 <b>같은 종류가 연속</b>으로 N개 쌓이면 하나의 콤보로 합쳐 실행된다.<br>
+      위력 = <b>base × N<sup>1.6</sup></b> (연속이 길수록 초선형 폭증).<br><br>
+      <b>커서 옆 큰 덩어리 = 지금 쌓이는 연속(tail)</b>이다. 같은 종류가 들어올수록
+      <b>커지고 흰빛으로 달아오르며</b> <b>STREAK ×N → 위력</b>을 띄운다.
+      종류가 바뀌면 그 덩어리는 뒤로 굳어 흐려지고 새 연속이 시작된다.<br>
+      <b>상단 고정 바</b>(C 하이브리드)는 전체 큐를 cap칸으로 보여주고 연속은 밑줄로 묶으며
+      우측에 <b>방출 → 총합</b>·충전(n/cap)을 띄운다 → 전체 구성은 위에서, 지금 연속은 손끝에서.<br>
+      → 셀 필요 없이 <b>지금 연속이 얼마나 센지</b>가 한눈에 읽힌다. (색약 대비: 칸/덩어리에 글자 병기, 모션 저감 옵션)<br><br>
+      <b>생각 없이</b>: 아무 때나 방출 → 무난.<br>
+      <b>신경 쓰면</b>: 덩어리가 흰빛으로 달아오를 때까지 참았다 방출 → 콤보 폭발.
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('field');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// ─── 토큰 정의 ───────────────────────────────
+const TYPES = {
+  ATK:{ key:'ATK', color:'#ff6b6b', base:10 },
+  SPD:{ key:'SPD', color:'#52ffce', base:8  },
+  OPT:{ key:'OPT', color:'#bf9cfe', base:12 },
+};
+const TYPE_KEYS = Object.keys(TYPES);
+
+// ─── 상태 ────────────────────────────────────
+let mouse = {x:W/2, y:H/2, inside:false};
+let trail = [];                 // 커서 위치 히스토리 (큐 칩이 따라다님)
+let queue = [];                 // [{type}]  (queue[last] = 가장 최근 = 현재 연속 tail)
+let streakPulse = 0;            // tail 연장 시 순간 펄스 (에스컬레이션 연출)
+let lowMotion = false;          // 접근성: 흰빛/펄스 강도 저감
+let resources = [];
+let bursts = [];                // 방출/콤보 연출
+let popups = [];                // 떠오르는 숫자
+let aoeRadius = 72;
+let tickT = 0, tickInterval = 0.5;
+let spawnT = 0;
+const RES_LABELS = ['C#','JS','TS','SQL','Git','CI','React','Unity','Pattern','Clean'];
+const RES_COLORS = ['#57d1b8','#f5e859','#52a9ff','#52ffce','#fbb03b','#bf9cfe','#34d399','#ff8a5c','#f5c542','#9ad95c'];
+
+let stats = { releases:0, combos:0, total:0, best:0 };
+let cfg = { dropRate:0.55, cap:12 };
+
+// ─── 자원 스폰 ───────────────────────────────
+function spawnResource(){
+  if(resources.length >= 11) return;
+  const i = Math.floor(Math.random()*RES_LABELS.length);
+  const r = 20 + Math.random()*8;
+  for(let tries=0; tries<30; tries++){
+    const x = 40 + Math.random()*(W-80);
+    const y = 40 + Math.random()*(H-80);
+    if(resources.every(o=>Math.hypot(o.x-x,o.y-y) > o.radius+r+10)){
+      resources.push({x,y,radius:r,hp:18,maxHp:18,label:RES_LABELS[i],color:RES_COLORS[i],hit:0,phase:Math.random()*6.28});
+      return;
+    }
+  }
+}
+for(let i=0;i<9;i++) spawnResource();
+
+// ─── 입력 ────────────────────────────────────
+cv.addEventListener('mousemove', e=>{
+  const r = cv.getBoundingClientRect();
+  mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.inside = true;
+});
+cv.addEventListener('mouseleave', ()=> mouse.inside=false);
+cv.addEventListener('mousedown', e=>{ if(e.button===0){ e.preventDefault(); releaseQueue(); }});
+window.addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); releaseQueue(); }});
+
+document.getElementById('dropRate').addEventListener('input', e=>{
+  cfg.dropRate = e.target.value/100; document.getElementById('dropRateVal').textContent = e.target.value+'%';
+});
+document.getElementById('capRange').addEventListener('input', e=>{
+  cfg.cap = +e.target.value; document.getElementById('capVal').textContent = e.target.value;
+  document.getElementById('qcap').textContent = e.target.value;
+  if(queue.length>cfg.cap) queue.length = cfg.cap;
+});
+document.getElementById('lowMotion').addEventListener('change', e=>{ lowMotion = e.target.checked; });
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  stats={releases:0,combos:0,total:0,best:0}; queue=[]; refreshHUD();
+  document.getElementById('lastPower').textContent='—';
+  document.getElementById('lastBreak').textContent='큐를 채우고 방출해보세요';
+});
+
+// ─── 큐에 토큰 추가 ──────────────────────────
+function pushToken(){
+  if(queue.length >= cfg.cap) return false;
+  const prev = queue.length ? queue[queue.length-1].type : null;
+  const k = TYPE_KEYS[Math.floor(Math.random()*TYPE_KEYS.length)];
+  queue.push({type:k, pop:1});
+  // tail 연장이면 큰 펄스(연속 성장 체감), 종류가 바뀌면 약한 새 시작 펄스
+  streakPulse = (k===prev) ? 1 : 0.3;
+  return true;
+}
+
+// 색을 흰색 쪽으로 lerp (연속이 길수록 달아오름)
+function mixWhite(hex, amt){
+  const c=hex.replace('#',''); const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  const m=v=>Math.round(v+(255-v)*amt);
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+
+// ─── 연속 런 분해 → 콤보 위력 계산 ───────────
+function computeRuns(q){
+  const runs=[]; let i=0;
+  while(i<q.length){
+    let j=i; while(j<q.length && q[j].type===q[i].type) j++;
+    const n=j-i, t=TYPES[q[i].type];
+    const power = Math.round(t.base * Math.pow(n,1.6));
+    runs.push({type:q[i].type, n, power, color:t.color});
+    i=j;
+  }
+  return runs;
+}
+
+// ─── 큐 방출 ─────────────────────────────────
+function releaseQueue(){
+  if(queue.length===0){
+    popups.push({x:mouse.x,y:mouse.y-40,text:'큐 비어있음',color:'#64748b',t:0,life:0.7});
+    return;
+  }
+  const runs = computeRuns(queue);
+  let total=0, comboHit=0;
+  // 칩의 현재 화면 위치(트레일)를 따 burst 시작점으로
+  const chipPos = queueChipPositions();
+  let idx=0;
+  runs.forEach(run=>{
+    total += run.power;
+    if(run.n>=2) comboHit++;
+    const p = chipPos[idx] || {x:mouse.x,y:mouse.y};
+    bursts.push({x:p.x,y:p.y,tx:mouse.x,ty:mouse.y,color:run.color,n:run.n,power:run.power,t:0,life:0.55});
+    idx += run.n;
+  });
+  // 합산 팝업
+  popups.push({x:mouse.x,y:mouse.y-54,text:'+'+total,color:'#f5e859',t:0,life:0.9,big:true});
+  stats.releases++; stats.combos+=comboHit; stats.total+=total;
+  stats.best=Math.max(stats.best,total);
+  // 결과 패널
+  document.getElementById('lastPower').textContent = total;
+  document.getElementById('lastBreak').innerHTML = runs.map(r=>
+    `<span style="color:${r.color}">${r.type}${r.n>1?'×'+r.n+(r.n>=2?' ⚡':''):''} <b style="color:#f5e859">${r.power}</b></span>`
+  ).join('  ·  ');
+  queue=[]; refreshHUD();
+}
+
+// ─── 큐 칩 트레일 위치 계산 ──────────────────
+// 가장 최근 토큰(queue[last] = 현재 연속 tail)이 커서에 가장 가깝게 배치된다.
+function queueChipPositions(){
+  const pos=[]; const gap=6;
+  for(let i=0;i<queue.length;i++){
+    const rank = queue.length-1 - i;        // newest(i=last) -> rank 0 (커서 최근접)
+    const ti = trail.length-1 - (rank+1)*gap;
+    if(ti>=0) pos.push({x:trail[ti].x, y:trail[ti].y});
+    else pos.push({x:mouse.x, y:mouse.y + (rank+1)*16});
+  }
+  return pos;
+}
+
+// ─── 업데이트 ────────────────────────────────
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05,(now-last)/1000); last=now;
+  // 트레일 기록
+  if(mouse.inside){ trail.push({x:mouse.x,y:mouse.y}); if(trail.length>260) trail.shift(); }
+  // 스폰
+  spawnT-=dt; if(spawnT<=0){ spawnResource(); spawnT=0.7; }
+  // AOE 틱
+  tickT-=dt;
+  if(tickT<=0 && mouse.inside){
+    tickT=tickInterval;
+    for(const r of resources){
+      if(Math.hypot(r.x-mouse.x,r.y-mouse.y) <= aoeRadius + r.radius){
+        r.hp-=6; r.hit=0.18;
+      }
+    }
+    // 처치 처리
+    for(let i=resources.length-1;i>=0;i--){
+      if(resources[i].hp<=0){
+        const r=resources[i];
+        // 클리어 연출
+        for(let p=0;p<10;p++){ const a=Math.random()*6.28,s=40+Math.random()*80;
+          popups.push({x:r.x,y:r.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,particle:true,color:r.color,t:0,life:0.5}); }
+        // 드랍 판정
+        if(Math.random()<cfg.dropRate){
+          if(pushToken()){
+            const tk=queue[queue.length-1];
+            popups.push({x:r.x,y:r.y-10,text:tk.type,color:TYPES[tk.type].color,t:0,life:0.8});
+          }
+        }
+        resources.splice(i,1);
+      }
+    }
+    refreshHUD();
+  }
+  // 연출 타이머
+  for(const r of resources){ if(r.hit>0) r.hit-=dt; r.phase+=dt*2; }
+  bursts.forEach(b=>b.t+=dt); bursts=bursts.filter(b=>b.t<b.life);
+  popups.forEach(p=>{p.t+=dt; if(p.particle){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.92;p.vy*=.92;}}); popups=popups.filter(p=>p.t<p.life);
+  for(const q of queue) if(q.pop>0) q.pop-=dt*3;
+  if(streakPulse>0) streakPulse-=dt*2.6;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ─── 렌더 ────────────────────────────────────
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // 배경 그리드
+  ctx.strokeStyle='rgba(40,60,76,.35)'; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=36){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=36){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // 자원
+  for(const r of resources){
+    const sc = 1 + (r.hit>0?0.12:0) + Math.sin(r.phase)*0.02;
+    ctx.save(); ctx.translate(r.x,r.y); ctx.scale(sc,sc);
+    ctx.beginPath(); ctx.arc(0,0,r.radius,0,6.2832);
+    ctx.fillStyle='rgba(10,16,22,.85)'; ctx.fill();
+    ctx.lineWidth=2.4; ctx.strokeStyle=r.color; ctx.stroke();
+    ctx.fillStyle=r.color; ctx.font='bold 12px Courier New'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(r.label,0,0);
+    ctx.restore();
+    // hp bar
+    const bw=r.radius*1.6, hp=Math.max(0,r.hp/r.maxHp);
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(r.x-bw/2,r.y+r.radius+4,bw,4);
+    ctx.fillStyle=r.color; ctx.fillRect(r.x-bw/2,r.y+r.radius+4,bw*hp,4);
+  }
+
+  // ── 큐 렌더: 현재 연속(tail) 강조 + 에스컬레이션, 나머지는 흐리게 뒤로 ──
+  const chipPos = queueChipPositions();
+  const runs = computeRuns(queue);
+  const tail = runs.length ? runs[runs.length-1] : null;       // 마지막 런 = 지금 쌓이는 연속
+  const tailStart = queue.length - (tail ? tail.n : 0);         // tail 토큰들의 시작 인덱스
+
+  // (1) 비-tail(이미 굳은 오래된 큐): 작고 흐리게
+  for(let i=0;i<tailStart;i++){
+    const p=chipPos[i]; if(!p) continue; const t=TYPES[queue[i].type];
+    ctx.globalAlpha=0.32; ctx.beginPath(); ctx.arc(p.x,p.y,7,0,6.2832);
+    ctx.fillStyle=t.color; ctx.fill();
+    ctx.globalAlpha=1;
+  }
+
+  // (2) tail(현재 연속): 커서 최근접 위치에 글로우 덩어리. N 클수록 커지고 흰빛으로 달아오름
+  if(tail){
+    const t=TYPES[tail.type], n=tail.n;
+    const head = chipPos[queue.length-1] || {x:mouse.x,y:mouse.y};
+    const escRaw = Math.min(1,(n-1)/5);                         // 0(연속1) → 1(연속6+)
+    const escalate = lowMotion ? escRaw*0.4 : escRaw;           // 모션 저감 시 흰빛 약화
+    const pulse = (streakPulse>0 ? streakPulse : 0) * (lowMotion?0.3:1);
+    const R = 15 + n*7 + pulse*12;
+    // 글로우 링 (연속일수록 진하게)
+    for(let g=3;g>=1;g--){
+      ctx.beginPath(); ctx.arc(head.x,head.y,R+g*8,0,6.2832);
+      ctx.fillStyle=t.color; ctx.globalAlpha=(n>=2?0.09:0.04)*(1+escalate*1.6); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    // 본체 (흰빛 lerp)
+    ctx.beginPath(); ctx.arc(head.x,head.y,R,0,6.2832);
+    ctx.fillStyle=mixWhite(t.color, escalate*0.65); ctx.fill();
+    ctx.lineWidth=2+escalate*3.5; ctx.strokeStyle='#ffffff'; ctx.globalAlpha=0.35+escalate*0.55; ctx.stroke(); ctx.globalAlpha=1;
+    // 라벨 + ×N
+    ctx.fillStyle='#05080c'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='bold '+(11+Math.min(n,6))+'px Courier New'; ctx.fillText(tail.type, head.x, head.y-5);
+    ctx.font='bold '+(14+Math.min(n,6)*2)+'px Courier New'; ctx.fillText('×'+n, head.x, head.y+11);
+    // 현재 연속 위력 미리보기 (n>=2일 때 강조)
+    ctx.textBaseline='alphabetic';
+    if(n>=2){
+      ctx.fillStyle=mixWhite(t.color,escalate*0.5); ctx.font='bold 14px Courier New';
+      ctx.fillText('STREAK ×'+n+'  →'+tail.power, head.x, head.y-R-12);
+    } else {
+      ctx.fillStyle='#64748b'; ctx.font='11px Courier New';
+      ctx.fillText('연속 쌓는 중…', head.x, head.y-R-10);
+    }
+  }
+
+  // AOE 커서
+  if(mouse.inside){
+    ctx.beginPath(); ctx.arc(mouse.x,mouse.y,aoeRadius,0,6.2832);
+    ctx.strokeStyle='rgba(82,255,206,.6)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='rgba(82,255,206,.06)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(mouse.x,mouse.y,4,0,6.2832); ctx.fillStyle='#52ffce'; ctx.fill();
+  }
+
+  // bursts (방출 연출)
+  for(const b of bursts){
+    const k=b.t/b.life; const R=(b.n>=2?28:14)*(1+k*2.2);
+    ctx.beginPath(); ctx.arc(b.tx,b.ty,R,0,6.2832);
+    ctx.strokeStyle=b.color; ctx.globalAlpha=(1-k)*0.9; ctx.lineWidth=b.n>=2?4:2; ctx.stroke();
+    if(b.n>=2){
+      ctx.globalAlpha=1-k; ctx.fillStyle=b.color; ctx.font='bold 15px Courier New'; ctx.textAlign='center';
+      ctx.fillText('COMBO ×'+b.n, b.tx, b.ty-R-6);
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // popups
+  for(const p of popups){
+    const k=p.t/p.life;
+    if(p.particle){
+      ctx.globalAlpha=1-k; ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,3,0,6.2832); ctx.fill(); ctx.globalAlpha=1;
+    } else {
+      ctx.globalAlpha=1-k*0.8; ctx.fillStyle=p.color;
+      ctx.font=(p.big?'bold 22px':'bold 13px')+' Courier New'; ctx.textAlign='center';
+      ctx.fillText(p.text, p.x, p.y - k*30); ctx.globalAlpha=1;
+    }
+  }
+
+  // (C 하이브리드) 상단 고정 바 — 전체 큐 readout. 얇고 조용하게, 필드 위에.
+  drawTopBar();
+}
+
+// 상단 고정 바: 전체 큐를 cap칸으로, 연속 런은 밑줄로 묶고, 우측에 '방출 → 총합'.
+function drawTopBar(){
+  const barH=26, pad=10, x0=pad, y0=6, w=W-pad*2;
+  ctx.fillStyle='rgba(5,8,12,.82)'; ctx.fillRect(x0,y0,w,barH);
+  ctx.strokeStyle='rgba(73,90,110,.5)'; ctx.lineWidth=1; ctx.strokeRect(x0,y0,w,barH);
+
+  const cap=cfg.cap, gap=3, readoutW=128;
+  const cellW=Math.max(8, Math.min(22,(w-readoutW-16-(cap-1)*gap)/cap));
+  const cy=y0+4, ch=barH-8;
+  const runs=computeRuns(queue);
+  let cx=x0+8, idx=0;
+  for(const run of runs){
+    const t=TYPES[run.type];
+    for(let k=0;k<run.n;k++){
+      ctx.fillStyle=t.color; ctx.globalAlpha=0.92; ctx.fillRect(cx,cy,cellW,ch); ctx.globalAlpha=1;
+      if(cellW>=12){ ctx.fillStyle='#05080c'; ctx.font='bold 8px Courier New'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(t.key[0], cx+cellW/2, cy+ch/2); }
+      if(run.n>=2){ ctx.strokeStyle=mixWhite(t.color,0.35); ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(cx, y0+barH-2.5); ctx.lineTo(cx+cellW, y0+barH-2.5); ctx.stroke(); }
+      cx+=cellW+gap; idx++;
+    }
+  }
+  // 빈 칸(cap까지) 흐리게
+  for(let e=queue.length;e<cap;e++){ ctx.strokeStyle='rgba(73,90,110,.32)'; ctx.lineWidth=1; ctx.strokeRect(cx,cy,cellW,ch); cx+=cellW+gap; }
+  // 우측 readout: 방출 예상 총합 + cap 충전
+  const total=runs.reduce((s,r)=>s+r.power,0);
+  ctx.textAlign='right';
+  ctx.fillStyle='#f5e859'; ctx.font='bold 12px Courier New'; ctx.textBaseline='middle';
+  ctx.fillText('방출 → '+total, x0+w-10, y0+barH/2-4);
+  ctx.fillStyle='#64748b'; ctx.font='9px Courier New';
+  ctx.fillText(queue.length+' / '+cap, x0+w-10, y0+barH/2+8);
+}
+
+function refreshHUD(){
+  document.getElementById('qlen').textContent=queue.length;
+  document.getElementById('releases').textContent=stats.releases;
+  document.getElementById('combos').textContent=stats.combos;
+  document.getElementById('totalPower').textContent=stats.total;
+  document.getElementById('bestPower').textContent=stats.best;
+}
+refreshHUD();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

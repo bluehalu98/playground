@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>막판 5초 러시 + 피버 게이지 이월 — 현재 vs V2 비교본</title>
+<!--
+  run-late-rush-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : run-late-rush-and-fever-carryover-plan T6 산출물. 러시 연출(런 필드 대형
+          카운트다운 + 수축 비네트)과 결과 오버레이 `Fever` 줄의 **정적 비교본**이다.
+          실조작 없음 — 애니메이션은 스틸 3컷으로 대신한다.
+  소유  : docs/plans/01-defined/phase-1/run-late-rush-and-fever-carryover-plan.md T6
+  정본  : html/ui-prototype.html 은 **무수정**. #game 도 #result 도 건드리지 않았다.
+          여기는 사본이 아니라 "현재 vs V2" 비교 전용 별도 파일이다.
+  팔레트: ui-prototype.html 토큰 그대로 복사(raw 색 신설 0). 피버 주황은 코드
+          `UiTheme.FeverThemeColor`(1, 0.42, 0.18) = #ff6b2e 를 그대로 옮긴 것이고,
+          러시 비네트는 신규 색이 아니라 **기존 절차적 비네트 텍스처의 알파**다.
+
+  ⚠ 이 비교본이 지키는 하드 제약
+     1) 신규 색 0 · 신규 에셋 0. 비네트는 결과 오버레이가 이미 쓰는 절차적 텍스처
+        (GetConceptVignetteTexture) 재사용이라 여기서도 radial-gradient 로 근사만 한다.
+     2) 러시 연출은 **Canvas 판 전용**이라 기본 빌드(UseCanvas.Run=false)에서는 보이지
+        않는다 — 확인은 dev 핫키 Shift+F11. 이 비교본은 그 켜진 상태를 그린 것이다.
+     3) 확률·가중치 수치는 어디에도 표시하지 않는다(run_flow.md 사행성 회피 규약).
+        아래 표의 수치는 전부 **연출·시간 상수**이지 확률이 아니다.
+-->
+<style>
+:root{
+  /* ── ui-prototype.html 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --bg-deep:#070c11;
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+  /* 코드 UiTheme.FeverThemeColor(1, 0.42, 0.18) 그대로 — 신규 색 아님 */
+  --fever:#ff6b2e;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 60px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1180px; margin:0 auto;}
+h1{font-size:20px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em; color:var(--teal);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 22px;}
+
+.quote{
+  border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:12px 16px; margin:0 0 22px; border-radius:0 5px 5px 0;
+  color:var(--text-caption); font-size:13px;
+}
+.quote b{color:var(--amber);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.block{margin:0 0 34px;}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+.trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; align-items:start;}
+@media (max-width:900px){ .pair,.trio{grid-template-columns:1fr;} }
+.col{border:1px solid var(--hairline); border-radius:8px; background:var(--surface-card); padding:14px;}
+.col.now{border-color:var(--btn-border);}
+.col.v2{border-color:var(--teal);}
+.col h3{font-size:11px; letter-spacing:.1em; margin:0 0 12px; text-transform:uppercase; color:var(--muted);}
+.col.v2 h3{color:var(--teal);}
+.note{font-size:11px; color:var(--muted); margin-top:12px; line-height:1.7;}
+.note b{color:var(--text-caption);}
+.new{color:var(--gold);}
+
+/* ── 런 필드 보드 뷰포트 (#game) ──
+     실좌표 대응: 보드 뷰포트 폭 = 1920 × RunBoardViewportWidthRatio(0.62) = 1190.4.
+     카운트다운 rect = (보드 중앙 595.2 기준 폭 360, y 140..300).
+     아래 .board 는 그 비율을 그대로 축소한 것이다(폭 100% ≈ 1190.4). */
+.board{
+  position:relative; height:230px; border-radius:8px; overflow:hidden;
+  background:
+    radial-gradient(120% 90% at 50% 40%, rgba(87,209,184,.05), transparent 70%),
+    linear-gradient(180deg,#132030,#0c1621 70%,#0a121b);
+  border:1px solid var(--hairline);
+}
+/* 러시 비네트 — 절차적 비네트 텍스처(중앙 투명 코어)의 근사.
+   rect 배율 1.00 → 1.45 로 키우면 투명 코어가 상대적으로 좁아진다(= 수축). */
+.vig{
+  position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse 46% 46% at 50% 50%, rgba(0,0,0,0) 55%, #000 100%);
+  transform-origin:50% 50%;
+}
+.vig.s0{ opacity:0; transform:scale(1.00); }
+.vig.s1{ opacity:.12; transform:scale(1.18); }   /* 잔여 4.x — t≈0.2 → α 0.30×0.2 */
+.vig.s2{ opacity:.21; transform:scale(1.31); }   /* 잔여 2.x — t≈0.6 */
+.vig.s3{ opacity:.30; transform:scale(1.45); }   /* 잔여 0.x — t≈1.0 → α 0.30 */
+
+/* HUD 상단 밴드 — 카운트다운이 이 아래에 온다는 걸 보이려고 실좌표대로 그린다. */
+.hud-gold{ position:absolute; left:1.2%; top:6px; width:29%; height:26px;
+  background:rgba(17,27,36,.9); border:1px solid var(--hairline); border-radius:4px;
+  font-size:9px; color:var(--muted); padding:4px 6px; }
+.hud-timer{ position:absolute; right:1.6%; top:6px; width:16%; height:26px;
+  background:rgba(17,27,36,.9); border:1px solid rgba(87,209,184,.45); border-radius:4px;
+  font-size:9px; color:var(--text-num); padding:4px 6px; text-align:right; }
+.hud-buffbar{ position:absolute; left:31.3%; right:17.8%; top:7px; height:18px;
+  background:rgba(14,22,32,.85); border:1px solid var(--hairline); border-radius:3px;
+  font-size:8px; color:#6b7f92; padding:2px 6px; }
+
+/* 카운트다운 대형 숫자 — LateRushCountdownFontSize 128 (가상 1080 대비 ≈ 11.9%) */
+.cd{
+  position:absolute; left:0; width:calc(100% * 360 / 1190.4);
+  margin-left:calc((100% * 595.2 / 1190.4) - (100% * 180 / 1190.4));
+  top:calc(100% * 140 / 1080 * 2.2);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:bold; font-size:58px; line-height:1; color:var(--text-title);
+  font-variant-numeric:tabular-nums; text-shadow:0 2px 14px rgba(0,0,0,.6);
+}
+.cd.punch{ transform:scale(1.35); }        /* 정수 전환 프레임 */
+.cd.fever{ color:var(--fever); }
+/* 피버 화염 테두리(기존 연출) — 러시와 동시일 때 화면을 점유하는 쪽 */
+.flame{ position:absolute; inset:0; pointer-events:none;
+  box-shadow:inset 0 0 0 3px rgba(255,107,46,.85), inset 0 0 46px 12px rgba(255,107,46,.34); }
+.flabel{ position:absolute; left:50%; transform:translateX(-50%); top:34px;
+  font-size:11px; letter-spacing:.18em; font-weight:bold; color:var(--fever);
+  border:1px solid rgba(255,107,46,.45); background:rgba(56,20,8,.82);
+  padding:2px 14px; border-radius:3px; }
+.stamp{ position:absolute; left:8px; bottom:6px; font-size:9px; color:var(--muted); letter-spacing:.08em; }
+
+/* ── 결과 오버레이 (#result) — P2 4구역 보드 ── */
+.result-panel{
+  background:var(--surface-card); border:1px solid var(--btn-border);
+  border-radius:10px; padding:18px 20px; max-width:420px;
+}
+.result-panel .title{ color:var(--text-title); font-size:18px; font-weight:bold; }
+.rdiv{ height:1px; background:var(--hairline); margin:10px 0 8px; }
+.rsec{ display:flex; flex-direction:column; gap:4px; }
+.rclears{ display:flex; align-items:baseline; gap:10px; }
+.rclears .cap{ font-size:12px; color:var(--text-caption); width:92px; }
+.rclears .val{ font-size:26px; font-weight:bold; color:var(--text-title); font-variant-numeric:tabular-nums; }
+.rcap{ font-size:11px; color:var(--text-caption); }
+.rcap.fever{ color:var(--text-caption); }
+.rcap.slot{ color:#4a5866; font-style:italic; }
+.rcur{ display:flex; justify-content:space-between; font-size:11px; color:var(--text-num); }
+.rcur .w{ color:#6b7f92; }
+
+table{ border-collapse:collapse; width:100%; font-size:12px; margin-top:6px; }
+th,td{ border:1px solid var(--hairline); padding:7px 10px; text-align:left; vertical-align:top; }
+th{ color:var(--teal); font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+td{ color:var(--text-caption); }
+td code{ color:var(--text-num); font-size:11px; }
+code{ color:var(--text-num); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>막판 5초 러시 + 피버 게이지 이월 — 현재 vs V2 비교본</h1>
+  <p class="sub">
+    <code>run-late-rush-and-fever-carryover-plan</code> T6 ·
+    표시 2곳(런 필드 러시 연출 / 결과 오버레이 <code>Fever</code> 줄) ·
+    정본 <code>html/ui-prototype.html</code> 무수정 · raw 색 신설 0
+  </p>
+
+  <div class="quote">
+    30초 런의 <b>마지막 5초가 평상시와 완전히 동일하다</b>. 그 5초를 절정으로 만들고(D),
+    거기서 못 채운 게이지를 <b>다음 런의 이유</b>로 넘긴다(E) — 같은 30초의 양 끝이다.
+    <span class="who">— 플랜 §2-A / 탐색 문서 §3 Tier 2 제안 D·E</span>
+  </div>
+
+  <!-- ══════ 1. 러시 진행 3컷 ══════ -->
+  <div class="block">
+    <h2>1. 런 필드 — 러시 진행 3컷 (Canvas 판, Shift+F11)</h2>
+    <div class="trio">
+
+      <div class="col v2">
+        <h3>잔여 4.x — 러시 시작 직후</h3>
+        <div class="board">
+          <div class="vig s1"></div>
+          <div class="hud-gold">GOLD 1,204</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">04.6초</div>
+          <div class="cd punch">5</div>
+          <div class="stamp">t ≈ 0.2</div>
+        </div>
+      </div>
+
+      <div class="col v2">
+        <h3>잔여 2.x — 중간</h3>
+        <div class="board">
+          <div class="vig s2"></div>
+          <div class="hud-gold">GOLD 1,388</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">02.4초</div>
+          <div class="cd">3</div>
+          <div class="stamp">t ≈ 0.6</div>
+        </div>
+      </div>
+
+      <div class="col v2">
+        <h3>잔여 0.x — 종료 직전</h3>
+        <div class="board">
+          <div class="vig s3"></div>
+          <div class="hud-gold">GOLD 1,502</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">00.7초</div>
+          <div class="cd punch">1</div>
+          <div class="stamp">t ≈ 1.0</div>
+        </div>
+      </div>
+
+    </div>
+    <p class="note">
+      숫자는 <b>보드 뷰포트 가로 중앙</b>(1920 × 0.62 ÷ 2 = 595.2)이고 세로는 <b>y 140</b> —
+      HUD 상단 밴드(버프 바 ~56 · 온보딩 토스트 ~96 · 아키텍트 패널 ~116) <b>아래</b>다.
+      <code>run-cycle-defects-plan</code> 의 미해결 겹침 B1(상단 중앙)·B2(하단 중앙)·B3(좌상단)
+      <b>어느 rect 와도 교집합이 없다</b>. 비네트는 알파 <b>0 → 0.30</b>, rect 배율
+      <b>1.00 → 1.45</b> 로 커지며 투명 코어가 좁아진다(= 수축).
+    </p>
+  </div>
+
+  <!-- ══════ 2. 현재 vs V2 (잔여 3초 같은 순간) ══════ -->
+  <div class="block">
+    <h2>2. 같은 순간(잔여 3초) — 현재 vs V2</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재</h3>
+        <div class="board">
+          <div class="vig s0"></div>
+          <div class="hud-gold">GOLD 1,388</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">02.9초</div>
+          <div class="stamp">잔여 5초 분기 0건</div>
+        </div>
+        <p class="note">
+          마지막 5초에 <b>화면·소리 분기가 하나도 없다</b>. 남은 시간은 우상단
+          <b>타이머 패널의 작은 숫자 한 줄</b>뿐이라 시선이 필드에 있으면 놓친다.
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 러시</h3>
+        <div class="board">
+          <div class="vig s2"></div>
+          <div class="hud-gold">GOLD 1,388</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">02.9초</div>
+          <div class="cd">3</div>
+          <div class="stamp">스폰 ×0.5 · BGM 피치 1.05</div>
+        </div>
+        <p class="note">
+          대형 카운트다운 + 수축 비네트에, 화면 밖에서 <b>스폰 간격 ×0.5</b> 와
+          <b>BGM 피치 1.05</b> 가 같이 걸린다. 스폰·피치는 Canvas 플래그와
+          <b>무관하게</b> 동작한다(기본 빌드에서도 걸린다) — 안 보이는 건 연출뿐이다.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 3. 러시 × 피버 동시 ══════ -->
+  <div class="block">
+    <h2>3. 러시 도중 피버 발동 — 피버가 3채널을 점유한다</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>러시만</h3>
+        <div class="board">
+          <div class="vig s2"></div>
+          <div class="hud-gold">GOLD 1,388</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">02.4초</div>
+          <div class="cd">3</div>
+          <div class="stamp">비네트 α 0.21 · 피치 1.05</div>
+        </div>
+      </div>
+
+      <div class="col v2">
+        <h3>러시 + 피버 — 비네트 소거, 화염만</h3>
+        <div class="board">
+          <div class="vig s0"></div>
+          <div class="flame"></div>
+          <div class="hud-gold">GOLD 1,388</div>
+          <div class="hud-buffbar">방출 → 98</div>
+          <div class="hud-timer">02.4초</div>
+          <div class="flabel">FEVER</div>
+          <div class="cd fever">3</div>
+          <div class="stamp">비네트 α 0 · 피치 1.10 · 스폰 ×0.5</div>
+        </div>
+      </div>
+
+    </div>
+    <p class="note">
+      <b>카운트다운 숫자는 끄지 않는다</b> — 남은 시간은 분위기가 아니라 <b>정보</b>다.
+      색만 피버 테마(<code>#ff6b2e</code>, 기존 <code>UiTheme.FeverThemeColor</code>)로 간다.
+      나머지 3채널은 전부 피버가 가져간다: 스폰 배율은 <b>곱이 아니라 min</b> 이라 0.25 가 되지 않고
+      <b>0.5 그대로</b>, 피치는 <b>1.10</b>, 화면은 <b>화염 테두리만</b>. z 순서는
+      <code>BuildLateRushOverlay()</code> → <code>BuildFeverOverlay()</code> 순이라
+      <b>피버가 항상 러시 위</b>이고, 비콘·월드 팝업은 그 둘보다 위다(정보 레이어 보호).
+      피버가 6초 안에 끝나면 피치가 <b>1.0 이 아니라 1.05 로</b> 내려온다 — 러시 구간이 남아 있고,
+      단일 writer 가 매 프레임 수렴시키기 때문이다.
+    </p>
+  </div>
+
+  <!-- ══════ 4. 결과 오버레이 Fever 줄 ══════ -->
+  <div class="block">
+    <h2>4. 결과 오버레이 — ② 기록 구역 <code>Fever</code> 줄</h2>
+    <div class="trio">
+
+      <div class="col now">
+        <h3>현재</h3>
+        <div class="result-panel">
+          <div class="title">런 결과</div>
+          <div class="rdiv"></div>
+          <div class="rsec">
+            <div class="rclears"><span class="cap">처리한 리소스</span><span class="val">44</span></div>
+            <div class="rcap">직전 런 대비 클리어 +6 · 골드 +182</div>
+          </div>
+          <div class="rdiv"></div>
+          <div class="rsec">
+            <div class="rcur"><span>Gold : 1,502</span><span class="w">12,884</span></div>
+            <div class="rcur"><span>Commit : 208</span><span class="w">3,110</span></div>
+          </div>
+        </div>
+        <p class="note">
+          게이지를 <b>82% 까지 채우고 못 터뜨린 런</b>과 <b>0% 로 끝낸 런</b>의 결과 화면이
+          <b>완전히 같다</b> — "아까웠다"가 어디에도 안 남는다.
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 게이지를 남기고 완주</h3>
+        <div class="result-panel">
+          <div class="title">런 결과</div>
+          <div class="rdiv"></div>
+          <div class="rsec">
+            <div class="rclears"><span class="cap">처리한 리소스</span><span class="val">44</span></div>
+            <div class="rcap">직전 런 대비 클리어 +6 · 골드 +182</div>
+            <div class="rcap fever new">피버 게이지: 82% — 다음 런에 25% 이월</div>
+            <div class="rcap slot">(Goal 예약 자리 — P4)</div>
+          </div>
+          <div class="rdiv"></div>
+          <div class="rsec">
+            <div class="rcur"><span>Gold : 1,502</span><span class="w">12,884</span></div>
+            <div class="rcur"><span>Commit : 208</span><span class="w">3,110</span></div>
+          </div>
+        </div>
+        <p class="note">
+          <code>Delta</code> 바로 <b>다음</b> 줄이다(P2 §5 구역 표: Clears → Delta → <b>Fever</b> → Goal).
+          문자열은 <code>_lastRunFeverGaugeLeft</code> <b>하나에서 유도</b>한다 —
+          <code>82 × 0.3 = 24.6 → 반올림 25</code>.
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 피버로 마감 / 게이지 0</h3>
+        <div class="result-panel">
+          <div class="title">런 결과</div>
+          <div class="rdiv"></div>
+          <div class="rsec">
+            <div class="rclears"><span class="cap">처리한 리소스</span><span class="val">51</span></div>
+            <div class="rcap">직전 런 대비 클리어 +13 · 골드 +410</div>
+            <div class="rcap slot">(Goal 예약 자리 — P4)</div>
+          </div>
+          <div class="rdiv"></div>
+          <div class="rsec">
+            <div class="rcur"><span>Gold : 1,730</span><span class="w">14,614</span></div>
+            <div class="rcur"><span>Commit : 240</span><span class="w">3,350</span></div>
+          </div>
+        </div>
+        <p class="note">
+          <b>줄이 통째로 사라진다</b>(<code>SetActive(false)</code>) — 빈 줄 잔류 0.
+          <code>VerticalLayoutGroup</code> 이라 위아래가 자동으로 접힌다.
+          피버로 마감한 런은 이월도 <b>0</b> 이다(이미 절정을 받았다 = 이중 수혜 금지).
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 5. 확정 수치 ══════ -->
+  <div class="block">
+    <h2>5. 확정 수치 — 이 비교본이 그린 값</h2>
+    <table>
+      <tr><th>항목</th><th>상수</th><th>값</th><th>사는 곳</th></tr>
+      <tr><td>러시 구간 길이</td><td><code>LateRushSeconds</code></td><td>5s</td><td>Core <code>RewardEventTuning</code></td></tr>
+      <tr><td>러시 스폰 간격 배율</td><td><code>LateRushSpawnIntervalScale</code></td><td>0.5 (= 피버와 동일)</td><td>Core <code>RewardEventTuning</code></td></tr>
+      <tr><td>이월 비율</td><td><code>FeverCarryoverRatio</code></td><td>0.3 → 이월 상한 30</td><td>Core <code>RewardEventTuning</code></td></tr>
+      <tr><td>러시 BGM 피치</td><td><code>LateRushBgmPitch</code></td><td>1.05 (피버 1.10)</td><td>Runtime <code>MvpGameController</code></td></tr>
+      <tr><td>비네트 최대 알파</td><td><code>LateRushVignetteMaxAlpha</code></td><td>0.30</td><td>Runtime <code>MvpGameController</code></td></tr>
+      <tr><td>비네트 rect 배율</td><td><code>LateRushVignetteScaleFrom/To</code></td><td>1.00 → 1.45</td><td>Runtime <code>MvpGameController</code></td></tr>
+      <tr><td>카운트다운 폰트</td><td><code>LateRushCountdownFontSize</code></td><td>128</td><td>Runtime <code>MvpGameController</code></td></tr>
+      <tr><td>정수 전환 펀치</td><td><code>LateRushCountdownPunch</code> / <code>…PunchDecay</code></td><td>×1.35 / 0.28s</td><td>Runtime <code>MvpGameController</code></td></tr>
+      <tr><td>저모션 감쇠</td><td><code>LateRushLowMotionPunchScale</code> / <code>…AlphaScale</code></td><td>×0.3 / ×0.4</td><td>Runtime <code>MvpGameController</code></td></tr>
+      <tr><td>카운트다운 rect</td><td>(뷰 로컬)</td><td>x 중앙 595.2 · 폭 360 · y 140 · 높이 160</td><td><code>RunFxView</code></td></tr>
+    </table>
+    <p class="note">
+      밸런스(초·배율·비율)는 <b>Core</b>, 연출·오디오는 <b>Runtime</b>, 좌표는 <b>뷰</b> — 셋의 분업이
+      플랜 §5 하드 제약 2 다. 밸런스 하네스(<code>BalanceModel</code>)는 값을 다시 적지 않고
+      <code>RewardEventTuning.LateRushSeconds</code> 를 <b>직접 읽는다</b>.
+      <br><b>⚠ 구현 후 실제 렌더와 재대조 필요</b> — 이 비교본은 Unity 실행 없이 그린 정적 근사다.
+      Shift+F11 Canvas 판 스크린샷 3컷(잔여 4.x / 2.x / 0.x)과 대조하는 것은 런타임 잔여 항목이다.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

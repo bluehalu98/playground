@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>뽑기 탭 인벤토리 — 하단 밴드 vs 우측 드로어 비교본 (T1)</title>
+<!--
+  gem-draw-inventory-drawer-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : gem-draw-inventory-side-drawer-plan T1. 게이트1 R2 APPROVE(High0/Med3/Low3,
+          2026-08-31) 후 pre-T1 수정(N1~N3+Low, §2 문단 수정)을 반영한 뒤 작성한 owner
+          판단 재료. 실조작 없음 — 정적 비교본.
+  소유  : docs/plans/03-qa-pending/phase-1/gem-draw-inventory-side-drawer-plan.md T1
+          (게이트1 R2 APPROVE — docs/reviews/2026-08-31-gem-draw-inventory-side-drawer-plan.md)
+  정본  : html/armament-menu.html 은 **무수정**(#view-draw:1030 이하 어느 것도 건드리지 않음).
+          Assets/** 코드도 무접촉 — 이 파일은 owner 결정 전 T2~T7 착수를 막는 게이트 산출물이다.
+  구조  : G0(오버레이/폭 분할) 두 분기를 **모두 렌더**한다(리뷰 R2 지시 — 한 그림이 결정을 선점하지
+          않도록). 각 분기 안에 G1(기본 상태)·G2(폭)·G3(애니메이션) 판단 재료를 표로 반복한다.
+  팔레트: html/armament-menu.html :9-30 토큰(--bg·--panel·--border-gold·--teal·--gold·--text·
+          --muted·--muted2·--red·grade 색) + html/ui-prototype.html :49-86 토큰(--surface-card·
+          --hairline·--amber·--green·--text-title·--text-num·--text-caption·--btn-border·
+          --btn-gold-border/fill·--surface-raised-a/b·--field-surface) 을 그대로 복사.
+          **신규 색 리터럴 0** — 아래 §6 "색 출처" 표가 전 항목의 출처를 밝힌다.
+          공교롭게도 ui-prototype.html --surface-card(#0a1017)/--hairline(#1b2836) 은
+          UiTheme.cs 의 StagePanelColor/StageOutlineColor 실값과 **정확히 같은 값**이라
+          런타임 스테이지 색을 그대로 재현한다(발명이 아니라 이미 있던 토큰의 우연한 일치).
+  좌표  : 가상 해상도 1920×1080(ScreenHost.cs:114-116) · 본문 GetLabBodyRect() = (24,88,1872,968)
+          (MvpGameController.UI.cs:1940-1948, 상수). 아래 세 프리뷰는 이 좌표계를 그대로 축소한
+          것이라 사각형 위치·크기가 플랜 §1 산식과 1:1 대응한다(GemDrawView.cs:110-121 상수 기준).
+-->
+<style>
+:root{
+  /* ── html/armament-menu.html :9-30 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --border-gold:rgba(201,162,39,0.25);
+  --teal:#57d1b8; --gold:#f5e859; --text:#e2e8f0; --muted:#8c99ad; --muted2:#2a3a4a;
+  --red:#ff6b6b;
+  --g-rare:#3b82f6; --g-epic:#a855f7; --g-legendary:#f5a623;
+  /* ── html/armament-menu.html :344-353 리터럴(그대로) — 인벤토리 밴드 격자·타일 ── */
+  --tile:#0e1620; --gridline:#1a2535;
+  /* ── html/ui-prototype.html :49-86 토큰 (그대로) ── */
+  --amber:#fbb03b; --green:#34d399;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --btn-gold-border:#7a6420; --btn-gold-fill-a:#2a2008; --btn-gold-fill-b:#1a1505;
+  --bg-deep:#070c11; --field-surface:#0c1621; --field-grid:rgba(87,209,184,.11);
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-caption:#b9c6d3;
+  /* ── 위 토큰을 Unity 의미로 별칭(발명 아님, 같은 값 재지정) ──
+     StagePanelColor/OverlayPanelColor(UiTheme.cs:101/108) = --surface-card
+     StageOutlineColor(UiTheme.cs:109) = --hairline
+     TextTitleColor(:97)=--text-title · TextNumColor(:98)=--text-num ·
+     TextCaptionColor(:100)=--text-caption · kGoldenNodeTint(:64)=--gold */
+  --stage-fill:var(--surface-card); --stage-outline:var(--hairline);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 64px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1320px; margin:0 auto;}
+h1{font-size:20px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em; color:var(--text-title);}
+h3{font-size:13px; margin:0 0 10px; letter-spacing:.05em; color:var(--teal);}
+h4{font-size:11.5px; margin:20px 0 8px; letter-spacing:.08em; color:var(--muted); text-transform:uppercase;}
+.sub{color:var(--muted); font-size:12px; margin:0 0 18px;}
+code{font-family:ui-monospace,'Cascadia Mono',Consolas,monospace; font-size:12px; color:var(--text-caption);}
+
+.quote{
+  border-left:3px solid var(--gold); background:rgba(245,232,89,.06);
+  padding:12px 16px; margin:0 0 16px; border-radius:0 5px 5px 0;
+  color:var(--text); font-size:13px;
+}
+.quote b{color:var(--gold);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.warn{
+  border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:10px 16px; margin:0 0 26px; border-radius:0 5px 5px 0;
+  color:var(--text-caption); font-size:12.5px;
+}
+.warn b{color:var(--amber);}
+
+.secbar{
+  margin:36px 0 14px; padding:7px 0 0; border-top:1px solid var(--hairline);
+  color:var(--muted); font-size:11px; letter-spacing:.12em;
+}
+
+/* ══════════ 프리뷰 무대 — 1920×1080 을 통째로 축소 ══════════ */
+.screenbox{width:100%; aspect-ratio:1920/1080; position:relative; overflow:hidden;
+  border-radius:8px; border:1px solid var(--hairline); background:#000; margin-bottom:10px;}
+.canvas{position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0;
+  background:radial-gradient(ellipse at 50% 40%, #12202c 0%, #0b1218 55%, #070c11 100%);}
+
+.rect{position:absolute;}
+.rect-panel{border:1px solid var(--hairline); border-radius:6px; background:rgba(17,27,36,.35);}
+.rect-header{background:rgba(87,209,184,.05); border-bottom:1px solid var(--border-gold);}
+.rect-stage{background:var(--stage-fill); border:1px solid var(--stage-outline); border-radius:6px;}
+.rect-cta{background:linear-gradient(180deg,var(--btn-gold-fill-a),var(--btn-gold-fill-b));
+  border:1px solid var(--btn-gold-border); border-radius:6px; display:flex; align-items:center;
+  justify-content:center;}
+.rect-inv{background:var(--stage-fill); border:1px solid var(--stage-outline); border-radius:6px;}
+.rect-inv-grid{position:absolute; inset:36px 10px 10px; background-image:
+    repeating-linear-gradient(90deg, var(--gridline) 0 1px, transparent 1px 76px),
+    repeating-linear-gradient(0deg, var(--gridline) 0 1px, transparent 1px 76px);
+  background-color:var(--tile); opacity:.8;}
+.rect-drawer{background:var(--surface-raised-b); border:1.5px solid var(--teal); border-radius:6px;}
+.rect-drawer.overlay{border-style:dashed; background:rgba(87,209,184,.10);}
+.overlap-zone{background:rgba(255,107,107,.32); border:1px dashed var(--red);}
+.rect-label{position:absolute; color:var(--text-title); font-size:16px; letter-spacing:.01em;}
+.rect-label.small{font-size:13px; color:var(--text-caption);}
+.dim{position:absolute; color:var(--amber); font-size:14px; letter-spacing:.02em;}
+.dim.bad{color:var(--red); font-weight:bold;}
+.dimline{position:absolute; background:rgba(251,176,59,.5);}
+
+.cap{color:var(--muted); font-size:11.5px; margin:6px 0 4px; letter-spacing:.01em;}
+.cap b{color:var(--text-title);}
+
+/* ══════════ 분기 카드 ══════════ */
+.compare2{display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start;}
+@media(max-width:1080px){.compare2{grid-template-columns:1fr;}}
+.branch{border:1px solid var(--hairline); border-radius:10px; padding:16px 16px 20px; background:rgba(10,16,23,.5);}
+.branch.ov{border-color:rgba(87,209,184,.4);}
+.branch.sp{border-color:rgba(245,166,35,.4);}
+.branch h3 .tag{font-size:10px; letter-spacing:.1em; padding:2px 8px; border-radius:3px;
+  margin-left:8px; vertical-align:1px; border:1px solid; }
+.branch.ov h3 .tag{color:var(--teal); border-color:rgba(87,209,184,.4); background:rgba(87,209,184,.1);}
+.branch.sp h3 .tag{color:var(--g-legendary); border-color:rgba(245,166,35,.4); background:rgba(245,166,35,.1);}
+
+table{ border-collapse:collapse; width:100%; font-size:12px; margin-top:4px; }
+th,td{ border:1px solid var(--hairline); padding:6px 9px; text-align:left; vertical-align:top; }
+th{ color:var(--teal); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; font-weight:600; background:var(--surface-raised-b);}
+td{ color:var(--text); }
+td code{ color:var(--text-caption); }
+tr.hl td{ background:rgba(245,232,89,.05); }
+tr.rec td{ background:rgba(87,209,184,.06); }
+.pill{display:inline-block; font-size:9.5px; letter-spacing:.06em; padding:1px 6px;
+  border-radius:3px; border:1px solid var(--btn-border); color:var(--muted);}
+.pill.rec{border-color:rgba(87,209,184,.4); color:var(--teal);}
+
+.notes{margin:10px 0 0; padding-left:18px; font-size:12px; color:var(--text-caption);}
+.notes li{margin:4px 0;}
+.notes.bad li::marker{color:var(--red);}
+
+/* ══════════ Open Questions 박스 ══════════ */
+.oq{border:1px solid var(--btn-gold-border); border-radius:8px; background:rgba(122,100,32,.08);
+  padding:14px 18px; margin-bottom:14px;}
+.oq h4{margin:0 0 8px; color:var(--gold); font-size:12.5px; letter-spacing:.04em; text-transform:none;}
+.oq .link{font-size:11px; color:var(--muted); margin-top:8px;}
+.oq .link code{color:var(--text-caption);}
+
+.spec{margin-top:30px; background:var(--surface-card); border:1px solid var(--hairline);
+  border-radius:8px; padding:20px 22px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>뽑기 탭 인벤토리 — 하단 밴드 vs 우측 드로어 비교본 (T1)</h1>
+  <p class="sub">
+    소유: <code>docs/plans/03-qa-pending/phase-1/gem-draw-inventory-side-drawer-plan.md</code> T1 ·
+    게이트1 <b style="color:var(--teal);">R2 APPROVE</b>(High 0/Med 3/Low 3, 2026-08-31) →
+    pre-T1 수정(N1~N3+Low) 반영 완료 후 작성 ·
+    리뷰: <code>docs/reviews/2026-08-31-gem-draw-inventory-side-drawer-plan.md</code> ·
+    정본 <code>html/armament-menu.html</code> 무수정 · <code>Assets/**</code> 무접촉 · 신규 색 리터럴 0
+  </p>
+
+  <div class="quote">
+    <b>"젬뽑기 하단에 인벤토리 말고 오른쪽에서 열리는게 좋겠어"</b>
+    <span class="who">— owner Play QA 2026-08-28</span>
+  </div>
+
+  <div class="warn">
+    ⚠ <b>owner 결정 전까지 T2~T7 착수 금지.</b> 아래는 G0(오버레이/폭 분할)·G1(기본 상태)·G2(폭)·
+    G3(애니메이션)·G-StageMaxHeight·Open Questions①~③ 을 owner 가 한 화면에서 판단할 수 있게 모은
+    정적 자료다. 실조작 없음 — 모든 사각형은 플랜 §1·§2 산식에서 유도한 좌표를 CSS 로 그린 것이다.
+  </div>
+
+  <!-- ═══════════════════════════ 1. 현행 ═══════════════════════════ -->
+  <div class="secbar">1 · 현행 — 하단 밴드 250px · 스테이지 500 클램프 · CTA 42px 겹침 결함</div>
+
+  <div class="screenbox" id="box-now">
+    <div class="canvas" id="cv-now">
+      <div class="rect rect-panel" style="left:24px; top:88px; width:1872px; height:968px;"></div>
+      <div class="rect rect-header" style="left:24px; top:88px; width:1872px; height:42px;"></div>
+      <div class="rect-label small" style="left:34px; top:96px;">헤더 3라벨(제목·비용·잔액) — y[0,42]</div>
+
+      <div class="rect rect-stage" style="left:24px; top:240px; width:1872px; height:500px;"></div>
+      <div class="rect-label" style="left:44px; top:258px;">스테이지 — 1872×500 (500 = StageMaxHeight 클램프)</div>
+      <div class="rect-label small" style="left:44px; top:284px; color:var(--text-caption);">local y[152,652] · 절대 y[240,740]</div>
+
+      <!-- CTA ∩ 인벤토리 겹침 구간(730~772) 을 먼저 깔아 CTA/인벤토리 렌더보다 아래 두고, CTA 는 IMGUI/Canvas 실제 순서(인벤토리 뒤)대로 나중에 그려 위에 얹는다 -->
+      <div class="rect rect-inv" style="left:24px; top:758px; width:1872px; height:250px;"></div>
+      <div class="rect-inv-grid" style="left:24px; top:758px; width:1872px; height:250px;"></div>
+      <div class="rect-label" style="left:44px; top:766px;">공유 인벤토리 밴드 <code style="color:var(--text-caption);">GemInventoryBand</code> — 1872×250</div>
+      <div class="rect-label small" style="left:44px; top:792px; color:var(--text-caption);">local y[670,920] · 절대 y[758,1008]</div>
+
+      <div class="rect overlap-zone" style="left:830px; top:758px; width:260px; height:42px;"></div>
+      <div class="rect rect-cta" style="left:830px; top:756px; width:260px; height:44px;">
+        <span class="rect-label" style="position:static; color:var(--text-title); font-size:15px;">CTA 🎲 젬 뽑기</span>
+      </div>
+      <div class="dim bad" style="left:1120px; top:762px;">← 42px 겹침(H4) — CTA[756,800] ∩ 인벤토리[758,1008]</div>
+      <div class="dim" style="left:1120px; top:800px; color:var(--text-caption);">CtaTopGap 16 + CtaHeight 44, InventoryGap 18 — fix 이전 상수 이식(§1-2)</div>
+    </div>
+  </div>
+  <p class="cap">
+    좌표 근거 — <code>GemDrawView.cs:110-121</code>(상수) · <code>ComputeStageRect</code> <code>:279-285</code> ·
+    <code>BuildCta</code> <code>:337-346</code> · 본문 <code>GetLabBodyRect()=(24,88,1872,968)</code>(<code>MvpGameController.UI.cs:1940-1948</code>).
+  </p>
+  <ul class="notes bad">
+    <li>인벤토리 밴드가 화면 하단 250px 를 상시 점유 — 리빌 연출(스테이지)이 그만큼 좁게 느껴진다.</li>
+    <li>CTA 밴드 <code>[668,712]</code> 와 인벤토리 밴드 <code>[670,920]</code> 이 <b>42px 겹친다</b>(H4) — 밴드 캡션·필터 바가 CTA 아래 깔린다. IMGUI 옛 판은 <code>ctaBand=72f</code> 로 이 간섭을 막았으나 Canvas 미러가 fix 이전 상수를 그대로 이식해 회귀가 이미 들어와 있다.</li>
+    <li><code>StageMaxHeight=500</code> 클램프 때문에 인벤토리를 치워도 스테이지 <b>높이는 그대로</b>다(아래 §3-G-StageMaxHeight).</li>
+  </ul>
+
+  <!-- ═══════════════════════════ 2. G0 ═══════════════════════════ -->
+  <div class="secbar">2 · G0 — 드로어는 오버레이인가 본문 폭 분할인가 (두 분기 모두 렌더)</div>
+  <p class="cap" style="margin-top:-4px;">
+    G2(폭)보다 <b>먼저</b> 정해져야 하는 최상위 결정이다 — 두 분기의 귀결이 상충한다(플랜 §2-G0).
+    아래 두 분기 모두 예시 폭 <b>420px</b>(G2-a)로 그렸다 — 폭 자체는 각 카드의 G2 표에서 별도 결정한다.
+  </p>
+
+  <div class="compare2">
+
+    <!-- ─────────── G0(a) 오버레이 ─────────── -->
+    <div class="branch ov">
+      <h3>G0 (a) 오버레이 드로어<span class="tag">스테이지 폭 보존</span></h3>
+
+      <div class="screenbox" id="box-g0a">
+        <div class="canvas" id="cv-g0a">
+          <div class="rect rect-panel" style="left:24px; top:88px; width:1872px; height:968px;"></div>
+          <div class="rect rect-header" style="left:24px; top:88px; width:1872px; height:42px;"></div>
+
+          <div class="rect rect-stage" style="left:24px; top:365px; width:1872px; height:500px;"></div>
+          <div class="rect-label" style="left:44px; top:383px;">스테이지 — <b>1872px 폭 그대로</b> · 높이 500 불변</div>
+          <div class="rect-label small" style="left:44px; top:409px; color:var(--text-caption);">local y[152→277] 재중심화(하향 125px) · 절대 y[365,865]</div>
+
+          <div class="rect rect-cta" style="left:830px; top:881px; width:260px; height:44px;">
+            <span class="rect-label" style="position:static; color:var(--text-title); font-size:15px;">CTA 🎲 젬 뽑기</span>
+          </div>
+
+          <!-- 오버레이 드로어 — 스테이지 위에 z-순서상 얹힌다(DOM 순서 = 스테이지 다음) -->
+          <div class="rect rect-drawer overlay" style="left:1476px; top:150px; width:420px; height:860px;"></div>
+          <div class="rect-label" style="left:1496px; top:172px; color:var(--teal);">드로어 420px<br><span style="font-size:12px;color:var(--text-caption);">(예시 폭 — G2)</span></div>
+          <div class="dim" style="left:1496px; top:1020px;">스테이지 <b>위에</b> 겹쳐 뜬다 — 오른쪽 여백만 덮는지, 전체를 덮는지는 미확정(범위 조정 필요)</div>
+        </div>
+      </div>
+      <p class="cap">
+        스테이지 폭은 <b>1872 그대로 보존</b>된다 — 드로어가 그 위에 z-순서로 얹힌다. 단 수용 기준
+        "드로어가 스테이지를 덮지 않는가"(플랜 §4)와 <b>정면 상충</b>한다 — 이 기준을 폐기하거나
+        오버레이 범위(스테이지 우측 여백만 덮는지 전체를 덮는지)를 재정의해야 owner 결정이 실행 가능해진다.
+      </p>
+
+      <h4>G1 — 드로어 기본 상태</h4>
+      <table>
+        <tr><th>안</th><th>내용</th><th>상태 소유</th></tr>
+        <tr><td>(a) 기본 열림</td><td>진입 즉시 드로어 노출</td><td rowspan="3">뷰 로컬 필드 vs 컨트롤러 필드 — G1 결정에 포함(§2-G1)</td></tr>
+        <tr class="rec"><td>(b) 기본 닫힘 + 토글 <span class="pill rec">권장</span></td><td>리빌 연출 공간을 최대로 쓴다(요청 취지)</td></tr>
+        <tr><td>(c) 결과 시 자동 열림</td><td>뽑기 결과가 나오면 자동으로 펼쳐짐 — 렌더 경로가 상태를 쓰는 새 seam</td></tr>
+        <tr class="hl"><td colspan="3">선례: <code>_showSkillTreeStatsDrawer</code>(<code>MvpGameController.cs:610</code>) 기본값 = <b>true(열림)</b> — 컨트롤러 필드. 이 플랜의 (b) 권장(기본 닫힘)과 <b>정반대 기본값</b>이다(상충은 아님 — 요청 취지가 다름). owner 가 선례를 따를지 벗어날지 판단할 재료.</td></tr>
+      </table>
+
+      <h4>G2 — 드로어 폭 (오버레이는 폭과 무관하게 스테이지 1872 유지)</h4>
+      <table>
+        <tr><th>안</th><th>폭</th><th>콘텐츠 폭(−18)</th><th>열 수</th><th>타일 폭</th><th>스테이지 폭</th></tr>
+        <tr><td>(a) 고정 420</td><td>420</td><td>402</td><td>3</td><td>127.3px</td><td rowspan="3" style="vertical-align:middle;">1872<br><span style="color:var(--text-caption);font-size:11px;">(오버레이 — 항상 불변)</span></td></tr>
+        <tr><td>(b) 화면폭 30%</td><td>561.6</td><td>543.6</td><td>4</td><td>128.4px</td></tr>
+        <tr><td>(c) 3열 최소폭 자동</td><td>350</td><td>332</td><td>3</td><td>104px</td></tr>
+      </table>
+      <p class="cap">(a)·(c) 는 3열로 귀결하고 (b) 만 4열이다. (a)=420px 은 스킬트리 서랍 열림폭(<code>MvpGameController.SkillTreeScreen.cs:172</code>)과 우연히 같은 값.</p>
+
+      <h4>G3 — 애니메이션</h4>
+      <table>
+        <tr><th>안</th><th>내용</th><th>리포 선례</th></tr>
+        <tr class="rec"><td>(a) 즉시 <span class="pill rec">리포 관례</span></td><td>rect 변경 시 그 프레임에 바로 놓는다</td><td><code>SyncDrawer</code>(<code>LabNodePanelsView.cs:812-837</code>) — 트윈 없음</td></tr>
+        <tr><td>(b) 0.18s 슬라이드</td><td>저모션 토글 시 즉시</td><td>이 리포 <b>최초</b>의 드로어 슬라이드 사례 — 비용 인지 후 선택</td></tr>
+      </table>
+    </div>
+
+    <!-- ─────────── G0(b) 폭 분할 ─────────── -->
+    <div class="branch sp">
+      <h3>G0 (b) 폭 분할 드로어<span class="tag">스테이지 폭 축소</span></h3>
+
+      <div class="screenbox" id="box-g0b">
+        <div class="canvas" id="cv-g0b">
+          <div class="rect rect-panel" style="left:24px; top:88px; width:1872px; height:968px;"></div>
+          <div class="rect rect-header" style="left:24px; top:88px; width:1872px; height:42px;"></div>
+
+          <div class="rect rect-stage" style="left:24px; top:365px; width:1452px; height:500px;"></div>
+          <div class="rect-label" style="left:44px; top:383px;">스테이지 — <b>1872→1452px</b>(−22.4%, 예시 폭 420 기준)</div>
+          <div class="rect-label small" style="left:44px; top:409px; color:var(--text-caption);">높이 500 불변 · local y[152→277] 재중심화(하향 125px)</div>
+
+          <div class="rect rect-cta" style="left:620px; top:881px; width:260px; height:44px;">
+            <span class="rect-label" style="position:static; color:var(--text-title); font-size:15px;">CTA 🎲 젬 뽑기</span>
+          </div>
+
+          <!-- 폭 분할 드로어 — 스테이지 옆에, 겹치지 않는다 -->
+          <div class="rect rect-drawer" style="left:1476px; top:150px; width:420px; height:860px;"></div>
+          <div class="rect-label" style="left:1496px; top:172px; color:var(--teal);">드로어 420px<br><span style="font-size:12px;color:var(--text-caption);">(예시 폭 — G2)</span></div>
+          <div class="dim" style="left:1496px; top:1020px;">스테이지 <b>옆에</b> 자리 — 겹치지 않는다(수용 기준과 상충 없음)</div>
+        </div>
+      </div>
+      <p class="cap">
+        스테이지 폭이 <code>1872 − drawerW</code> 로 <b>줄어든다</b>(예시 420px 기준 −22.4%) — 이
+        트레이드오프를 owner 가 인지하고 골라야 한다(플랜 §2-G0 H3). 수용 기준 "드로어가 스테이지를
+        덮지 않는가"는 자동으로 성립한다.
+      </p>
+
+      <h4>G1 — 드로어 기본 상태</h4>
+      <table>
+        <tr><th>안</th><th>내용</th><th>상태 소유</th></tr>
+        <tr><td>(a) 기본 열림</td><td>진입 즉시 드로어 노출</td><td rowspan="3">뷰 로컬 필드 vs 컨트롤러 필드 — G1 결정에 포함(§2-G1)</td></tr>
+        <tr class="rec"><td>(b) 기본 닫힘 + 토글 <span class="pill rec">권장</span></td><td>리빌 연출 공간을 최대로 쓴다(요청 취지)</td></tr>
+        <tr><td>(c) 결과 시 자동 열림</td><td>뽑기 결과가 나오면 자동으로 펼쳐짐 — 렌더 경로가 상태를 쓰는 새 seam</td></tr>
+        <tr class="hl"><td colspan="3">선례: <code>_showSkillTreeStatsDrawer</code>(<code>MvpGameController.cs:610</code>) 기본값 = <b>true(열림)</b> — 컨트롤러 필드. 이 플랜의 (b) 권장(기본 닫힘)과 <b>정반대 기본값</b>이다(상충은 아님 — 요청 취지가 다름). owner 가 선례를 따를지 벗어날지 판단할 재료.</td></tr>
+      </table>
+
+      <h4>G2 — 드로어 폭 (폭 분할은 안마다 스테이지 폭이 달라진다)</h4>
+      <table>
+        <tr><th>안</th><th>폭</th><th>콘텐츠 폭(−18)</th><th>열 수</th><th>타일 폭</th><th>새 스테이지 폭</th></tr>
+        <tr><td>(a) 고정 420</td><td>420</td><td>402</td><td>3</td><td>127.3px</td><td>1452 <span style="color:var(--red);">(−22.4%)</span></td></tr>
+        <tr><td>(b) 화면폭 30%</td><td>561.6</td><td>543.6</td><td>4</td><td>128.4px</td><td>1310.4 <span style="color:var(--red);">(−30.0%)</span></td></tr>
+        <tr><td>(c) 3열 최소폭 자동</td><td>350</td><td>332</td><td>3</td><td>104px</td><td>1522 <span style="color:var(--red);">(−18.7%)</span></td></tr>
+      </table>
+      <p class="cap">(a)·(c) 는 3열로 귀결하고 (b) 만 4열이다 — 다만 (b) 는 스테이지 폭 손실도 가장 크다(−30.0%). 폭이 좁을수록(=(c)) 스테이지 손실은 작지만(−18.7%) 타일이 최소 104px 로 눌린다.</p>
+
+      <h4>G3 — 애니메이션</h4>
+      <table>
+        <tr><th>안</th><th>내용</th><th>리포 선례</th></tr>
+        <tr class="rec"><td>(a) 즉시 <span class="pill rec">리포 관례</span></td><td>rect 변경 시 그 프레임에 바로 놓는다</td><td><code>SyncDrawer</code>(<code>LabNodePanelsView.cs:812-837</code>) — 트윈 없음</td></tr>
+        <tr><td>(b) 0.18s 슬라이드</td><td>저모션 토글 시 즉시</td><td>이 리포 <b>최초</b>의 드로어 슬라이드 사례 — 폭 분할은 스테이지까지 같이 움직여야 해 비용이 (a)보다 크다</td></tr>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════ 3. Open Questions ═══════════════════════════ -->
+  <div class="secbar">3 · Open Questions — owner 에스컬레이션 (플랜 §2 말미와 동일)</div>
+
+  <div class="oq">
+    <h4>OQ① — 드로어가 오버레이인가, 본문 폭 분할인가?</h4>
+    <p>위 §2 두 분기 프리뷰가 그 귀결을 보여준다. 오버레이는 스테이지 폭(1872)을 보존하지만 "드로어가
+    스테이지를 덮지 않는가"라는 수용 기준과 상충한다. 폭 분할은 그 기준을 자동으로 만족하지만 스테이지
+    폭이 최대 −30.0%(G2-b 기준) 줄어든다.</p>
+    <p class="link">연결: <code>G0</code>(플랜 §2 최상위)</p>
+  </div>
+
+  <div class="oq">
+    <h4>OQ② — H4(현행 Canvas CTA↔인벤토리 42px 겹침, 위 §1)를 이 플랜에서 고치는가, 별도 버그 플랜으로 빼는가?</h4>
+    <p>드로어 전환이 밴드를 옮기면 이 겹침은 부수적으로 사라질 수도 있다. 그러나 G1=(b) 기본 닫힘을
+    고르면 <b>닫힌 상태의 CTA 위치는 그대로</b>라 겹침이 남을 수 있다 — G1 결정과 맞물린 문제다.</p>
+    <p class="link">연결: <code>T4</code>(플랜 §3) — 플랜 §2 말미 Open Questions 절로 승격됨(R2-N2 반영)</p>
+  </div>
+
+  <div class="oq">
+    <h4>OQ③ — <code>StageMaxHeight = 500</code> 상향이 이 플랜의 범위인가?</h4>
+    <p>범위에 넣지 않으면(권장 기본값) 편익은 "하단 점유 해소 + 재중심화"(중립, §1 참조)로 국한된다.
+    범위에 넣으면 실제 계산 가능한 편익이 생긴다:</p>
+    <table>
+      <tr><th>StageMaxHeight</th><th><code>stageH×0.72</code></th><th><code>stageW×0.40</code></th><th><code>boxSize=min(430,·,·)</code></th></tr>
+      <tr><td>500(현행)</td><td>360</td><td>748.8</td><td><b>360</b></td></tr>
+      <tr class="rec"><td>≥ 597.2</td><td>≥ 430</td><td>748.8</td><td><b style="color:var(--teal);">430 (+19.4%)</b></td></tr>
+    </table>
+    <p style="margin-top:8px;">상자 크기(<code>GemDrawView.cs:378-380</code>)의 실소비처는 <code>:320</code>·
+    <code>:378-380</code>·<code>:393</code>·<code>:475</code>·<code>:480</code> 정확히 5곳(전부 비율/오프셋
+    파생) — owner 요청("리빌 연출을 넓게 쓰자")이 <b>세로 방향으로 실제 실현되는 유일한 경로</b>다.</p>
+    <p class="link">연결: <code>G-StageMaxHeight</code>(플랜 §2)</p>
+  </div>
+
+  <!-- ═══════════════════════════ 4. 색 출처 / 범위 ═══════════════════════════ -->
+  <div class="spec">
+    <h2>4. 신규 색 리터럴 0 — 이 문서가 쓴 색의 출처</h2>
+    <table>
+      <tr><th>쓰임</th><th>값</th><th>출처</th></tr>
+      <tr><td>배경 · 패널 · 골드 테두리 · 텍스트 · 회색조</td><td><code>--bg</code> … <code>--muted2</code> · <code>--red</code></td><td><code>html/armament-menu.html</code> :9-30 토큰 복사</td></tr>
+      <tr><td>인벤토리 밴드 격자·타일</td><td><code>#1a2535</code> / <code>#0e1620</code></td><td><code>html/armament-menu.html</code> :346-353 리터럴(그대로) — <code>gem-inventory-empty-state-compare.html</code> 선례와 동일 출처</td></tr>
+      <tr><td>스테이지 면 · 테두리</td><td><code>--surface-card</code>(#0a1017) · <code>--hairline</code>(#1b2836)</td><td><code>html/ui-prototype.html</code> :66/:69 토큰 — <b>StagePanelColor/StageOutlineColor 실값과 동일</b>(우연한 일치, 발명 아님)</td></tr>
+      <tr><td>CTA 버튼 채움·테두리</td><td><code>--btn-gold-fill-a/b</code> · <code>--btn-gold-border</code></td><td><code>html/ui-prototype.html</code> :71-73 토큰</td></tr>
+      <tr><td>드로어 면·링</td><td><code>--surface-raised-b</code> · <code>--teal</code></td><td><code>html/ui-prototype.html</code> :68 · <code>html/armament-menu.html</code> :14</td></tr>
+      <tr><td>본문 제목·수치·캡션 텍스트</td><td><code>--text-title</code>·<code>--text-num</code>·<code>--text-caption</code></td><td><code>html/ui-prototype.html</code> :82-85 토큰 — TextTitleColor/TextNumColor/TextCaptionColor 실값과 동일</td></tr>
+      <tr><td>경고·결함 강조</td><td><code>--amber</code> / <code>--red</code></td><td><code>html/ui-prototype.html</code> :58/:57 토큰(문서 주석색, 게임 UI 아님)</td></tr>
+    </table>
+
+    <h2 style="margin-top:26px;">5. 범위 · 한계</h2>
+    <p style="font-size:12.5px; color:var(--text-caption);">
+      이 페이지는 <b>정적 판단 재료</b>다. 실제 렌더는 Unity Canvas 판(<code>GemDrawView.cs</code>·
+      <code>SocketsView.cs</code> 의 <code>GemInventoryBand</code>)이 정본이며, 모든 좌표·수치는
+      플랜 §1·§2 의 소스 상수 산식에서 유도한 것이지 런타임 실측이 아니다. owner 가 G0·G1·G2·G3·
+      G-StageMaxHeight·OQ①~③ 을 확정하기 전까지 <b>T2~T7(구현) 착수는 금지</b>된다. 정본
+      <code>html/armament-menu.html</code> 은 이 비교본 작성 과정에서 한 줄도 수정하지 않았고,
+      <code>Assets/**</code> 게임 코드도 무접촉이다.
+    </p>
+  </div>
+
+</div>
+
+<script>
+// 프리뷰 무대 — 1920×1080 캔버스를 상자 폭에 맞춰 축소한다(좌표가 코드값과 1:1 대응하도록).
+function fit(){
+  document.querySelectorAll('.screenbox').forEach(function(box){
+    var cv = box.querySelector('.canvas');
+    if (!cv) return;
+    cv.style.transform = 'scale(' + (box.clientWidth / 1920) + ')';
+  });
+}
+window.addEventListener('resize', fit);
+window.addEventListener('load', fit);
+fit();
+</script>
+</body>
+</html>

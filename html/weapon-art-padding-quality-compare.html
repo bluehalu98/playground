@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무기 아트 여백·품질 — 확정판(48/24 · ×3) 대조본</title>
+<!--
+  weapon-art-padding-quality-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : weapon-art-padding-quality-plan **T1** 산출물.
+  소유  : docs/plans/02-in-progress/phase-1/weapon-art-padding-quality-plan.md T1
+  게이트: 게이트1 Codex 3라운드 **R3 APPROVE**
+          (docs/reviews/2026-09-07-weapon-art-padding-quality-plan.md)
+
+  ⚠ 이 문서의 성격 — **비교본이 아니라 「확정판 대조본」이다.**
+     선례(weapon-panel-rebalance-compare.html)는 owner 가 *고르게* 하려고 3안을 늘어놓은
+     문서였다. 이 문서는 다르다 — owner 가 이미 골랐다:
+       · 2026-09-07 12:54 지시  : "여백을 조금넣고 … 이미지를 조금더 깔끔하게"
+       · 2026-09-07 14:26 확정  : "d1 a d2 q2" = 여백 (a) 48/24 · 재구움 (Q2) ×3
+     ⇒ **결정 박스를 두지 않는다.** 확정값이 실제로 어떤 그림이 되는지 **현행과 나란히 두고
+        눈으로 확인**시키는 것이 전부이고, 남은 owner 몫은 §F 의 결과 확인 3항목뿐이다.
+     플랜 §5 결정 기록이 정본 — **여백 값·배율은 여기서 되묻지 않는다.**
+
+  ⚠ D-2 계승 (되돌리지 않는 것)
+     `weapon-panel-layout-rebalance-plan.md:137-146` owner 확정:
+       G1=(b) 아트가 카드 콘텐츠 박스를 꽉 채운다 · G2=(c) 카드는 본문 968 그대로.
+     이 문서의 어떤 도해도 그 두 축을 건드리지 않는다 —
+     **바뀌는 것은 「여백 상수 값」과 「소스 해상도」뿐이다.**
+
+  정본  : html/armament-menu.html 은 이 플랜 T1 에서 **함께 수정**됐다(확정 여백 환산 반영).
+          html/armament-keyboard-sprites.html · ui-prototype.html 은 **무수정**(읽기만).
+          .cs 파일 **무수정** — 여기 수치는 전부 코드/에셋 실측 인용이다.
+  팔레트: armament-menu.html :9-31 토큰 그대로. **신규 raw 색 0.**
+          도해의 색은 **블록 구분자**이지 제안하는 UI 색이 아니다.
+  자기완결: 외부 요청 0 — 폰트·스크립트·이미지 전부 인라인/시스템 폰트.
+
+  ⚠ §B 의 키보드 드로잉은 `html/armament-keyboard-sprites.html:100-240` 의 **사본**이다.
+     정본을 iframe 으로 읽으면 file:// 에서 막히고, 배율 시뮬레이션은 소스 해상도를
+     바꿔가며 다시 그려야 하므로 사본이 불가피하다.
+     ⇒ **드리프트 위험을 인지하고 간다** — 정본이 바뀌면 이 사본도 갱신해야 한다
+       (선례: equipment-menu.html 의 drawHardwareIcon 사본, equipment-image-asset-plan §6-3).
+     사본 범위: ROWS/SOCKET_SPOTS/KEYBOARDS(2종만) + roundRect/hexA/shade/drawKeyboard.
+
+     ✅ **동기화 확인 2026-09-08 (T3 반영분)** — 정본이 T3 로 바뀌었고, 이 사본은 **이미 그 값**이다:
+        · `GEOM_FILL` = UNIT 32.03 · PADX 14.95 · PADY 13.12 · TOPBAR 16 · GAP 2.4 → **정본과 일치**
+        · 각인 폰트 `UNIT` 비례 스케일 → **정본이 채택**(`const FS = UNIT / 30`)해서 더 이상 "차이"가 아니다
+        · 출력 배율 S = 3 → 정본 `const S = 3` 과 일치
+       ⇒ T1 이 예측으로 그렸던 §D-iii 그림이 **실제 정본이 됐다.**
+     ⚠ `GEOM`(UNIT 30 · PADX 14 · PADY 14)은 **일부러 남긴다** — §A/§B/§C/§E 의 "현행" 쪽은
+       T3 **이전** 상태를 보여야 대조가 성립한다. 저장소의 png 는 이미 교체됐으므로
+       이 사본이 그 이전 상태의 **유일한 재현 수단**이다. 지우지 말 것.
+
+  ⚠ 기준 3건 (읽고 시작할 것)
+   1) **여백 수치는 전부 「한쪽(per-side)」이고 「아트 폭 1436 기준」이며
+      「카드 콘텐츠 가장자리 → 하우징 가장자리」 거리다.**
+      게이트1 R1 Med-1 이 기준 미명시를 지적해 통일한 정의다.
+      `한쪽 총여백 = 아트 rect 여백 P + 스프라이트 내재 여백`.
+   2) **§B 의 확대 크롭은 1:1 픽셀**이다 — 실제 1436px 폭 결과를 오프스크린에 만든 뒤
+      그 일부를 **nearest-neighbor** 로 확대한다. 페이지 폭에 맞춰 줄인 그림으로
+      화질을 판정하면 리샘플이 두 번 걸려 거짓이 된다.
+   3) 소스 배율 시뮬레이션은 **Unity 와 같은 순서**다 —
+      ① 캔버스에 소스 해상도로 그림 → ② `drawImage` 로 1436 폭에 늘림/줄임(bilinear).
+      현행은 ②가 **비균일**(가로 481→1436 · 세로 208→583.4)이라 왜곡까지 재현된다.
+-->
+<style>
+:root{
+  /* ── armament-menu.html :9-31 토큰 (그대로 복사) ── */
+  --bg:      #0b1218;
+  --panel:   #111b24;
+  --border:  #c9a227;
+  --border-gold: rgba(201,162,39,0.25);
+  --teal:    #57d1b8;
+  --gold:    #f5e859;
+  --text:    #e2e8f0;
+  --muted:   #8c99ad;
+  --muted2:  #2a3a4a;
+  --red:     #ff6b6b;
+  --g-common:    #9ca3af;
+  --g-rare:      #3b82f6;
+  --g-epic:      #a855f7;
+  --g-legendary: #f5a623;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 90px; background:var(--bg); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1520px; margin:0 auto;}
+h1{font-size:21px; margin:0 0 6px; letter-spacing:.02em;}
+h2{font-size:13px; margin:0 0 4px; letter-spacing:.09em; color:var(--teal); text-transform:uppercase;}
+h3{font-size:12px; margin:24px 0 8px; letter-spacing:.04em;}
+h4{font-size:11.5px; margin:16px 0 6px; letter-spacing:.03em; color:var(--g-common);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 20px;}
+code{font-family:'Consolas','D2Coding',ui-monospace,monospace; font-size:.92em;}
+.sec{margin:0 0 40px; padding:18px 20px 20px; border:1px solid var(--muted2);
+     border-radius:9px; background:var(--panel);}
+.sec > .lead{color:var(--muted); font-size:12px; margin:0 0 16px;}
+
+.quote{border-left:3px solid var(--g-legendary); background:rgba(245,166,35,.06);
+  padding:12px 16px; margin:0 0 18px; border-radius:0 5px 5px 0; font-size:13px;}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px;}
+.warn{border-left:3px solid var(--red); background:rgba(255,107,107,.06);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; font-size:12px;}
+.info{border-left:3px solid var(--teal); background:rgba(87,209,184,.05);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; font-size:12px;}
+.goldbox{border-left:3px solid var(--gold); background:rgba(245,232,89,.05);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; font-size:12px;}
+
+.headline{border:1px solid var(--teal); border-radius:9px; background:rgba(87,209,184,.06);
+  padding:16px 20px; margin:0 0 16px;}
+.headline .k{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--teal); margin:0 0 6px;}
+.headline .big{font-size:17px; line-height:1.5; font-weight:700;}
+.headline .big em{font-style:normal; color:var(--teal);}
+.headline .m{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.65;}
+
+.badges{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0;}
+.badge{font-size:10.5px; padding:3px 8px; border-radius:3px; border:1px solid currentColor; white-space:nowrap;}
+.badge.red{color:var(--red); background:rgba(255,107,107,.09);}
+.badge.ok{color:var(--teal); background:rgba(87,209,184,.09);}
+.badge.gold{color:var(--gold); background:rgba(245,232,89,.07);}
+.badge.muted{color:var(--muted); background:rgba(140,153,173,.08);}
+
+/* ── 레이아웃 도해 ── */
+.hud{position:relative; background:#070c11; border:1px solid var(--muted2);
+  border-radius:4px; overflow:hidden; flex:0 0 auto;}
+.hud .blk{position:absolute; overflow:hidden;}
+.hud .list{background:rgba(14,22,34,.9); border:1px solid rgba(154,163,175,.35); border-radius:3px;}
+.hud .listrow{background:#0e1620; border:1px solid rgba(154,163,175,.28); border-radius:2px;}
+.hud .card{background:rgba(22,32,44,.9); border:1px solid rgba(154,163,175,.35); border-radius:3px;}
+.hud .art{background:rgba(87,209,184,.12); border:1px solid var(--teal); border-radius:2px;}
+.hud .house{background:rgba(87,209,184,.30); border:1px solid var(--teal); border-radius:1px;}
+.hud .row{background:rgba(154,163,175,.22); border-radius:1px;}
+.hud .row.cta{background:rgba(87,209,184,.26); border:1px solid rgba(87,209,184,.55);}
+.hud .row.bar{background:rgba(245,232,89,.35); border:1px solid rgba(245,232,89,.6);}
+.hud .row.gold{background:rgba(245,232,89,.22); border:1px solid rgba(245,232,89,.45);}
+.hud .slack{border:1px dashed rgba(140,153,173,.45); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(140,153,173,.10) 0 5px, transparent 5px 10px);}
+.hud .padz{border:1px dashed rgba(245,232,89,.55); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(245,232,89,.13) 0 5px, transparent 5px 10px);}
+.hud .gutter{border:1px dashed rgba(255,107,107,.6); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(255,107,107,.16) 0 5px, transparent 5px 10px);}
+.hud .txt{position:absolute; font-size:9.5px; line-height:1.25; white-space:nowrap; pointer-events:none;}
+.hud .txt.sm{font-size:8.5px;}
+.hud .txt.mut{color:var(--muted);} .hud .txt.red{color:var(--red);}
+.hud .txt.gold{color:var(--gold);} .hud .txt.teal{color:var(--teal);}
+.hud .txt.b{font-weight:700;}
+.figcap{font-size:11px; color:var(--muted); margin:7px 0 0; line-height:1.55;}
+.figcap b{color:var(--text);} .figcap .pct{color:var(--gold); font-weight:700;}
+
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; align-items:start;}
+.grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start;}
+@media (max-width:1440px){ .grid3{grid-template-columns:1fr;} }
+@media (max-width:1080px){ .grid2{grid-template-columns:1fr;} }
+.card2{border:1px solid var(--muted2); border-radius:7px; background:rgba(14,22,34,.55);
+  padding:13px 14px 15px; overflow-x:auto;}
+.card2.pick{border-color:rgba(87,209,184,.5);}
+.card2.risk{border-color:rgba(255,107,107,.45);}
+.card2 h5{margin:0 0 3px; font-size:12.5px; letter-spacing:.02em; font-weight:700;}
+.card2 .k{font-size:10.5px; color:var(--muted); letter-spacing:.09em; text-transform:uppercase; margin:0 0 9px;}
+
+.tblwrap{overflow-x:auto;}
+table{border-collapse:collapse; width:100%; font-size:12px; margin:8px 0 0; min-width:620px;}
+th,td{border:1px solid var(--muted2); padding:6px 9px; text-align:left; vertical-align:top;}
+th{color:var(--teal); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;
+   background:rgba(87,209,184,.05);}
+td.num{font-variant-numeric:tabular-nums; white-space:nowrap;}
+tr.now td{background:rgba(140,153,173,.06);}
+tr.warnrow td{background:rgba(255,107,107,.07);}
+tr.okrow td{background:rgba(87,209,184,.06);}
+td .ok{color:var(--teal);} td .no{color:var(--red);} td .hi{color:var(--gold); font-weight:700;}
+caption{caption-side:bottom; text-align:left; font-size:11px; color:var(--muted); padding:8px 2px 0; line-height:1.6;}
+
+/* ── 조작 ── */
+.tabs{display:flex; flex-wrap:wrap; gap:7px; margin:0 0 14px;}
+.tab{font:inherit; font-size:11.5px; padding:5px 12px; border-radius:4px; cursor:pointer;
+  background:rgba(14,22,34,.8); color:var(--muted); border:1px solid var(--muted2);}
+.tab:hover{color:var(--text); border-color:rgba(87,209,184,.45);}
+.tab[aria-pressed="true"]{background:rgba(87,209,184,.14); color:var(--teal); border-color:var(--teal); font-weight:700;}
+.ctlrow{display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin:0 0 12px;}
+.ctlrow .lbl{font-size:11px; color:var(--muted); letter-spacing:.05em; text-transform:uppercase;}
+
+/* ── 캔버스 ── */
+.cvbox{border:1px solid var(--muted2); border-radius:6px; background:#070c11; padding:10px; overflow-x:auto;}
+.cvbox canvas{display:block; image-rendering:pixelated; background:#0a1017; border-radius:2px;}
+.cvbox .cvcap{font-size:10.5px; color:var(--muted); margin:7px 0 0; line-height:1.5;}
+.cvbox .cvcap b{color:var(--text);}
+.loupe{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:start;}
+@media (max-width:980px){ .loupe{grid-template-columns:1fr;} }
+.ovw canvas{width:100%; height:auto; image-rendering:auto;}
+
+/* ── 확인 체크리스트 ── */
+.checkbox{border:1px solid var(--gold); border-radius:9px; background:rgba(245,232,89,.035); padding:20px 22px 22px;}
+.checkbox h2{color:var(--gold);}
+.chk{display:flex; align-items:flex-start; gap:9px; padding:9px 0; font-size:12.5px;
+  border-top:1px solid rgba(42,58,74,.8);}
+.chk:first-of-type{border-top:none;}
+.chk input{margin:3px 0 0; accent-color:#f5e859; width:15px; height:15px; flex:0 0 auto;}
+.chk .h{display:block; color:var(--muted); font-size:11px; margin-top:3px; line-height:1.55;}
+footer{color:var(--muted); font-size:11px; margin-top:34px; border-top:1px solid var(--muted2); padding-top:14px; line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>무기 키보드 아트 — 확정판 <b>여백 48/24</b> · <b>×3 재구움</b> 대조본</h1>
+<p class="sub">
+  <code>weapon-art-padding-quality-plan</code> <b>T1</b> 산출물 ·
+  게이트1 Codex 3라운드 R3 APPROVE 후 착수 ·
+  <b>D-2(아트 꽉 채움 · 카드 968) 계승</b> — 이 문서는 그 위의 후속 2축만 다룬다
+</p>
+
+<div class="quote">
+  “지금 무기가 너무 꽉차있어서 <b>여백을 조금넣고</b> 확실히 커지기만하니까 좀 깨지는거같은데
+  <b>이미지를 조금더 깔끔하게</b> 개선할수없나”
+  <span class="who">owner · 2026-09-07 12:54 디스코드</span>
+</div>
+<div class="quote">
+  “d1 a d2 q2”
+  <span class="who">owner · 2026-09-07 14:26 — D1=(a) 좌우 48/아래 24 · D2=(Q2) ×3 재구움 <b>확정</b></span>
+</div>
+
+<div class="headline">
+  <div class="k">이 문서가 하는 일</div>
+  <div class="big">
+    owner 는 이미 골랐다. 이 문서는 <em>고르게 하는 비교본이 아니라</em>
+    확정값이 실제로 어떤 그림이 되는지 <em>현행과 나란히 두고 확인시키는 대조본</em>이다.
+  </div>
+  <div class="m">
+    ⇒ <b>결정 박스 없음.</b> 남은 owner 몫은 §F 의 <b>결과 확인 3항목</b>(여백 체감 · 깨짐 해소 · 소켓 정렬)뿐이다.<br>
+    여백 값과 배율은 플랜 §5 결정 기록이 정본이고 <b>여기서 되묻지 않는다.</b>
+  </div>
+  <div class="badges">
+    <span class="badge ok">아트 1484 → 1436 (−3.2%)</span>
+    <span class="badge ok">아트/카드 96.9% → 93.7%</span>
+    <span class="badge ok">아래 여백 0 → 24</span>
+    <span class="badge gold">업스케일 2.985× → 0.935×</span>
+    <span class="badge muted">카드 968 불변 (G2=(c))</span>
+    <span class="badge muted">표시 폭 축소안 배제 (D-2 위반)</span>
+  </div>
+</div>
+
+<div class="info">
+  <b>여백 수치의 기준</b>(게이트1 R1 Med-1 로 통일) — 이 문서의 모든 여백 값은
+  ① <b>한쪽(per-side)</b> ② <b>아트 폭 1436 기준</b> ③ <b>카드 콘텐츠 가장자리 → 하우징 가장자리</b> 거리다.
+  <code>한쪽 총여백 = 아트 rect 여백 P + 스프라이트 내재 여백</code>.
+</div>
+
+<!-- ══════════════════ §A ══════════════════ -->
+<div class="sec" id="secA">
+  <h2>§A ① 현행 ↔ 확정값 3상태 대조</h2>
+  <p class="lead">
+    좌 = 현행(P 24 · 아래 0) · 우 = 확정(P 48 · 아래 24). 카드 폭 1532 · 본문 968 은 <b>양쪽 동일</b>(D-2 계승).
+    노란 사선 = 새로 생기는 여백 · 회색 사선 = 카드 하단 잔여 공백.
+  </p>
+  <div class="tabs" id="stateTabs">
+    <button class="tab" type="button" data-state="locked">미해금</button>
+    <button class="tab" type="button" data-state="lvl">해금 · 비만렙 · 미장착 <b>(최악)</b></button>
+    <button class="tab" type="button" data-state="max">해금 · 만렙 · 장착</button>
+  </div>
+  <div class="grid2" id="stateFigs"></div>
+
+  <h3>세로 검산 — 하단 공백은 <b>재발하지 않는다</b></h3>
+  <div class="tblwrap">
+    <table>
+      <caption>
+        아트 밖 콘텐츠 y 합은 <code>LayoutCard</code> 의 커서 상수 합(카드 상단 여백 22 + 아트 위 12 포함).
+        확정 아트 높이 = <code>1436 × 0.40625 = 583.375</code>.
+        <b>클램프</b> <code>ArtWidthHeightBudget()</code> = <code>(968 − (338+24)) ÷ 0.40625 = 1491.7 &gt; 1436</code>
+        ⇒ 꽉 채움이 이기고 클램프는 <b>미발동</b>(초광폭 그릇 전용 안전망으로 남는다).
+      </caption>
+      <thead><tr>
+        <th>상태</th><th>아트 밖 y 합</th>
+        <th>현행 잔여 (아트 602.875 · G 0)</th>
+        <th>확정 잔여 (아트 583.375 · G 24)</th><th>판정</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>미해금</td><td class="num">216</td><td class="num">149.1</td><td class="num">144.6</td><td><span class="ok">✅</span></td></tr>
+        <tr><td>해금 · 만렙 · 장착</td><td class="num">232</td><td class="num">133.1</td><td class="num">128.6</td><td><span class="ok">✅</span></td></tr>
+        <tr class="okrow"><td><b>해금 · 비만렙 · 미장착 (최악)</b></td><td class="num"><b>338</b></td><td class="num">27.1</td><td class="num"><b class="hi">22.6</b></td><td><span class="ok">✅ 넘침 없음</span></td></tr>
+        <tr><td>(참고) 만렙 · 미장착</td><td class="num">282</td><td class="num">83.1</td><td class="num">78.6</td><td><span class="ok">✅</span></td></tr>
+        <tr><td>(참고) 비만렙 · 장착</td><td class="num">288</td><td class="num">77.1</td><td class="num">72.6</td><td><span class="ok">✅</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info">
+    잔여가 <b>줄어든다</b>(27.1 → 22.6). 즉 여백을 넣어도 <b>하단 공백이 늘지 않는다</b> —
+    owner 가 2026-08-24 에 지적한 <i>“오른쪽 영역 하단이 화면 절반 차지”</i>(D-2 증상 ②)는 재발하지 않고
+    오히려 4.5px 좋아진다.
+  </div>
+  <div class="warn">
+    ⚠ 대신 (a) 는 세 후보 중 <b>세로 여유가 가장 빠듯하다(22.6px)</b>.
+    지금은 안전하고 열화도 안전하지만(예산 초과 시 클램프가 아트를 줄일 뿐 콘텐츠는 안 잘린다),
+    <b>카드 텍스트가 한 줄이라도 늘면 아트가 조용히 작아진다.</b>
+    <code>LayoutCard</code> y 커서 상수를 건드리는 후속 작업은 이 예산을 먼저 확인해야 한다.
+  </div>
+</div>
+
+<!-- ══════════════════ §B ══════════════════ -->
+<div class="sec" id="secB">
+  <h2>§B ② 품질 — 현행 2.985× 업스케일 ↔ ×3 재구움 0.935×</h2>
+  <p class="lead">
+    같은 <b>1436px 폭</b>에 그린 결과를 1:1 픽셀로 확대해 나란히 둔다.
+    좌 = 현행(소스 슬라이스 <code>481×208</code> → 비균일 확대) · 우 = ×3 재구움(소스 <code>1536×624</code> Single → 균일 축소).
+    판정 지점은 <b>키캡 모서리 · 키 사이 간격 2.4px · 하우징 스트로크 1.6px · 각인 글자</b>다.
+  </p>
+  <div class="ctlrow">
+    <span class="lbl">크롭 위치</span>
+    <div class="tabs" id="cropTabs" style="margin:0">
+      <button class="tab" type="button" data-crop="esc">좌상단 (esc · 숫자열)</button>
+      <button class="tab" type="button" data-crop="mid">중앙 (홈 열 각인)</button>
+      <button class="tab" type="button" data-crop="space">하단 (space · 소켓)</button>
+    </div>
+    <span class="lbl">확대</span>
+    <div class="tabs" id="zoomTabs" style="margin:0">
+      <button class="tab" type="button" data-zoom="2">2×</button>
+      <button class="tab" type="button" data-zoom="3">3×</button>
+      <button class="tab" type="button" data-zoom="4">4×</button>
+    </div>
+    <span class="lbl">키보드</span>
+    <div class="tabs" id="kbTabs" style="margin:0">
+      <button class="tab" type="button" data-kb="kb_hacker">T10 해커 (글로우)</button>
+      <button class="tab" type="button" data-kb="kb_blue">T5 청축</button>
+    </div>
+  </div>
+
+  <div class="loupe">
+    <div class="cvbox risk">
+      <h4 style="margin-top:0; color:var(--red)">현행 — 소스 481px → 표시 1436px</h4>
+      <canvas id="cvNow" width="10" height="10"></canvas>
+      <p class="cvcap">
+        가로 <b>×2.985</b> · 세로 <b>×2.805</b> (208 → 583.4) — <b>비균일</b>이라 확대와 왜곡이 동시에 온다.
+        한 소스 픽셀이 화면 3.0 × 2.8 픽셀로 벌어지고 그 사이는 bilinear 보간이 메운다.
+      </p>
+    </div>
+    <div class="cvbox pick">
+      <h4 style="margin-top:0; color:var(--teal)">확정 ×3 — 소스 1536px → 표시 1436px</h4>
+      <canvas id="cvFix" width="10" height="10"></canvas>
+      <p class="cvcap">
+        가로·세로 모두 <b>×0.935</b> (균일) — 1:1 에 가까운 <b>축소</b>라 보간이 디테일을 만들어내지 않는다.
+        Sprite Mode <b>Single</b> + 하우징 캔버스 채움이 함께 들어가야 이 그림이 된다(§D).
+      </p>
+    </div>
+  </div>
+
+  <h3>전체 폭 개요 (참고 — 축소 표시)</h3>
+  <div class="grid2">
+    <div class="cvbox ovw"><canvas id="cvNowFull" width="10" height="10"></canvas>
+      <p class="cvcap">현행 전체 — <b>페이지 폭에 맞춰 줄인 그림</b>이라 화질 판정에 쓰지 말 것(리샘플 2회).</p></div>
+    <div class="cvbox ovw"><canvas id="cvFixFull" width="10" height="10"></canvas>
+      <p class="cvcap">확정 ×3 전체 — 같은 조건으로 줄였다. <b>실루엣·여백 비교용</b>.</p></div>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <caption>
+        재구움 비용은 <b>추정이 아니라 Puppeteer 로 실제 구워 쟀다</b>(<code>ctx.scale(S,S)</code> 적용 사본 렌더).
+        <b>VRAM 은 추정</b>(BC3 1 byte/px 가정 · mipmap off · 10장 상주) —
+        <code>platformSettings.textureFormat: -1</code>(Automatic)이라 코드로 확정할 수 없어
+        <b>플랜 T5-d 실측으로 교체</b>한다. 허용 여부도 그때 확정된다.
+      </caption>
+      <thead><tr><th>안</th><th>캔버스</th><th>10장 합계 (실측)</th><th>스프라이트 폭 (Single)</th><th>1436 표시 배율</th><th>VRAM 추정</th></tr></thead>
+      <tbody>
+        <tr class="now"><td>현행 (×1)</td><td class="num">512 × 208</td><td class="num">0.51 MB</td><td class="num">481 (슬라이스)</td><td class="num"><b class="no">2.985× 업</b></td><td class="num">1.02 MB</td></tr>
+        <tr><td>×2</td><td class="num">1024 × 416</td><td class="num">1.51 MB</td><td class="num">1024</td><td class="num">1.402× 업</td><td class="num">4.06 MB</td></tr>
+        <tr class="okrow"><td><b>✅ ×3 — owner 확정</b></td><td class="num"><b>1536 × 624</b></td><td class="num"><b>3.08 MB</b></td><td class="num"><b>1536</b></td><td class="num"><b class="hi">0.935× ≈ 1:1</b></td><td class="num">9.14 MB</td></tr>
+        <tr><td>×4</td><td class="num">2048 × 832</td><td class="num">4.81 MB</td><td class="num">2048</td><td class="num">0.701× 다운</td><td class="num">16.3 MB</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="goldbox">
+    파일 크기의 대부분은 <b>글로우 3종</b>이다 — ×3 실측 <code>kb_hacker</code> 853 KB ·
+    <code>kb_optical</code> 809 KB · <code>kb_custom</code> 758 KB, 나머지 7종은 장당 108~122 KB(합 0.81 MB).
+    ⇒ T5-d 의 포맷 전수 확인에서 <b>글로우 3종이 나머지 7종과 갈릴 가능성</b>을 기본 가정으로 둔다.
+  </div>
+</div>
+
+<!-- ══════════════════ §C ══════════════════ -->
+<div class="sec" id="secC">
+  <h2>§C ③ 종횡비 왜곡 — 정사각 키캡이 직사각으로 읽힌다</h2>
+  <p class="lead">
+    <code>AspectRatioFitter</code> 는 <code>512/208 = 2.4615</code> 를 못박는데(<code>ArmamentWeaponView.cs:389</code>)
+    실제 슬라이스 rect 는 <code>481×208</code>(2.3125) 또는 <code>481×201</code>(2.3930)이고
+    <code>preserveAspect = false</code>(<code>:382</code>)라 <b>늘려 넣는다</b>.
+  </p>
+  <div class="grid2">
+    <div class="card2 risk">
+      <h5 style="color:var(--red)">현행 — 가로로 늘어난다</h5>
+      <div class="k">소스 481 × 208 → 쿼드 2.4615</div>
+      <canvas id="cvAspNow" width="10" height="10" style="width:100%;height:auto;border-radius:3px;background:#0a1017"></canvas>
+      <p class="figcap">
+        빨간 사각형은 <b>소스에서 정확히 정사각</b>인 G키 풋프린트(<code>w = h = UNIT − GAP = 27.6</code>)다 —
+        화면에서 <b>가로/세로 1.064</b> 즉 <b>가로 +6.4%</b> 늘어난다.
+        같은 오차가 알파 높이 201 인 7종에서는 <b>+2.9%</b>다.
+      </p>
+    </div>
+    <div class="card2 pick">
+      <h5 style="color:var(--teal)">Single 후 — 왜곡 0</h5>
+      <div class="k">소스 1536 × 624 → 쿼드 2.4615 (동일)</div>
+      <canvas id="cvAspFix" width="10" height="10" style="width:100%;height:auto;border-radius:3px;background:#0a1017"></canvas>
+      <p class="figcap">
+        스프라이트 rect 종횡비가 <code>AspectRatioFitter</code> 값과 <b>일치</b>하므로 늘어남이 없다 —
+        <b>가로/세로 1.000</b>. 정사각은 정사각으로 남는다.
+      </p>
+    </div>
+  </div>
+  <div class="tblwrap">
+    <table>
+      <caption>티어마다 알파 bbox 높이가 달라(208 / 201) <b>세로 배율도 티어별로 갈렸다</b> — Single 은 이것도 하나로 수렴시킨다.</caption>
+      <thead><tr><th>스프라이트</th><th>슬라이스 rect</th><th>rect 종횡비</th><th>쿼드 종횡비</th><th>가로 늘어남</th><th>세로 배율(현행)</th></tr></thead>
+      <tbody>
+        <tr class="warnrow"><td><code>kb_hacker</code> · <code>kb_custom</code> · <code>kb_optical</code></td><td class="num">481 × 208</td><td class="num">2.3125</td><td class="num">2.4615</td><td class="num"><b class="no">+6.45%</b></td><td class="num">2.805×</td></tr>
+        <tr class="warnrow"><td>나머지 7종</td><td class="num">481 × 201</td><td class="num">2.3930</td><td class="num">2.4615</td><td class="num"><b class="no">+2.86%</b></td><td class="num">2.902×</td></tr>
+        <tr class="okrow"><td><b>Single 후 — 10종 전부</b></td><td class="num"><b>1536 × 624</b></td><td class="num"><b>2.4615</b></td><td class="num">2.4615</td><td class="num"><b class="ok">0%</b></td><td class="num"><b class="ok">0.935× (균일)</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════ §D ══════════════════ -->
+<div class="sec" id="secD">
+  <h2>§D ④ 하우징 캔버스 채움 — 센터링만으론 부족하다</h2>
+  <p class="lead">
+    하우징(+그림자)은 512×208 캔버스에서 <b>479.6 × 199.6</b> 만 차지하고
+    좌 0 / 우 32.4 · 상 0 / 하 8.4 로 <b>한쪽에 쏠려</b> 있다(폭의 <b>93.67%</b>, bbox 실측 93.75%).
+    지금은 슬라이스가 그 여백을 잘라 내지만 <b>Single 로 바꾸면 그대로 화면에 나온다.</b>
+  </p>
+  <div class="grid3" id="fillFigs"></div>
+  <div class="warn">
+    ⚠ <b>(ii) 센터링만 하는 안은 채택 불가다.</b> 한쪽 총여백이 <b>92.9~93.4px</b> 가 되어
+    owner 가 고른 <b>48 의 약 2배</b>이고, (c) 96 안(아트 1340 · 여백 96)과 사실상 같은 그림이 된다.
+    키보드 절대폭도 1484 → 1345 로 <b>−9.4%</b> — <b>D-2 의 “크게” 방향을 몰래 되감는다.</b>
+  </div>
+  <div class="info">
+    ⇒ <b>(iii) 캔버스 채움</b>이 확정 경로다. 유도(현행 <code>PADX/UNIT</code> 비율 유지, 그림자 오프셋 (4,8) 포함):<br>
+    <code>15·UNIT + 2·PADX − GAP + 4 = 512</code>, <code>PADX = (14/30)·UNIT</code> ⇒ <b>UNIT ≈ 32.03 · PADX ≈ 14.95</b><br>
+    <code>5·UNIT + 2·PADY + TOPBAR − GAP + 8 = 208</code> ⇒ <b>PADY ≈ 13.12</b><br>
+    ⇒ 가시 키보드 = 아트 폭 <b>1436</b>, 한쪽 총여백 = <b>정확히 48</b>.
+    ⚠ 정확한 값은 <b>T3 가 렌더 후 bbox 실측으로 확정</b>한다(수용 기준: 불투명 bbox ≥ 캔버스의 99%).
+  </div>
+  <div class="goldbox">
+    ✅ <b>2026-09-08 T3 반영 완료 — 위 (iii) 가 정본이 됐다.</b>
+    <code>armament-keyboard-sprites.html</code> 이 <code>UNIT 32.03 · PADX 14.95 · PADY 13.12 · S 3</code> 으로
+    바뀌었고, <b>재출력 10장 전부 1536 × 624 · 불투명 bbox 채움 100.0% × 100.0%</b>
+    (수용 기준 ≥ 99% 충족, Pillow 전수 실측).
+    <br>⚠ <b>남은 owner 육안 2건</b> — UNIT 이 6.8% 커지는 동안 <code>TOPBAR</code> 16 은 고정이라
+    <b>베젤 대 키 비율이 바뀌었고</b>, 각인 폰트는 <b>UNIT 비례로 스케일하기로 확정</b>했다
+    (정본 <code>const FS = UNIT / 30</code> — 이 문서의 가정이 그대로 채택됐다).
+    전/후 캡처가 T3 산출물로 첨부돼 있으니 그것으로 판정한다.
+  </div>
+</div>
+
+<!-- ══════════════════ §E ══════════════════ -->
+<div class="sec" id="secE">
+  <h2>§E ⑤ 소켓 앵커 좌표계 오차 — 두 자리만 손보정돼 있다</h2>
+  <p class="lead">
+    앵커 uv 는 <b>512 폭 캔버스 기준</b>으로 뽑는데(<code>armament-keyboard-sprites.html:265-270</code>, <code>/W</code>)
+    런타임은 <b>481 폭으로 잘린 스프라이트를 쿼드 전체에 늘려 넣는다</b>. ⇒ 좌표계가 다르다.
+    2026-08-23 <code>194de7b7</code>(“무기 소켓 정렬”)이 <code>enter</code>·<code>rshift</code> 두 자리만
+    플러드필 실측으로 손보정했는데, 그 값이 정확히 <code>캔버스x / 481</code> 이다 —
+    <b>그 커밋의 정체는 512→481 스트레치 보정이었다.</b>
+  </p>
+  <div class="tblwrap">
+    <table>
+      <caption>
+        오차 px 는 <b>현행 아트 폭 1484 기준</b>이다(확정 1436 에서는 각각 5.0 / 7.1 / 39.6 으로 비례 축소).
+        uv 재현: <code>armament-keyboard-sprites.html</code> 의 <code>ROWS</code>/<code>keyLayout()</code> 를 그대로 실행.
+        Single 전환 후에는 <b>5자리 전부 T3 재생성값</b>으로 교체되고 오차는 0 이 된다(플랜 T4-c).
+      </caption>
+      <thead><tr><th>소켓</th><th>html 산출 uv (/512)</th><th>실제 필요값 (/481)</th><th>배포된 값</th><th>손보정</th><th>현행 오차 (1484)</th></tr></thead>
+      <tbody>
+        <tr class="okrow"><td><code>enter</code></td><td class="num">0.8380</td><td class="num">0.8919</td><td class="num"><b>0.8909</b></td><td><span class="ok">✅ 보정됨</span></td><td class="num"><span class="ok">≈ 0</span></td></tr>
+        <tr class="okrow"><td><code>rshift</code></td><td class="num">0.8233</td><td class="num">0.8762</td><td class="num"><b>0.8753</b></td><td><span class="ok">✅ 보정됨</span></td><td class="num"><span class="ok">≈ 0</span></td></tr>
+        <tr class="warnrow"><td><code>esc</code></td><td class="num">0.0543</td><td class="num">0.0578</td><td class="num">0.0543</td><td><span class="no">✗ 미보정</span></td><td class="num"><b class="no">5.2 px</b></td></tr>
+        <tr class="warnrow"><td><code>caps</code></td><td class="num">0.0763</td><td class="num">0.0812</td><td class="num">0.0763</td><td><span class="no">✗ 미보정</span></td><td class="num"><b class="no">7.3 px</b></td></tr>
+        <tr class="warnrow"><td><code>space</code></td><td class="num">0.4278</td><td class="num">0.4554</td><td class="num">0.4278</td><td><span class="no">✗ 미보정</span></td><td class="num"><b class="no">40.9 px</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cvbox" style="margin-top:14px">
+    <h4 style="margin-top:0">현행 소켓 배치 오차 (1436 폭 · 1:1)</h4>
+    <canvas id="cvSock" width="10" height="10" style="width:100%;height:auto"></canvas>
+    <p class="cvcap">
+      <span style="color:var(--red)">■ 빨강</span> = 현재 코드가 놓는 자리(배포 uv × 아트폭) ·
+      <span style="color:var(--teal)">■ 청록</span> = 실제 키 중심(<code>캔버스x/481</code> × 아트폭).
+      <code>space</code> 가 가장 크게 벌어진다 — 스페이스바가 6.25u 로 넓어 <b>키 안에는 있지만 중앙이 아니다</b>.
+    </p>
+  </div>
+  <div class="info">
+    <b>구조적 해법 = Sprite Mode Single.</b> 스트레치가 사라지면 <code>uv/512</code> 가 정확해진다.
+    ⚠ 단 손보정 2건을 남기면 <b>이번엔 반대로 어긋난다</b> — 플랜 <b>T4-b</b> 의
+    <b>파일 4개 전량 교체</b>(JSON · <code>Armament.cs</code> 기본 테이블 · html 2개, 엔트리 37개)로 흡수한다.
+    <code>IsArmamentSocketAnchorJsonCompatible</code>(<code>Armament.cs:258-288</code>)이
+    허용 오차 <b>1e-4</b> 로 대조하므로 <b>JSON 만 고치면 조용히 no-op</b> 된다.
+  </div>
+</div>
+
+<!-- ══════════════════ §F ══════════════════ -->
+<div class="sec checkbox" id="secF">
+  <h2>§F owner 결과 확인 — 결정이 아니라 확인이다</h2>
+  <p class="lead" style="color:var(--muted)">
+    여백 값(48/24)과 배율(×3)은 <b>이미 확정</b>이다(14:26). 아래는 구현 후 T5 캡처를 보고
+    <b>그 확정이 의도대로 나왔는지</b> 확인하는 항목이다 — 다시 고르는 자리가 아니다.
+  </p>
+  <label class="chk"><input type="checkbox">
+    <span><b>ⓐ 여백이 “조금” 수준으로 읽히는가</b>
+      <span class="h">아트 1436(카드의 93.7%) · 아래 여백 24 · 한쪽 총여백 48.
+        ⛔ 92.9~93.4px 로 보이면 하우징 채움(§D-iii)이 실패한 것이다.</span></span></label>
+  <label class="chk"><input type="checkbox">
+    <span><b>ⓑ 깨짐이 해소됐는가</b>
+      <span class="h">업스케일 2.985× → 0.935×. §B 의 1:1 크롭에서 키캡 모서리·키 간격 2.4px·
+        하우징 스트로크 1.6px 가 살아났는지.</span></span></label>
+  <label class="chk"><input type="checkbox">
+    <span><b>ⓒ 소켓이 의도한 키 위에 얹혔는가</b>
+      <span class="h">5자리 × 10키보드(엔트리 37). 젬 드래그 강조 링은 <b>젬 장착 탭에서만</b> 켜지므로
+        그 상태 캡처가 따로 필요하다.</span></span></label>
+  <label class="chk"><input type="checkbox">
+    <span><b>(부수) 메인 메뉴 쇼케이스가 작아 보이지 않는가</b>
+      <span class="h">이번 지시 범위 <b>밖</b>인데 에셋 공유로 끌려 들어온다 —
+        <code>MainMenuView.cs:1254</code> 만 종횡비를 <code>sprite.rect</code> 에서 읽어
+        높이가 <b>332.1 / 320.9 → 312.0</b> 으로 수렴한다(티어별 11px 흔들림 해소).</span></span></label>
+</div>
+
+<footer>
+  <b>런타임 미실측 3건</b>(게이트1 R3 가 표기 확인) — ① 쇼케이스 높이 312.0(코드 산술) ②
+  텍스처 포맷·메모리(플랜 T5-d) ③ 하우징 채움 <code>UNIT 32.03</code> 유도식(T3 렌더 실측으로 확정).<br>
+  <b>다음 관문</b> — T3 의 <code>.png</code> 커밋마다 <b>승인서 선행</b>(플랜 하드 제약 3) ·
+  게이트2 구현 리뷰(02→03). <b>T3 → T4 순서 고정</b>(뒤집으면 손보정 2건이 반대로 어긋난다).<br>
+  정본 <code>html/armament-menu.html</code> 은 이 T1 에서 확정 여백 환산(좌우 ≈18.5 · 아래 ≈9.3)이 반영됐다.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ═══════════════ 1. 코드/에셋 실측 상수 ═══════════════ */
+  var BODY_W = 1872, BODY_H = 968;
+  var LIST_W = 320, COL_GAP = 20;
+  var CARD_W = BODY_W - LIST_W - COL_GAP;      // 1532
+  var ASPECT = 208 / 512;                       // 0.40625
+  var CARD_TOP = 22, ART_TOP = 12;              // CardContentTop · ArmamentWeaponArtTopPadding
+  var CTA_W = 200, BAR_W = 320, CARD_PAD_X = 24;
+  var NOW = { P: 24, G: 0 };                    // 현행
+  var FIX = { P: 48, G: 24 };                   // owner 확정 (a)
+  var HOUSE_RATIO = 479.6 / 512;                // 하우징(+그림자) 캔버스 점유 = 0.936719
+
+  function aw(P){ return CARD_W - 2 * P; }
+  function ah(w){ return w * ASPECT; }
+  function f1(n){ return n.toFixed(1); }
+
+  /* 상태별 행 — [라벨, 높이, 진행량, 종류] · 진행량 합 + 34 = 아트 밖 y 합 */
+  function rows(state){
+    if(state === 'locked') return [
+      ['🔒 제목', 32, 44, 'row'],
+      ['미해금 설명 2줄', 40, 50, 'row'],
+      ['해금 비용', 24, 44, 'row'],
+      ['해금하기 CTA', 44, 0, 'cta']
+    ];
+    var base = [
+      ['⚔ 제목', 32, 44, 'row'],
+      ['Lv. n / 8', 24, 32, 'row'],
+      ['레벨 바', 10, 28, 'bar'],
+      ['데미지 기여', 22, 30, 'row'],
+      ['소켓 n / m 해금됨', 22, 40, 'row']
+    ];
+    if(state === 'max') return base.concat([['최대 레벨입니다.', 24, 0, 'gold']]);
+    return base.concat([
+      ['장착하기 CTA', 40, 50, 'cta'],
+      ['레벨업 비용', 22, 36, 'row'],
+      ['레벨업 CTA', 44, 0, 'cta']
+    ]);
+  }
+  var OUTSIDE = { locked: 216, max: 232, lvl: 338 };
+  var STATE_NAME = { locked: '미해금', max: '해금 · 만렙 · 장착', lvl: '해금 · 비만렙 · 미장착' };
+
+  /* ═══════════════ 2. DOM 헬퍼 (선례 문법 그대로) ═══════════════ */
+  function el(cls, style, html){
+    var d = document.createElement('div');
+    if(cls) d.className = cls;
+    if(style) d.setAttribute('style', style);
+    if(html != null) d.innerHTML = html;
+    return d;
+  }
+  function box(p, cls, k, x, y, w, h, extra){
+    var s = 'left:' + (x*k).toFixed(2) + 'px;top:' + (y*k).toFixed(2) + 'px;'
+          + 'width:' + Math.max(1, w*k).toFixed(2) + 'px;height:' + Math.max(1, h*k).toFixed(2) + 'px;'
+          + (extra || '');
+    var d = el('blk ' + cls, s); p.appendChild(d); return d;
+  }
+  /* 라벨은 글자 크기가 비례하지 않으므로 y = 가상좌표 × k + 픽셀 오프셋 (선례 주석 그대로) */
+  function tx(p, cls, k, x, y, html, dy){
+    var d = el('txt ' + cls, 'left:' + (x*k).toFixed(2) + 'px;top:' + (y*k + (dy||0)).toFixed(2) + 'px;', html);
+    p.appendChild(d); return d;
+  }
+
+  /* ═══════════════ 3. §A — 3상태 레이아웃 도해 ═══════════════ */
+  /* spec: { P, G, state, showHouse } */
+  function drawLayout(spec, k){
+    var hud = el('hud', 'width:' + (BODY_W*k).toFixed(1) + 'px;height:' + (BODY_H*k).toFixed(1) + 'px;');
+    var artWidth = aw(spec.P), artHeight = ah(artWidth);
+
+    /* 리스트 열 */
+    box(hud, 'list', k, 0, 0, LIST_W, BODY_H);
+    for(var i = 0; i < 10; i++){
+      box(hud, 'listrow' , k, 8, 10 + i * 52, LIST_W - 16, 46);
+    }
+
+    /* 카드 */
+    var cx = LIST_W + COL_GAP;
+    box(hud, 'card', k, cx, 0, CARD_W, BODY_H);
+
+    /* 여백 표시 — 아트 좌우 */
+    var artX = cx + spec.P;
+    var artY = CARD_TOP + ART_TOP;
+    if(spec.P > 0){
+      box(hud, 'padz', k, cx, artY, spec.P, artHeight);
+      box(hud, 'padz', k, artX + artWidth, artY, spec.P, artHeight);
+    }
+
+    /* 아트 rect + (옵션) 하우징 */
+    box(hud, 'art', k, artX, artY, artWidth, artHeight);
+    if(spec.showHouse){
+      var hw = artWidth * HOUSE_RATIO;
+      box(hud, 'house', k, artX + (artWidth - hw) / 2, artY, hw, artHeight);
+    }
+    tx(hud, 'teal b', k, artX + 6, artY, '아트 ' + artWidth + ' × ' + f1(artHeight), 4);
+    tx(hud, 'gold sm', k, artX + 6, artY, 'P ' + spec.P + ' (한쪽)', 18);
+
+    /* 아래 여백 */
+    var y = artY + artHeight;
+    if(spec.G > 0){
+      box(hud, 'padz', k, artX, y, artWidth, spec.G);
+      tx(hud, 'gold sm', k, artX + 6, y, '아래 여백 ' + spec.G, 1);
+    } else {
+      tx(hud, 'red sm b', k, artX + 6, y, '아래 여백 0 — 제목이 아트에 붙는다', 1);
+    }
+    y += spec.G;
+
+    /* 카드 행 */
+    rows(spec.state).forEach(function(r){
+      var label = r[0], h = r[1], adv = r[2], kind = r[3];
+      var rw, rx;
+      if(kind === 'cta'){ rw = CTA_W; rx = cx + CARD_W / 2 - CTA_W / 2; }
+      else if(kind === 'bar'){ rw = BAR_W; rx = cx + CARD_W / 2 - BAR_W / 2; }
+      else { rw = Math.min(520, CARD_W - CARD_PAD_X * 2); rx = cx + CARD_PAD_X; }
+      box(hud, 'row ' + (kind === 'row' ? '' : kind), k, rx, y, rw, h);
+      tx(hud, 'mut sm', k, rx + rw + 8, y, label, 0);
+      y += (adv || h);
+    });
+
+    /* 하단 잔여 */
+    var bottom = OUTSIDE[spec.state] + spec.G + artHeight;
+    var slack = BODY_H - bottom;
+    if(slack > 2){
+      box(hud, 'slack', k, cx + CARD_PAD_X, bottom, CARD_W - CARD_PAD_X * 2, slack);
+      /* 잔여 밴드가 얇으면(최악 분기 22.6 × k ≈ 8px) 라벨이 hud 밖으로 밀려 overflow:hidden 에 잘린다
+         — 렌더 검증에서 실제로 안 보였다. 밴드가 얇을 땐 **위쪽에** 붙인다. */
+      var thin = slack * k < 16;
+      tx(hud, 'mut sm b', k, cx + CARD_PAD_X + 8, bottom, '하단 잔여 ' + f1(slack) + ' px', thin ? -12 : 3);
+    }
+    return { hud: hud, artWidth: artWidth, artHeight: artHeight, slack: slack, bottom: bottom };
+  }
+
+  function figure(host, title, kicker, spec, k, capHtml, cls){
+    var c = el('card2 ' + (cls || ''));
+    c.appendChild(el(null, null, '<h5>' + title + '</h5><div class="k">' + kicker + '</div>'));
+    var r = drawLayout(spec, k);
+    c.appendChild(r.hud);
+    c.appendChild(el('figcap', null, capHtml(r)));
+    host.appendChild(c);
+    return r;
+  }
+
+  var K_LAYOUT = 0.355;
+  function renderState(state){
+    var host = document.getElementById('stateFigs');
+    host.innerHTML = '';
+    figure(host, '현행', 'P 24 · 아래 0 · ' + STATE_NAME[state],
+      { P: NOW.P, G: NOW.G, state: state }, K_LAYOUT,
+      function(r){
+        return '아트 <b>' + r.artWidth + ' × ' + f1(r.artHeight) + '</b> · '
+          + '아트/카드 <span class="pct">' + (100 * r.artWidth / CARD_W).toFixed(1) + '%</span> · '
+          + '하단 잔여 <b>' + f1(r.slack) + '</b> px<br>'
+          + '<b style="color:var(--red)">아래 여백이 0</b> 이라 제목이 아트 바닥에 딱 붙는다 '
+          + '(<code>LayoutCard :510</code>).';
+      }, 'risk');
+    figure(host, '확정 (a)', 'P 48 · 아래 24 · ' + STATE_NAME[state],
+      { P: FIX.P, G: FIX.G, state: state }, K_LAYOUT,
+      function(r){
+        return '아트 <b>' + r.artWidth + ' × ' + f1(r.artHeight) + '</b> · '
+          + '아트/카드 <span class="pct">' + (100 * r.artWidth / CARD_W).toFixed(1) + '%</span> · '
+          + '하단 잔여 <b>' + f1(r.slack) + '</b> px<br>'
+          + '노란 사선이 <b>새로 생기는 여백</b>이다. 카드 폭 1532 · 본문 968 은 <b>불변</b>(D-2 계승).';
+      }, 'pick');
+  }
+
+  /* ═══════════════ 4. §D — 하우징 채움 3안 도해 ═══════════════ */
+  function fillFig(host, title, kicker, mode, cls, capHtml){
+    var c = el('card2 ' + (cls || ''));
+    c.appendChild(el(null, null, '<h5>' + title + '</h5><div class="k">' + kicker + '</div>'));
+    /* k 는 grid3 한 칸(≈469px)에 카드 1532 가 **통째로** 들어가게 잡는다 —
+       0.42 로 잡았더니 우측이 잘려 (i) 의 "우측 빈칸"이 화면 밖으로 나갔다(렌더 검증에서 발각). */
+    var k = 0.29;
+    var artWidth = aw(FIX.P), artHeight = ah(artWidth);
+    /* +130 = 아트 위 30 + 아래 라벨 자리. +90 이면 총여백 라벨 밑줄이 잘린다(렌더 검증). */
+    var W = CARD_W, H = artHeight + 130;
+    var hud = el('hud', 'width:' + (W*k).toFixed(1) + 'px;height:' + (H*k).toFixed(1) + 'px;');
+    box(hud, 'card', k, 0, 0, CARD_W, H);
+    /* 아트 여백 */
+    box(hud, 'padz', k, 0, 30, FIX.P, artHeight);
+    box(hud, 'padz', k, FIX.P + artWidth, 30, FIX.P, artHeight);
+    box(hud, 'art', k, FIX.P, 30, artWidth, artHeight);
+
+    var hw, hx, sideTotal;
+    if(mode === 'raw'){                       /* 미조치 Single — 여백 전부 우측 */
+      hw = artWidth * HOUSE_RATIO; hx = FIX.P;
+      box(hud, 'gutter', k, FIX.P + hw, 30, artWidth - hw, artHeight);
+      tx(hud, 'red sm b', k, FIX.P + hw + 6, 30, f1(artWidth - hw) + 'px 빈칸 (우측만)', 12);
+      sideTotal = null;
+    } else if(mode === 'center'){             /* 센터링만 */
+      hw = artWidth * HOUSE_RATIO; hx = FIX.P + (artWidth - hw) / 2;
+      box(hud, 'gutter', k, FIX.P, 30, (artWidth - hw) / 2, artHeight);
+      box(hud, 'gutter', k, hx + hw, 30, (artWidth - hw) / 2, artHeight);
+      sideTotal = FIX.P + (artWidth - hw) / 2;
+    } else {                                  /* 캔버스 채움 */
+      hw = artWidth; hx = FIX.P;
+      sideTotal = FIX.P;
+    }
+    box(hud, 'house', k, hx, 30, hw, artHeight);
+    tx(hud, 'teal b', k, hx + 8, 30, '하우징 ' + f1(hw) + 'px', 6);
+    if(sideTotal != null){
+      tx(hud, (Math.abs(sideTotal - FIX.P) < 0.5 ? 'gold' : 'red') + ' sm b', k, 8, 30 + artHeight,
+         '한쪽 총여백 ' + f1(sideTotal) + ' px', 8);
+    }
+    c.appendChild(hud);
+    c.appendChild(el('figcap', null, capHtml(hw, sideTotal)));
+    host.appendChild(c);
+  }
+
+  function renderFill(){
+    var host = document.getElementById('fillFigs');
+    host.innerHTML = '';
+    fillFig(host, '(i) 미조치 Single', '여백이 전부 우측으로', 'raw', 'risk', function(hw){
+      return '오른쪽에만 <b style="color:var(--red)">' + f1(aw(FIX.P) - hw) + 'px</b> 빈칸이 몰린다 — '
+        + '현재 여백이 전부 우측(32.4/512)이기 때문이다. <b>비대칭이라 명백한 결함.</b>';
+    });
+    fillFig(host, '(ii) 센터링만', '대칭이지만 여백이 2배', 'center', 'risk', function(hw, side){
+      return '가시 키보드 <b>' + f1(hw) + 'px</b> · 한쪽 총여백 <b style="color:var(--red)">' + f1(side) + 'px</b>'
+        + '(bbox 실측 93.75% 로 재면 92.9) — <b>owner 가 고른 48 의 약 2배.</b><br>'
+        + '키보드 절대폭 1484 → ' + f1(hw) + ' = <b style="color:var(--red)">−9.4%</b>. <b>⛔ 채택 불가.</b>';
+    });
+    fillFig(host, '(iii) 캔버스 채움 — 확정 경로', '내재 여백 제거', 'fill', 'pick', function(hw, side){
+      return '가시 키보드 = 아트 폭 <b>' + f1(hw) + '</b> · 한쪽 총여백 = <b class="pct">정확히 ' + f1(side) + '</b>'
+        + ' ⇒ owner 확정값과 일치.<br><code>UNIT 30→32.03 · PADX 14→14.95 · PADY 14→13.12</code> '
+        + '(T3 가 bbox 실측으로 확정 · 수용 기준 bbox ≥ 99%).';
+    });
+  }
+
+  /* ═══════════════ 5. 키보드 드로잉 — 정본 사본 ═══════════════
+     출처: html/armament-keyboard-sprites.html:100-240
+     ⚠ 사본이다(파일 머리 주석 참조). 정본 변경 시 함께 갱신할 것.
+     ⚠ 의도적 차이 1건 — 각인 폰트를 UNIT 비례로 스케일한다(정본은 9px 고정). */
+  var ROWS = [
+    [['`',1],['1',1],['2',1],['3',1],['4',1],['5',1],['6',1],['7',1],['8',1],['9',1],['0',1],['-',1],['=',1],['⌫',2]],
+    [['⇥',1.5],['Q',1],['W',1],['E',1],['R',1],['T',1],['Y',1],['U',1],['I',1],['O',1],['P',1],['[',1],[']',1],['\\',1.5]],
+    [['⇪',1.75],['A',1],['S',1],['D',1],['F',1],['G',1],['H',1],['J',1],['K',1],['L',1],[';',1],["'",1],['⏎',2.25]],
+    [['⇧',2.25],['Z',1],['X',1],['C',1],['V',1],['B',1],['N',1],['M',1],[',',1],['.',1],['/',1],['⇧',2.75]],
+    [['ctrl',1.25],['win',1.25],['alt',1.25],['',6.25],['alt',1.25],['fn',1.25],['≡',1.25],['ctrl',1.25]]
+  ];
+  ROWS[0][0][0] = 'esc';
+  var SOCKET_SPOTS = { esc:[0,0], enter:[2,12], space:[4,3], caps:[2,0], rshift:[3,11] };
+  var KEYBOARDS = {
+    kb_blue:   { id:'kb_blue', name:'T5 청축', body:'#1e242e', accent:'#4aa8e0', cap:'#28303c', txt:'#cfe2ee',
+                 led:'#4aa8e0', sw:'#4aa8e0',
+                 sockets:[{spot:'esc'},{spot:'caps'},{spot:'enter'},{spot:'space'}] },
+    kb_hacker: { id:'kb_hacker', name:'T10 해커 키보드', body:'#0f1014', accent:'#b98cff', cap:'#191b22', txt:'#d8c8ff',
+                 led:'rainbow', glow:true,
+                 sockets:[{spot:'esc'},{spot:'caps'},{spot:'enter'},{spot:'rshift'},{spot:'space'}] }
+  };
+
+  /* 기하 — 정본은 모듈 상수지만 여기선 안(現行/채움)마다 바꿔야 해서 가변으로 든다 */
+  var GEOM = { W:512, H:208, UNIT:30, GAP:2.4, PADX:14, PADY:14, TOPBAR:16 };
+  var GEOM_FILL = { W:512, H:208, UNIT:32.03, GAP:2.4, PADX:14.95, PADY:13.12, TOPBAR:16 };
+  function keyLayout(g){
+    var out = [];
+    ROWS.forEach(function(row, r){
+      var x = g.PADX;
+      row.forEach(function(e, c){
+        var u = e[1], w = u * g.UNIT - g.GAP;
+        out.push({ r:r, c:c, label:e[0], x:x, y:g.PADY + g.TOPBAR + r * g.UNIT, w:w, h:g.UNIT - g.GAP });
+        x += u * g.UNIT;
+      });
+    });
+    return out;
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+  }
+  function hexA(hex,a){
+    if(hex === 'rainbow') hex = '#b98cff';
+    var n = parseInt(hex.slice(1),16);
+    return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+  }
+  function shade(hex,amt){
+    var n = parseInt(hex.slice(1),16);
+    function cl(v){ return Math.max(0, Math.min(255, v + amt)); }
+    return 'rgb(' + cl((n>>16)&255) + ',' + cl((n>>8)&255) + ',' + cl(n&255) + ')';
+  }
+  function drawKeyboard(ctx, kb, g){
+    var KEYS = keyLayout(g);
+    ctx.clearRect(0, 0, g.W, g.H);
+    var bw = 15*g.UNIT + g.PADX*2 - g.GAP, bh = 5*g.UNIT + g.PADY*2 + g.TOPBAR - g.GAP;
+
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    roundRect(ctx, 4, 8, bw, bh, 8); ctx.fill();
+
+    var grad = ctx.createLinearGradient(0,0,0,bh);
+    grad.addColorStop(0, shade(kb.body, 14));
+    grad.addColorStop(1, shade(kb.body, -20));
+    ctx.fillStyle = grad;
+    roundRect(ctx, 0, 0, bw, bh, 8); ctx.fill();
+    ctx.strokeStyle = hexA(kb.accent, .5); ctx.lineWidth = 1.6;
+    roundRect(ctx, 0, 0, bw, bh, 8); ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
+    roundRect(ctx, 6, 5, bw-12, g.TOPBAR-6, 3); ctx.fill();
+    if(kb.led){
+      for(var i = 0; i < 3; i++){
+        var lx = bw - 16 - i*10, ly = 5 + (g.TOPBAR-6)/2;
+        ctx.fillStyle = kb.led === 'rainbow' ? ['#ff5b5b','#63e6a3','#5ac8ff'][i] : hexA(kb.led,.92);
+        ctx.beginPath(); ctx.arc(lx, ly, 2.1, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    var socketByKey = {};
+    kb.sockets.forEach(function(s){ var p = SOCKET_SPOTS[s.spot]; socketByKey[p[0]+','+p[1]] = 1; });
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var fscale = g.UNIT / 30;                      /* ⚠ 정본과 의도적으로 다른 부분 */
+    KEYS.forEach(function(k){
+      var isSocket = socketByKey[k.r+','+k.c];
+      var rad = 3.5;
+      if(isSocket){
+        ctx.fillStyle = 'rgba(0,0,0,.80)';
+        roundRect(ctx, k.x, k.y, k.w, k.h, rad); ctx.fill();
+        ctx.strokeStyle = hexA(kb.sw || kb.accent, .55); ctx.lineWidth = 1;
+        roundRect(ctx, k.x+2.5, k.y+2.5, k.w-5, k.h-5, 2); ctx.stroke();
+      } else {
+        ctx.fillStyle = shade(kb.cap, -20);
+        roundRect(ctx, k.x, k.y+1.6, k.w, k.h-1, rad); ctx.fill();
+        ctx.fillStyle = kb.cap;
+        roundRect(ctx, k.x, k.y, k.w, k.h-2, rad); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = .8;
+        roundRect(ctx, k.x+.8, k.y+.8, k.w-1.6, k.h-3.4, rad-1); ctx.stroke();
+        if(kb.led){
+          ctx.fillStyle = kb.led === 'rainbow'
+            ? ['rgba(255,91,91,.20)','rgba(99,230,163,.20)','rgba(90,200,255,.20)'][(k.r+k.c)%3]
+            : hexA(kb.led,.16);
+          roundRect(ctx, k.x, k.y+k.h-4.2, k.w, 2.6, 1.2); ctx.fill();
+        }
+        if(k.label){
+          ctx.fillStyle = kb.txt;
+          var long = k.label.length > 2;
+          ctx.font = ((long ? 7 : 9) * fscale).toFixed(2) + 'px "Courier New", monospace';
+          ctx.fillText(k.label, k.x + k.w/2, k.y + k.h/2 - 1);
+        }
+      }
+    });
+
+    if(kb.glow){
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      var gg = ctx.createRadialGradient(bw/2, bh/2, 14, bw/2, bh/2, bw*0.5);
+      gg.addColorStop(0, hexA(kb.accent,.13)); gg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gg; ctx.fillRect(0, 0, g.W, g.H); ctx.restore();
+    }
+    return { bw: bw, bh: bh, KEYS: KEYS };
+  }
+
+  /* 소스 캔버스 한 장 — S 배율 · 기하 g */
+  function bake(kb, S, g){
+    var cv = document.createElement('canvas');
+    cv.width = Math.round(g.W * S); cv.height = Math.round(g.H * S);
+    var ctx = cv.getContext('2d');
+    ctx.scale(S, S);
+    var info = drawKeyboard(ctx, kb, g);
+    return { cv: cv, info: info, S: S, g: g };
+  }
+
+  /* ═══════════════ 6. §B — 배율 시뮬레이션 ═══════════════
+     Unity 와 같은 순서: ① 소스 해상도로 그림 → ② drawImage 로 표시 폭에 리샘플.
+     현행은 ②가 비균일(481→1436 · 208→583.4)이라 왜곡까지 재현된다. */
+  var DISP_W = aw(FIX.P);                 // 1436
+  var DISP_H = ah(DISP_W);                // 583.375
+
+  function renderTarget(kind, kbId){
+    var t = document.createElement('canvas');
+    t.width = Math.round(DISP_W); t.height = Math.round(DISP_H);
+    var c = t.getContext('2d');
+    c.imageSmoothingEnabled = true;
+    if(c.imageSmoothingQuality) c.imageSmoothingQuality = 'high';
+    if(kind === 'now'){
+      /* 현행 — ×1 소스에서 슬라이스 rect(481 × 208)만 떠서 비균일 확대 */
+      var src = bake(KEYBOARDS[kbId], 1, GEOM);
+      c.drawImage(src.cv, 0, 0, 481, 208, 0, 0, t.width, t.height);
+    } else {
+      /* 확정 — ×3 + 하우징 캔버스 채움, 전체 캔버스를 균일 축소 */
+      var src2 = bake(KEYBOARDS[kbId], 3, GEOM_FILL);
+      c.drawImage(src2.cv, 0, 0, src2.cv.width, src2.cv.height, 0, 0, t.width, t.height);
+    }
+    return t;
+  }
+
+  var CROPS = {                            /* 1436 폭 기준 관심 영역 */
+    esc:   { x: 6,   y: 30,  w: 300, h: 190 },
+    mid:   { x: 300, y: 210, w: 300, h: 190 },
+    space: { x: 330, y: 400, w: 300, h: 175 }
+  };
+  var uiState = { crop: 'esc', zoom: 3, kb: 'kb_hacker' };
+  var cache = {};
+
+  function target(kind){
+    var key = kind + '|' + uiState.kb;
+    if(!cache[key]) cache[key] = renderTarget(kind, uiState.kb);
+    return cache[key];
+  }
+
+  function paintLoupe(){
+    var cr = CROPS[uiState.crop], z = uiState.zoom;
+    [['cvNow','now'], ['cvFix','fix']].forEach(function(pair){
+      var cv = document.getElementById(pair[0]);
+      cv.width = cr.w * z; cv.height = cr.h * z;
+      var c = cv.getContext('2d');
+      c.imageSmoothingEnabled = false;     /* 확대는 nearest — 실제 픽셀을 보여준다 */
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.drawImage(target(pair[1]), cr.x, cr.y, cr.w, cr.h, 0, 0, cv.width, cv.height);
+      cv.style.width = Math.min(cr.w * z, 700) + 'px';
+      cv.style.height = 'auto';
+    });
+  }
+  function paintFull(){
+    [['cvNowFull','now'], ['cvFixFull','fix']].forEach(function(pair){
+      var cv = document.getElementById(pair[0]);
+      cv.width = Math.round(DISP_W); cv.height = Math.round(DISP_H);
+      var c = cv.getContext('2d');
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.drawImage(target(pair[1]), 0, 0);
+    });
+  }
+
+  /* ═══════════════ 7. §C — 종횡비 왜곡 도해 ═══════════════ */
+  function paintAspect(){
+    /* 소스에서 정사각인 키캡을 빨간 사각으로 겹쳐 그려 늘어남을 보인다 */
+    var w = 760, h = Math.round(w * ASPECT);
+    [['cvAspNow','now'], ['cvAspFix','fix']].forEach(function(pair){
+      var cv = document.getElementById(pair[0]);
+      cv.width = w; cv.height = h;
+      var c = cv.getContext('2d');
+      c.imageSmoothingEnabled = true;
+      c.clearRect(0, 0, w, h);
+      c.drawImage(target(pair[1]), 0, 0, w, h);
+
+      /* 'G' 키의 **키 풋프린트**(1u) — 소스에서 `w = h = UNIT − GAP` 라 정확히 정사각이다.
+         ⚠ 키캡 「윗면」(h−2)을 쓰면 소스부터 정사각이 아니라 도해의 주장이 거짓이 된다
+            (렌더 검증에서 발각 — 27.6×25.6 이라 소스 비율이 이미 1.078 이었다). */
+      var isNow = pair[1] === 'now';
+      var g = isNow ? GEOM : GEOM_FILL;
+      var KEYS = keyLayout(g);
+      var gk = KEYS.filter(function(k){ return k.label === 'G'; })[0];
+      var sx = isNow ? (w / 481) : (w / g.W);
+      var sy = isNow ? (h / 208) : (h / g.H);
+      c.strokeStyle = '#ff6b6b'; c.lineWidth = 2;
+      c.strokeRect(gk.x * sx, gk.y * sy, gk.w * sx, gk.h * sy);
+      var rw = gk.w * sx, rh = gk.h * sy;
+      c.fillStyle = '#ff6b6b';
+      c.font = '11px "Courier New", monospace'; c.textAlign = 'left'; c.textBaseline = 'top';
+      c.fillText('G키 ' + rw.toFixed(1) + ' × ' + rh.toFixed(1)
+        + '  (가로/세로 ' + (rw / rh).toFixed(3) + ')', gk.x * sx, gk.y * sy + rh + 4);
+    });
+  }
+
+  /* ═══════════════ 8. §E — 소켓 오차 도해 ═══════════════ */
+  function paintSockets(){
+    var cv = document.getElementById('cvSock');
+    cv.width = Math.round(DISP_W); cv.height = Math.round(DISP_H);
+    var c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.drawImage(target('now'), 0, 0);
+
+    /* 배포된 uv(코드가 쓰는 값) vs 실제 필요값(캔버스x/481) */
+    var SHIP = { esc:[0.0543,0.2106], caps:[0.0763,0.4990], enter:[0.8909,0.4990],
+                 space:[0.4278,0.7875], rshift:[0.8753,0.6433] };
+    var KEYS = keyLayout(GEOM);
+    c.font = 'bold 13px "Courier New", monospace'; c.textBaseline = 'middle';
+    Object.keys(SHIP).forEach(function(name){
+      var p = SOCKET_SPOTS[name];
+      var k = KEYS.filter(function(q){ return q.r === p[0] && q.c === p[1]; })[0];
+      var trueU = (k.x + k.w/2) / 481, trueV = (k.y + k.h/2) / 208;
+      var px = SHIP[name][0] * cv.width, py = SHIP[name][1] * cv.height;
+      var tx2 = trueU * cv.width,        ty2 = trueV * cv.height;
+
+      c.strokeStyle = '#57d1b8'; c.lineWidth = 2;
+      c.beginPath(); c.arc(tx2, ty2, 15, 0, Math.PI*2); c.stroke();
+      c.strokeStyle = '#ff6b6b'; c.lineWidth = 2;
+      c.beginPath(); c.arc(px, py, 15, 0, Math.PI*2); c.stroke();
+
+      var d = Math.abs(tx2 - px);
+      if(d > 3){
+        c.strokeStyle = '#ff6b6b'; c.lineWidth = 1.4;
+        c.beginPath(); c.moveTo(px, py); c.lineTo(tx2, ty2); c.stroke();
+      }
+      c.fillStyle = d > 3 ? '#ff6b6b' : '#57d1b8';
+      c.textAlign = 'center';
+      c.fillText(name + (d > 3 ? ' Δ' + d.toFixed(0) + 'px' : ' ✓'),
+                 Math.min(cv.width - 60, Math.max(60, (px + tx2) / 2)), py - 26);
+    });
+  }
+
+  /* ═══════════════ 9. 탭 배선 ═══════════════ */
+  function wireTabs(hostId, attr, init, onPick){
+    var host = document.getElementById(hostId);
+    var btns = [].slice.call(host.querySelectorAll('.tab'));
+    function pick(v){
+      btns.forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute(attr) === v)); });
+      onPick(v);
+    }
+    btns.forEach(function(b){
+      b.addEventListener('click', function(){ pick(b.getAttribute(attr)); });
+    });
+    pick(init);
+  }
+
+  /* ═══════════════ 10. 초기 렌더 ═══════════════ */
+  renderFill();
+  wireTabs('stateTabs', 'data-state', 'lvl', renderState);
+  wireTabs('cropTabs',  'data-crop',  'esc', function(v){ uiState.crop = v; paintLoupe(); });
+  wireTabs('zoomTabs',  'data-zoom',  '3',   function(v){ uiState.zoom = Number(v); paintLoupe(); });
+  wireTabs('kbTabs',    'data-kb',    'kb_hacker', function(v){
+    uiState.kb = v; paintLoupe(); paintFull(); paintAspect(); paintSockets();
+  });
+
+  /* 테스트 훅 — 헤드리스 실측이 값을 직접 읽는다(추정 금지) */
+  window.__T1__ = {
+    cardW: CARD_W, aspect: ASPECT,
+    now:  { P: NOW.P, G: NOW.G, artW: aw(NOW.P), artH: ah(aw(NOW.P)) },
+    fix:  { P: FIX.P, G: FIX.G, artW: aw(FIX.P), artH: ah(aw(FIX.P)) },
+    ratioNow: aw(NOW.P) / CARD_W, ratioFix: aw(FIX.P) / CARD_W,
+    slack: (function(){
+      var o = {};
+      ['locked','max','lvl'].forEach(function(s){
+        o[s] = { now: BODY_H - (OUTSIDE[s] + NOW.G + ah(aw(NOW.P))),
+                 fix: BODY_H - (OUTSIDE[s] + FIX.G + ah(aw(FIX.P))) };
+      });
+      return o;
+    })(),
+    clamp: (BODY_H - (OUTSIDE.lvl + FIX.G)) / ASPECT,
+    upscaleNow: aw(FIX.P) / 481,
+    upscaleFix: aw(FIX.P) / 1536,
+    houseRatio: HOUSE_RATIO,
+    centerOnlySide: FIX.P + (aw(FIX.P) - aw(FIX.P) * HOUSE_RATIO) / 2,
+    /* §C 주장의 기계 검증 — 소스에서 정사각인 G키가 화면에서 몇 대 몇이 되는가 */
+    squareness: (function(){
+      /* 표시 가로/세로 = (k.w/srcW × 쿼드폭) / (k.h/srcH × 쿼드높이).
+         쿼드폭/쿼드높이 = 1/ASPECT 이므로 그 배를 반드시 곱해야 한다 —
+         빼먹으면 정규화 uv 비(0.4324)가 나온다(헤드리스 검증에서 발각). */
+      function ratio(g, srcW, srcH){
+        var k = keyLayout(g).filter(function(q){ return q.label === 'G'; })[0];
+        return ((k.w / srcW) / (k.h / srcH)) / ASPECT;
+      }
+      return { src: 1, now: ratio(GEOM, 481, 208), fix: ratio(GEOM_FILL, GEOM_FILL.W, GEOM_FILL.H) };
+    })(),
+    setState: renderState
+  };
+})();
+</script>
+</body>
+</html>

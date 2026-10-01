@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>런 타격감 스프라이트 시트 생성기</title>
+<!--
+  run-juice-fx-sprites.html — 런 타격감(주스) VFX 스프라이트 시트 생성기
+  ─────────────────────────────────────────────────────────────────────
+  플랜  : docs/plans/03-qa-pending/phase-1/run-vfx-juice-plan.md §10(에셋 파이프라인 — 스프라이트 시트)
+  정본  : 드로잉은 html/run-juice-fx-common.js **하나**다(동기화 필수). 비교 목업
+          html/run-vfx-juice-compare.html 도 같은 파일을 읽으므로 목업의 프레임 = 여기서 내보내는 PNG 다.
+  규약  : 기존 생성기(fx-primitives · fever-fx-sprites · reward-fx-sprites · gem-fx-sprites)와 같이
+          ① 페이지가 정본 ② 숨은 #export 에 원본 크기 셀(data-name) ③ 투명 배경. 여기에 더해 시트는
+          SkillEffects/*_strip.png 관례(가로 스트립 · 정사각 셀)를 따르고, 그리드(파편)는 *_sheet.png.
+  ⚠ PNG 는 리포 LFS 예산 초과로 push 가 막혀 있다 — 내보낸 파일은 로컬 보관, owner 가 예산을 올린 뒤 반입.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+@font-face { font-family:'BlackHanSansRuntime'; src:url('../Assets/Resources/Fonts/BlackHanSans-Regular.ttf') format('truetype'); font-display:swap; }
+@font-face { font-family:'JuaRuntime'; src:url('../Assets/Resources/Fonts/Jua-Regular.ttf') format('truetype'); font-display:swap; }
+@font-face { font-family:'PretendardRuntime'; src:url('../Assets/Resources/Fonts/Pretendard-Regular.otf') format('opentype'); font-display:swap; }
+:root{
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859; --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b;
+  --text:#e2e8f0; --muted:#8c99ad; --surface-card:#0a1017; --surface-raised-b:#0e1620; --hairline:#1b2836; --btn-border:#26384a;
+  --bg-deep:#070c11; --field-surface:#0c1621; --text-title:#eaf3f2; --text-caption:#b9c6d3; --text-btn:#c9d6e2;
+  --font-title:'BlackHanSansRuntime','Black Han Sans','Noto Sans KR',system-ui,sans-serif;
+  --font-ui:'JuaRuntime','Jua','Noto Sans KR',system-ui,sans-serif;
+  --font-body:'PretendardRuntime','Pretendard','Noto Sans KR',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-deep);color:var(--text);font-family:var(--font-body);font-size:13px;line-height:1.6;padding:22px 16px 60px}
+.wrap{max-width:1560px;margin:0 auto}
+h1{font-family:var(--font-title);font-weight:400;font-size:24px;margin:0 0 4px;color:var(--text-title)}
+h2{font-family:var(--font-title);font-weight:400;font-size:17px;margin:26px 0 8px;padding-top:12px;border-top:1px solid var(--hairline);color:var(--teal)}
+p.note{color:var(--muted);font-size:12px;line-height:1.7;max-width:1200px;margin:4px 0 10px}
+p.note b{color:var(--text-caption)}
+code{background:var(--surface-raised-b);padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:var(--surface-card);border:1px solid var(--hairline);border-radius:10px;padding:8px 12px;margin:10px 0 6px}
+.bar label{font-family:var(--font-ui);font-size:13px;color:var(--text-btn);display:flex;gap:6px;align-items:center}
+.btn{font-family:var(--font-ui);font-size:12px;color:var(--text-btn);background:#16202c;border:1px solid var(--btn-border);border-radius:7px;padding:3px 10px;cursor:pointer}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
+.btn.gold{border-color:#7a6420;color:var(--gold);background:#1a1505}
+.sheets{display:grid;grid-template-columns:repeat(auto-fill,minmax(740px,1fr));gap:12px}
+@media (max-width:800px){.sheets{grid-template-columns:1fr}}
+.card{background:var(--surface-card);border:1px solid var(--hairline);border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:1fr 168px;gap:10px}
+.card h3{grid-column:1/-1;margin:0;font-family:var(--font-ui);font-weight:400;font-size:16px;color:var(--text-title);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.card h3 .tag{font-family:var(--font-body);font-size:10px;padding:0 6px;border-radius:999px;border:1px solid var(--btn-border);color:var(--muted)}
+.card h3 .tag.add{color:var(--gold);border-color:#7a6420}
+.card h3 .tag.alpha{color:var(--teal);border-color:rgba(87,209,184,.4)}
+.sheetbox{overflow-x:auto;background:var(--bg);border-radius:6px;padding:6px}
+.sheetbox canvas{display:block}
+.prev{display:flex;flex-direction:column;gap:6px;align-items:center}
+.prev canvas{border-radius:8px;background:var(--field-surface)}
+.use{grid-column:1/-1;font-size:11.5px;color:var(--text-caption);margin:0}
+.meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meta b{color:var(--text-caption);font-weight:400}
+.acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+table{border-collapse:collapse;font-size:12px;margin:6px 0;min-width:720px}
+th,td{border:1px solid var(--hairline);padding:4px 8px;text-align:left;vertical-align:top}
+th{background:var(--surface-raised-b);color:var(--text-caption);font-weight:400;font-family:var(--font-ui)}
+td.n{font-variant-numeric:tabular-nums;color:var(--gold)}
+.tblwrap{overflow-x:auto}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.panel{background:var(--surface-card);border:1px solid var(--hairline);border-radius:10px;padding:10px}
+.cap{font-size:11px;color:var(--muted);margin-top:4px}
+pre{background:var(--surface-raised-b);border-radius:6px;padding:8px;font-size:10.5px;color:#9fd0c4;overflow:auto;max-height:180px;margin:0}
+#export{display:none}
+#export.visible{display:block}
+.export-cell{background:transparent;padding:0;margin:0}
+.vsrow{background:var(--surface-card);border:1px solid var(--hairline);border-radius:10px;padding:8px 12px;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-start}
+.vsrow h3{flex-basis:100%;margin:0;font-family:var(--font-ui);font-weight:400;font-size:15px;color:var(--text-title)}
+.vsrow h3 small{font-family:var(--font-body);font-size:11px;color:var(--muted);margin-left:8px}
+.vsstrips{display:flex;flex-direction:column;gap:4px;overflow-x:auto;max-width:100%}
+.vsstrips .lab{font-size:10.5px;color:var(--muted);font-family:monospace}
+.vsstrips .lab b{color:var(--gold);font-weight:400}
+.vspair{display:flex;gap:6px}
+.vspair figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.vspair figcaption{font-size:10.5px;color:var(--muted);font-family:monospace}
+.vspair canvas{border-radius:8px;background:var(--field-surface)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>런 타격감 — 스프라이트 시트 생성기</h1>
+<p class="note">
+  플랜 <code>docs/plans/03-qa-pending/phase-1/run-vfx-juice-plan.md</code> §10 · owner 합의 순서(2026-09-28)
+  <b>① HTML 목업 → ② 목업에서 체감 확인 → ③ 스프라이트 시트(프레임 PNG) 제작 → ④ 게임 적용</b> 의 ③ 을 위한 생성기다.
+  드로잉 정본은 <code>html/run-juice-fx-common.js</code> <b>한 파일</b>이고 비교 목업 <code>html/run-vfx-juice-compare.html</code> 도
+  같은 파일을 읽는다 ⇒ <b>목업에서 본 프레임 = 여기서 내보내는 PNG</b>.<br>
+  색은 <code>html/ui-prototype.html</code> 토큰(<code>:62-104</code>)과 그 <b>혼합</b>만 쓴다. 가산(additive) 시트는 어두운 필드 위에서
+  <b>더해질 때</b> 의도한 색이 나오므로 여기 미리보기도 필드색(<code>--field-surface</code>) 위에 가산으로 그린다. 내보내는 PNG 는 투명 배경이다.<br>
+  ⚠ <b>PNG push 는 리포 LFS 예산 초과로 막혀 있다</b> — owner 가 예산을 올리기 전까지 내보낸 파일은 로컬 보관.
+</p>
+
+<div class="bar">
+  <label>내보내기 배율 <select id="scale"><option value="1" selected>×1 (원본 셀 — v3 셀은 이미 v2 의 2배)</option><option value="2">×2 (초고해상 · 버스트 스트립 8192px)</option></select></label>
+  <label>미리보기 속도 <select id="speed"><option value="1" selected>1× 게임 속도</option><option value="0.25">0.25× 슬로모</option></select></label>
+  <label><input type="checkbox" id="grid" checked> 프레임 격자</label>
+  <button class="btn gold" id="exportAll">전부 PNG + JSON 내보내기</button>
+  <button class="btn" id="exportManifest">manifest.json 만</button>
+</div>
+
+<h2>0. v2 → v3 비교 — 고퀄 승인용(owner 2026-09-29 「메타데이터로 만든 에셋을 고퀄리티로」)</h2>
+<p class="note">
+  <b>v2</b> = <code>html/run-juice-fx-common-v2.js</code>(동결 사본 · 평면 벡터) · <b>v3</b> = <code>html/run-juice-fx-common.js</code>(정본 · 장르 품질 바).
+  v3 는 <b>셀 해상도 ×2 · 프레임 ≈×2(길이 유지, fps 상승) · 결정적 fbm 노이즈 질감 · 5단 이상 램프</b>. 표시 크기는 그대로다 —
+  <b>더 선명하고 촘촘해졌지 더 커지지 않았다</b>. 각 줄: ① 전 프레임(v2 위 · v3 아래, 같은 표시 셀) ② 게임 크기 반복 재생(같은 px)
+  ③ 같은 시각(수명 35%)의 한 프레임을 <b>원본 셀 그대로</b> 같은 크기로 확대(해상도·질감 차이). 해상도 비교는 ×1 기준(v2 는 예전에 ×2 로 내보내 쓰기로 했었다).
+</p>
+<div id="vs"></div>
+
+<h2>A. 시트 목록 — 프레임 격자 + 게임 속도 미리보기</h2>
+<p class="note">
+  각 카드 왼쪽은 시트 원본(격자·프레임 번호), 오른쪽은 <b>fps 그대로</b> 반복 재생(0.35s 쉬고 다시). 파편은 재생이 아니라
+  <b>입자 회전각으로 열을 고르는</b> 시트라 미리보기가 중력·바운스 입자 분수다.
+</p>
+<div class="sheets" id="sheets"></div>
+
+<h2>B. 데미지 숫자(T1) — 스프라이트가 아니라 폰트 스펙</h2>
+<p class="note">
+  숫자는 TMP 텍스트로 그린다(스프라이트 0). 크기 <code>(14 + 20·clamp01(log10(dmg)/8)) × (크리 ? 1.35 : 1)</code> pt ·
+  외곽선 <code>--bg-deep</code> 두께 = 크기×0.2(TMP Outline) · 채움 세로 경사(일반 흰→<code>--text-num</code> / 크리 흰금→<code>--gold</code>→<code>--amber</code>) ·
+  크리는 <code>--amber</code> 번짐(TMP Underlay) + −3.4° 기울임(느낌표 없음 — owner 2026-09-29).
+  펀치 <code>0.2 → 1.25</code>(60ms, easeOutQuad) <code>→ 1.0</code>(120ms), 이후 easeOutCubic 상승 · 수명 0.8s · 끝 0.25s 페이드.
+</p>
+<div class="row">
+  <div class="panel"><canvas id="dmgSamples" width="1120" height="210"></canvas><div class="cap">위 줄 일반 · 아래 줄 크리 — 데미지 10¹ → 10⁸ (크기 14 → 34pt, 크리 ×1.35). 원본 pt 그대로(축척 없음)</div></div>
+  <div class="panel"><canvas id="dmgAnim" width="300" height="210"></canvas><div class="cap">펀치 곡선 실시간(일반 · 크리 · 연속 합산)</div></div>
+  <div class="panel"><canvas id="punchCurve" width="260" height="210"></canvas><div class="cap">펀치 배율(0~0.2s) · 점선 = 1.0</div></div>
+</div>
+
+<h2>C. 강도 변형 — I = clamp01(log10(보상)/8) 하나로 전부 민다(T4)</h2>
+<p class="note">
+  같은 시트를 <b>크기·수·색 가중</b>만 바꿔 쓴다(새 시트 0). 맵 1 처치 ≈ I 0.1~0.25, 맵 4 ≈ 0.6~1.0.
+  파편·스파크 수는 <b>원하는 수</b>이고 실제로는 T3 틱 예산(120 · 동시 160)이 자른다. 아래 캔버스는 세 강도의 처치를 동시에 반복 재생한다
+  (<code>run-juice-fx-common.js</code> <code>killRecipe()</code> — 비교 목업도 같은 함수).
+</p>
+<div class="tblwrap"><table id="itable"></table></div>
+<div class="panel" style="margin-top:8px"><canvas id="ipreview" width="960" height="260"></canvas><div class="cap">왼쪽 I=0.1(맵 1 · T1) · 가운데 I=0.5(맵 3 · T3) · 오른쪽 I=1.0(맵 4 · T4) — 목업 축척 그대로</div></div>
+
+<h2>D. 내보내기 규약</h2>
+<div class="tblwrap"><table id="manifestTable"></table></div>
+<p class="note">
+  파일명 <code>{name}_strip.png</code>(가로 1행) · <code>{name}_sheet.png</code>(행×열 그리드 — 파편) · 같은 이름의 <code>.json</code> 에 셀·프레임·fps·pivot·blend·tint.
+  Unity 반입 시 Sprite Mode <b>Multiple</b> · Grid By Cell Size(셀 × 배율) · Pivot 은 JSON 값 · Filter Bilinear · Compression None(가산 경사 밴딩 방지).
+  가산 시트는 <b>가산 머티리얼</b>이 필요하다(현재 리포에 없음 — §10 owner 문항).
+</p>
+<div id="export"></div>
+</div>
+
+<script src="run-juice-fx-common-v2.js"></script>
+<script src="run-juice-fx-common.js"></script>
+<script>
+(() => {
+'use strict';
+const J = window.JuiceFx;
+const $ = id => document.getElementById(id);
+const scaleEl = $('scale'), speedEl = $('speed'), gridEl = $('grid');
+const FIELD = '#0c1621';
+
+// ───────── A. 시트 카드 ─────────
+const cards = [];
+function sheetDisplay(name) {
+  const m = J.meta(name), d = J.SHEETS[name];
+  // 화면 표시용 배치 — 스트립은 8프레임마다 줄바꿈(내보내는 PNG 는 가로 1행 그대로), 그리드(파편)는 원래 격자
+  const perRow = m.rows > 1 ? m.cols : Math.min(m.frames, 8);
+  const nRows = m.rows > 1 ? m.rows : Math.ceil(m.frames / perRow);
+  const cell = Math.min(m.cell[0], Math.floor(540 / perRow));
+  const zoom = cell / m.cell[0];
+  const cv = document.createElement('canvas');
+  cv.width = cell * perRow; cv.height = cell * nRows + 14;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#0b1218'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save();
+  if (d.blend === 'additive') ctx.globalCompositeOperation = 'lighter';
+  ctx.imageSmoothingQuality = 'high';
+  for (let f = 0; f < m.frames; f++) ctx.drawImage(J.frame(name, f, 1), (f % perRow) * cell, Math.floor(f / perRow) * cell, cell, cell);
+  ctx.restore();
+  if (gridEl.checked) {
+    ctx.strokeStyle = 'rgba(87,209,184,.28)'; ctx.lineWidth = 1;
+    for (let c = 0; c <= perRow; c++) { ctx.beginPath(); ctx.moveTo(c * cell + 0.5, 0); ctx.lineTo(c * cell + 0.5, cell * nRows); ctx.stroke(); }
+    for (let r = 0; r <= nRows; r++) { ctx.beginPath(); ctx.moveTo(0, r * cell + 0.5); ctx.lineTo(cv.width, r * cell + 0.5); ctx.stroke(); }
+    ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace';
+    for (let f = 0; f < m.frames; f++) ctx.fillText(String(f), (f % perRow) * cell + 3, Math.floor(f / perRow) * cell + 11);
+  }
+  ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace';
+  ctx.fillText(`시트 ${m.size[0]}×${m.size[1]} @×1 · 표시 ×${zoom.toFixed(2)}${m.rows > 1 ? '' : ' · 화면에선 8프레임마다 줄바꿈'}`, 2, cv.height - 3);
+  return cv;
+}
+function buildCards() {
+  const host = $('sheets'); host.innerHTML = ''; cards.length = 0;
+  for (const name of J.ORDER) {
+    const m = J.meta(name), d = J.SHEETS[name];
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h3>${name}<span class="tag ${d.blend === 'additive' ? 'add' : 'alpha'}">${d.blend === 'additive' ? '가산' : '알파'}</span>
+      <span class="tag">${d.tint === 'baked' ? '색 구움' : '흰/회 · 런타임 색 곱'}</span><span class="tag">${m.frames}f${d.fps ? ' · ' + d.fps + 'fps · ' + m.duration + 's' : ' · 인덱스 선택'}</span></h3>
+      <div class="sheetbox"></div><div class="prev"><canvas width="160" height="160"></canvas></div>
+      <p class="use">${d.use.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>
+      <div class="meta"><span>파일 <b>${m.file}</b></span><span>셀 <b>${m.cell[0]}×${m.cell[1]}</b></span><span>격자 <b>${m.cols}×${m.rows}</b></span><span>시트 <b>${m.size[0]}×${m.size[1]}</b>(×1)</span><span>pivot <b>(${m.pivot.join(', ')})</b></span></div>
+      <div class="acts"><button class="btn gold" data-png>PNG</button><button class="btn" data-json>JSON</button></div>`;
+    card.querySelector('.sheetbox').appendChild(sheetDisplay(name));
+    card.querySelector('[data-png]').onclick = () => exportPng(name);
+    card.querySelector('[data-json]').onclick = () => exportJson(name);
+    host.appendChild(card);
+    cards.push({ J, name, cv: card.querySelector('.prev canvas'), t: Math.random() * 0.3, parts: [] });
+  }
+}
+
+// 미리보기 루프
+// 표시 크기(px) — 버전과 무관하게 같다(v3 는 셀만 2배 · 더 선명하지 더 크지 않다)
+const PREVIEW_PX = { juice_kill_burst: 150, juice_spark_trail: 96 };
+function drawPreview(c, dt) {
+  const J = c.J;
+  const d = J.SHEETS[c.name], ctx = c.cv.getContext('2d'), W = c.cv.width, H = c.cv.height;
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.fillStyle = FIELD; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(87,209,184,.08)';
+  for (let x = 0; x <= W; x += 32) { ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += 32) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); ctx.stroke(); }
+  c.t += dt;
+  if (d.tier) {   // 파편 분수
+    if (c.t > 0.9) { c.t = 0; for (let i = 0; i < 12; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, sp = 90 + Math.random() * 120; c.parts.push({ x: W / 2, y: H * 0.55, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 20, row: i % 3, sz: 18 + Math.random() * 12, ground: H * 0.78 + Math.random() * 10, t: 0, b: 0 }); } }
+    for (const p of c.parts) {
+      p.t += dt; p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      if (p.y > p.ground && p.vy > 0) { p.y = p.ground; p.vy *= -0.42; p.vx *= 0.7; p.vr *= 0.6; p.b++; }
+      const nc = d.cols, col = ((Math.floor(((p.rot % 6.283) + 6.283) % 6.283 / 6.283 * nc)) % nc);
+      const a = p.t > 0.8 ? Math.max(0, 1 - (p.t - 0.8) / 0.3) : 1;
+      J.drawFrame(ctx, c.name, p.row * nc + col, p.x, p.y, p.sz, { alpha: a });
+    }
+    c.parts = c.parts.filter(p => p.t < 1.1);
+    return;
+  }
+  const life = J.lifeOf(c.name), period = life + 0.35;
+  const tt = c.t % period;
+  const f = J.frameAt(c.name, tt);
+  if (f < 0) return;
+  const size = PREVIEW_PX[c.name] || 110;
+  const px = c.name === 'juice_spark_trail' ? W / 2 + 30 : W / 2;
+  if (c.name === 'juice_hit_flash' || c.name === 'juice_crack') {   // 얹는 대상(노드) 윤곽을 같이 그려 맥락을 준다
+    ctx.fillStyle = '#1a2633'; ctx.strokeStyle = '#2e4155'; ctx.beginPath(); ctx.arc(W / 2, H / 2, 34, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  if (c.name === 'juice_dust_puff') J.drawFrame(ctx, c.name, f, W / 2, H * 0.62, size);
+  else J.drawFrame(ctx, c.name, f, px, H / 2, size);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace'; ctx.fillText('f' + f, 5, H - 5);
+}
+
+// ───────── 0. v2 → v3 비교 ─────────
+const J2 = window.JuiceFxV2;
+const vsCards = [];
+function stripCanvas(JM, name, D) {   // 전 프레임 — 시트 배치 그대로(스트립 1행 · 파편 격자), 표시 셀 D
+  const m = JM.meta(name), d = JM.SHEETS[name];
+  const cv = document.createElement('canvas'); cv.width = D * m.cols; cv.height = D * m.rows;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = FIELD; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (d.blend === 'additive') ctx.globalCompositeOperation = 'lighter';
+  ctx.imageSmoothingQuality = 'high';
+  for (let f = 0; f < m.frames; f++) ctx.drawImage(JM.frame(name, f, D > d.cell ? 2 : 1), (f % m.cols) * D, Math.floor(f / m.cols) * D, D, D);
+  ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = 'rgba(87,209,184,.16)';
+  for (let c = 1; c < m.cols; c++) { ctx.beginPath(); ctx.moveTo(c * D + 0.5, 0); ctx.lineTo(c * D + 0.5, cv.height); ctx.stroke(); }
+  for (let r = 1; r < m.rows; r++) { ctx.beginPath(); ctx.moveTo(0, r * D + 0.5); ctx.lineTo(cv.width, r * D + 0.5); ctx.stroke(); }
+  return cv;
+}
+function zoomCanvas(JM, name, Z) {   // 수명 35% 시점 한 프레임을 원본 셀(×1) 그대로 Z px 로 확대
+  const m = JM.meta(name), d = JM.SHEETS[name];
+  const f = d.tier ? m.cols + Math.round(m.cols * 3 / 8) : Math.round(0.35 * (m.frames - 1));   // 파편은 결정 행 · 같은 회전각(135°)
+  const cv = document.createElement('canvas'); cv.width = Z; cv.height = Z;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = FIELD; ctx.fillRect(0, 0, Z, Z);
+  if (d.blend === 'additive') ctx.globalCompositeOperation = 'lighter';
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(JM.frame(name, f, 1), 0, 0, Z, Z);
+  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace';
+  ctx.fillText(`f${f} · 셀 ${d.cell}px → ${Z}px`, 4, Z - 5);
+  return cv;
+}
+function buildVs() {
+  const host = $('vs'); host.innerHTML = ''; vsCards.length = 0;
+  // ?only=juice_kill_burst&vsD=150 — 한 시트만 큰 셀로(프레임 단위 검수용)
+  const qs = new URLSearchParams(location.search), only = qs.get('only'), vsD = +qs.get('vsD') || 0;
+  for (const name of J.ORDER) {
+    if (only && !only.split(',').includes(name)) continue;
+    const m2 = J2.meta(name), m3 = J.meta(name), d3 = J.SHEETS[name];
+    const D = vsD || (d3.tier ? 30 : name === 'juice_kill_burst' ? 62 : 56);
+    const row = document.createElement('div'); row.className = 'vsrow';
+    const fpsTxt = m => m.fps ? `${m.frames}f · ${m.fps}fps · ${m.duration}s` : `${m.cols}×${m.rows} 격자 · 인덱스 선택`;
+    row.innerHTML = `<h3>${name}<small>셀 ${m2.cell[0]} → <b style="color:var(--gold)">${m3.cell[0]}</b>px · ${fpsTxt(m2)} → <b style="color:var(--gold)">${fpsTxt(m3)}</b></small></h3>
+      <div class="vsstrips"><span class="lab">v2 — 전 프레임</span><div data-s2></div><span class="lab"><b>v3</b> — 전 프레임</span><div data-s3></div></div>
+      <div class="vspair"><figure><canvas data-p2 width="150" height="150"></canvas><figcaption>v2 · 게임 크기</figcaption></figure><figure><canvas data-p3 width="150" height="150"></canvas><figcaption>v3 · 게임 크기</figcaption></figure></div>
+      <div class="vspair"><figure data-z2><figcaption>v2 · 확대(×1 원본)</figcaption></figure><figure data-z3><figcaption>v3 · 확대(×1 원본)</figcaption></figure></div>`;
+    row.querySelector('[data-s2]').appendChild(stripCanvas(J2, name, D));
+    row.querySelector('[data-s3]').appendChild(stripCanvas(J, name, D));
+    row.querySelector('[data-z2]').prepend(zoomCanvas(J2, name, 180));
+    row.querySelector('[data-z3]').prepend(zoomCanvas(J, name, 180));
+    host.appendChild(row);
+    vsCards.push({ J: J2, name, cv: row.querySelector('[data-p2]'), t: 0, parts: [] });
+    vsCards.push({ J, name, cv: row.querySelector('[data-p3]'), t: 0, parts: [] });
+  }
+}
+
+// ───────── B. 데미지 숫자 ─────────
+function drawDmgSamples() {
+  const cv = $('dmgSamples'), ctx = cv.getContext('2d');
+  ctx.fillStyle = FIELD; ctx.fillRect(0, 0, cv.width, cv.height);
+  for (let row = 0; row < 2; row++) {
+    const crit = row === 1;
+    let cx = 16;
+    for (let e = 1; e <= 8; e++) {
+      const dmg = Math.pow(10, e) * 1.37, px = J.DMG.size(dmg, crit);
+      ctx.font = `${px}px ${J.DMG.font}`;
+      const w = ctx.measureText(J.fmtNum(dmg)).width + px * 0.5;
+      const x = cx + w / 2, y = 60 + row * 100; cx += w + 10;
+      J.drawDamageNumber(ctx, J.fmtNum(dmg), x, y, px, crit, 1, 1);
+      ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`${px.toFixed(1)}pt`, x, y + 36); ctx.textAlign = 'left';
+    }
+  }
+}
+const dmgAnim = { t: 0, items: [] };
+function drawDmgAnim(dt) {
+  const cv = $('dmgAnim'), ctx = cv.getContext('2d');
+  ctx.fillStyle = FIELD; ctx.fillRect(0, 0, cv.width, cv.height);
+  dmgAnim.t += dt;
+  if (dmgAnim.t > 1.1) {
+    dmgAnim.t = 0;
+    dmgAnim.items = [{ x: 60, y: 150, v: 4820, crit: false, t: 0 }, { x: 160, y: 150, v: 2.4e6, crit: true, t: 0 }, { x: 250, y: 150, v: 320, crit: false, t: 0, merge: true }];
+  }
+  for (const p of dmgAnim.items) {
+    p.t += dt;
+    if (p.merge && p.t > 0.14 && !p.m1) { p.m1 = true; p.v += 410; p.t = 0.001; }       // 0.15s 창 합산 → 펀치 재시작
+    if (p.merge && p.m1 && p.t > 0.12 && !p.m2) { p.m2 = true; p.v += 385; p.t = 0.001; }
+    const u = Math.min(1, p.t / J.DMG.life);
+    const y = p.y - J.DMG.rise * J.easeOutCubic(u);
+    const a = p.t > J.DMG.life - J.DMG.fadeTail ? (J.DMG.life - p.t) / J.DMG.fadeTail : 1;
+    J.drawDamageNumber(ctx, J.fmtNum(p.v), p.x, y, J.DMG.size(p.v, p.crit), p.crit, a, J.DMG.punch(p.t));
+  }
+  ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace';
+  ctx.fillText('일반', 45, 200); ctx.fillText('크리', 145, 200); ctx.fillText('0.15s 합산', 222, 200);
+}
+function drawPunchCurve() {
+  const cv = $('punchCurve'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.fillStyle = FIELD; ctx.fillRect(0, 0, W, H);
+  const X = t => 20 + t / 0.2 * (W - 30), Y = v => H - 20 - v / 1.4 * (H - 40);
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = '#26384a'; ctx.beginPath(); ctx.moveTo(X(0), Y(1)); ctx.lineTo(X(0.2), Y(1)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = '#f5e859'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let i = 0; i <= 100; i++) { const t = i / 100 * 0.2; const v = J.DMG.punch(t); i ? ctx.lineTo(X(t), Y(v)) : ctx.moveTo(X(t), Y(v)); }
+  ctx.stroke();
+  ctx.fillStyle = '#8c99ad'; ctx.font = '10px monospace';
+  for (const [t, v] of J.DMG.punchKeys) { ctx.beginPath(); ctx.arc(X(t), Y(v), 3, 0, 7); ctx.fill(); ctx.fillText(`${(t * 1000) | 0}ms ×${v}`, X(t) + 4, Y(v) - 6); }
+}
+
+// ───────── C. 강도 표 + 미리보기 ─────────
+function buildITable() {
+  const Is = [0.1, 0.5, 1.0];
+  const R = Is.map(I => J.killRecipe(I, false)), Hh = Is.map(I => [J.hitRecipe(I, false), J.hitRecipe(I, true)]);
+  const rows = [
+    ['juice_kill_burst', '표시 크기(px)', R.map(r => r.burstPx)],
+    ['juice_kill_burst', '알파 · 재생 속도', R.map(r => `${r.burstAlpha} · ×${r.burstSpeed.toFixed(2)}`)],
+    ['(fx_glow 티어색)', '버스트 아래 티어 글로우(px)', R.map(r => r.tierGlowPx)],
+    ['juice_kill_burst', '2차 적색 링', R.map(r => r.secondRing ? '있음' : '—')],
+    ['juice_debris_{tier}', '원하는 칩 수(예산 전)', R.map(r => r.debris)],
+    ['juice_debris_{tier}', '칩 표시 크기(px)', R.map(r => `${r.chipPx[0].toFixed(0)}~${r.chipPx[1].toFixed(0)}`)],
+    ['juice_spark_trail', '처치 스파크 수(예산 전)', R.map(r => r.sparks)],
+    ['juice_dust_puff', '표시 크기(px)', R.map(r => r.dustPx)],
+    ['juice_crack', '표시 크기', R.map(() => '노드 지름 ×1.5')],
+    ['juice_impact_star', '타격 별 크기(px) 일반 / 크리', Hh.map(([a, b]) => `${a.starPx} / ${b.starPx}`)],
+    ['juice_spark_trail', '크리 타격 스파크 수', Hh.map(([, b]) => b.sparks)],
+    ['juice_hit_flash', '표시 크기', Is.map(() => '노드 지름 ×1.5 (강도 무관 — 정보성)')],
+    ['(색 가중)', '틴트', R.map(r => r.tint)],
+  ];
+  $('itable').innerHTML = `<tr><th>시트</th><th>항목</th><th>I = 0.1 (맵 1, 보상 ~10)</th><th>I = 0.5 (맵 3, 보상 ~10⁴)</th><th>I = 1.0 (맵 4, 보상 10⁸)</th></tr>` +
+    rows.map(([s, k, v]) => `<tr><td><code>${s}</code></td><td>${k}</td>${v.map(x => `<td class="n">${x}</td>`).join('')}</tr>`).join('');
+}
+const ip = { t: 0, parts: [] };
+function drawIPreview(dt) {
+  const cv = $('ipreview'), ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = FIELD; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(87,209,184,.08)';
+  for (let x = 0; x <= W; x += 40) { ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); ctx.stroke(); }
+  const Is = [0.1, 0.5, 1.0], tiers = ['t1', 't3', 't4'];
+  ip.t += dt;
+  const period = 1.3;
+  if (ip.t > period) { ip.t = 0; ip.parts = []; }
+  Is.forEach((I, i) => {
+    const cx = W * (i + 0.5) / 3, cy = H * 0.52, r = J.killRecipe(I, false), tier = J.TIERS[tiers[i]];
+    const t = ip.t;
+    // 처치 전 노드(0~0.15s) — 흰 플래시 + 균열
+    if (t < 0.15) {
+      ctx.fillStyle = '#1a2633'; ctx.strokeStyle = tier.base; ctx.beginPath(); ctx.arc(cx, cy, 17, 0, 7); ctx.fill(); ctx.stroke();
+      const hf = J.frameAt('juice_hit_flash', t); if (hf >= 0) J.drawFrame(ctx, 'juice_hit_flash', hf, cx, cy, 52);
+      const cf = J.frameAt('juice_crack', t); if (cf >= 0) J.drawFrame(ctx, 'juice_crack', cf, cx, cy, 52);
+      return;
+    }
+    const tk = t - 0.15;
+    if (tk < 0.02 && !ip['spawn' + i]) {
+      ip['spawn' + i] = true;
+      const n = r.debris;
+      for (let k = 0; k < n; k++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, sp = (110 + Math.random() * 110) * (0.7 + 0.6 * I); ip.parts.push({ kind: 'chip', tier: tiers[i], x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 22, row: k % 3, sz: J.lerp(r.chipPx[0], r.chipPx[1], Math.random()), ground: cy + 22 + Math.random() * 14, t: 0 }); }
+      for (let k = 0; k < r.sparks; k++) { const a = Math.random() * 6.28, sp = 180 + Math.random() * 160 * (0.6 + I); ip.parts.push({ kind: 'spark', x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: 0.25 + Math.random() * 0.15 }); }
+    }
+    if (tk > 0.5) ip['spawn' + i] = false;
+    // 티어 글로우(아래) → 먼지 → 버스트
+    const ga = Math.max(0, 1 - tk / 0.35);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; J.glow(ctx, cx, cy, r.tierGlowPx * (0.6 + 0.6 * J.easeOutCubic(Math.min(1, tk / 0.25))), tier.base, 0.7 * ga); ctx.restore();
+    const df = J.frameAt('juice_dust_puff', tk); if (df >= 0) J.drawFrame(ctx, 'juice_dust_puff', df, cx, cy + 10, r.dustPx, { alpha: 0.75 });
+    const bf = J.frameAt('juice_kill_burst', tk, r.burstSpeed); if (bf >= 0) J.drawFrame(ctx, 'juice_kill_burst', bf, cx, cy, r.burstPx, { alpha: r.burstAlpha });
+    ctx.fillStyle = '#8c99ad'; ctx.font = '11px monospace'; ctx.textAlign = 'center'; ctx.fillText(`I=${I} · ${tier.label}`, cx, H - 10); ctx.textAlign = 'left';
+  });
+  for (const p of ip.parts) {
+    p.t += dt;
+    if (p.kind === 'chip') {
+      p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; p.vx *= 1 - 0.8 * dt;
+      if (p.y > p.ground && p.vy > 0) { p.y = p.ground; p.vy *= -0.42; p.vx *= 0.7; p.vr *= 0.6; }
+      const nc = J.SHEETS['juice_debris_' + p.tier].cols, col = Math.floor((((p.rot % 6.283) + 6.283) % 6.283) / 6.283 * nc) % nc;
+      J.drawFrame(ctx, 'juice_debris_' + p.tier, p.row * nc + col, p.x, p.y, p.sz, { alpha: p.t > 0.75 ? Math.max(0, 1 - (p.t - 0.75) / 0.3) : 1 });
+    } else {
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - 3 * dt; p.vy = p.vy * (1 - 3 * dt) + 200 * dt;
+      const nf = J.SHEETS.juice_spark_trail.frames, f = Math.min(nf - 1, Math.floor(p.t / p.life * nf));
+      if (p.t < p.life) J.drawFrame(ctx, 'juice_spark_trail', f, p.x, p.y, 30, { rot: Math.atan2(p.vy, p.vx) });
+    }
+  }
+  ip.parts = ip.parts.filter(p => p.kind === 'chip' ? p.t < 1.1 : p.t < p.life);
+}
+
+// ───────── D. manifest + 내보내기 ─────────
+function manifest(scale) {
+  return J.ORDER.map(n => { const m = J.meta(n); return Object.assign({}, m, { exportScale: scale, cellPx: [m.cell[0] * scale, m.cell[1] * scale], sheetPx: [m.size[0] * scale, m.size[1] * scale], plannedPath: 'Assets/_Game/Sprites/Fx/Juice/' + m.file }); });
+}
+function buildManifestTable() {
+  const s = +scaleEl.value;
+  $('manifestTable').innerHTML = `<tr><th>파일</th><th>셀(×${s})</th><th>격자</th><th>시트(×${s})</th><th>fps · 길이</th><th>pivot</th><th>blend</th><th>tint</th></tr>` +
+    manifest(s).map(m => `<tr><td><code>${m.file}</code></td><td class="n">${m.cellPx.join('×')}</td><td>${m.cols}×${m.rows}</td><td class="n">${m.sheetPx.join('×')}</td><td>${m.fps ? m.fps + 'fps · ' + (m.duration) + 's' : '인덱스 선택'}</td><td>${m.pivot.join(', ')}</td><td>${m.blend}</td><td>${m.tint}</td></tr>`).join('');
+}
+function download(blob, fname) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+function exportPng(name) { const s = +scaleEl.value; J.sheet(name, s).toBlob(b => download(b, J.meta(name).file)); }
+function exportJson(name) { const s = +scaleEl.value; const m = manifest(s).find(x => x.name === name); download(new Blob([JSON.stringify(m, null, 2)], { type: 'application/json' }), m.file.replace('.png', '.json')); }
+$('exportAll').onclick = () => { J.ORDER.forEach((n, i) => setTimeout(() => { exportPng(n); exportJson(n); }, i * 300)); };
+$('exportManifest').onclick = () => download(new Blob([JSON.stringify(manifest(+scaleEl.value), null, 2)], { type: 'application/json' }), 'juice_manifest.json');
+function buildExportCells() {   // 기존 생성기 규약 — 숨은 원본 셀(data-name), 헤드리스 캡처용
+  const host = $('export'); host.innerHTML = '';
+  for (const n of J.ORDER) { const c = J.sheet(n, +scaleEl.value); c.className = 'export-cell'; c.dataset.name = n; host.appendChild(c); }
+}
+
+scaleEl.onchange = () => { buildManifestTable(); buildExportCells(); };
+gridEl.onchange = () => { buildCards(); if (typeof FREEZE !== 'undefined' && FREEZE) for (const c of cards) c.t = 0; };
+buildVs(); buildCards(); buildITable(); buildManifestTable(); buildExportCells(); drawPunchCurve();
+// 웹폰트 로드 후 숫자 샘플 다시 그림
+drawDmgSamples(); if (document.fonts) document.fonts.ready.then(drawDmgSamples);
+
+// ?freeze=0.3 — 미리보기들을 0 초부터 그 시각까지 돌리고 멈춘다(스크린샷·리뷰용 결정적 정지 화면)
+const FREEZE = (() => { try { const v = parseFloat(new URLSearchParams(location.search).get('freeze')); return v > 0 ? v : 0; } catch (e) { return 0; } })();
+if (FREEZE) { for (const c of cards) c.t = 0; }
+let prev = performance.now(), simT = 0;
+function tick() {
+  const now = performance.now(); let dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+  dt *= +speedEl.value;
+  if (FREEZE) { if (simT >= FREEZE) return; dt = Math.min(dt || 0.016, FREEZE - simT); simT += dt; }
+  for (const c of cards) drawPreview(c, dt);
+  for (const c of vsCards) drawPreview(c, dt);
+  drawDmgAnim(dt); drawIPreview(dt);
+}
+function loop() { tick(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+setInterval(() => { if (performance.now() - prev > 40) tick(); }, 33);   // 헤드리스 대비
+})();
+</script>
+</body>
+</html>

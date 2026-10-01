@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Keyboard Sprite — Click to Commit</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#060b14; color:#c8d0e0;
+  font-family:'Courier New',monospace; padding:32px;
+}
+h1 { font-size:14px; letter-spacing:3px; color:#57d1b8; text-transform:uppercase; margin-bottom:6px; }
+.subtitle { font-size:11px; color:#3a4a5a; margin-bottom:8px; }
+.import-note {
+  font-size:10px; color:#2a4060; margin-bottom:44px; line-height:1.7;
+  border-left:2px solid #1a2a40; padding-left:10px;
+}
+.import-note span { color:#4a7090; }
+
+.section { margin-bottom:60px; }
+.section-title {
+  font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  color:#3a5070; border-bottom:1px solid #0e1a28;
+  padding-bottom:8px; margin-bottom:16px;
+}
+.section-note { font-size:9px; color:#2a3a4a; margin-bottom:10px; letter-spacing:.05em; }
+
+.row-wrap    { display:flex; gap:0; align-items:center; margin-bottom:2px; }
+.row-lbl     { font-size:8px; color:#263646; letter-spacing:1px; text-transform:uppercase; width:80px; text-align:right; padding-right:10px; flex-shrink:0; }
+.canvas-frame { border:1px solid #0c1820; background:#040810; display:inline-block; }
+</style>
+</head>
+<body>
+
+<h1>Keyboard Sprite</h1>
+<p class="subtitle">Click to Commit — 키보드 해머 Unity 에셋 · 캡쳐 후 Unity 임포트</p>
+<div class="import-note">
+  <span>SECTION 01</span> — Keyboard Sheet (64×48 per cell · 2 variants = 128×48)<br>
+  → Unity: Texture Type <span>Sprite (2D and UI)</span> · Sprite Mode <span>Multiple</span> · Slice Grid <span>X:64 Y:48</span><br>
+  → Index 0 = NORMAL, Index 1 = CRIT (gold accent)<br>
+  저장 경로: <span>Assets/Resources/Sprites/VFX/keyboard_sheet.png</span><br><br>
+  <span>SECTION 02</span> — Impact Dust Sheet (32×32 per cell · 4 frames = 128×32)<br>
+  → Unity: Texture Type <span>Sprite (2D and UI)</span> · Sprite Mode <span>Multiple</span> · Slice Grid <span>X:32 Y:32</span><br>
+  저장 경로: <span>Assets/Resources/Sprites/VFX/impact_dust_sheet.png</span>
+</div>
+
+<!-- ── SECTION 01: Keyboard Sheet ── -->
+<div class="section">
+  <div class="section-title">01 — Keyboard Sheet · 64×48 per cell · 2 variants (NORMAL / CRIT)</div>
+  <div class="section-note">Slice Grid X:64 Y:48 · 색상 틴트는 Unity GUI.color로 처리 (흰색 기준 설계)</div>
+  <div class="row-wrap">
+    <div class="row-lbl">SHEET</div>
+    <div class="canvas-frame"><canvas id="kb-sheet" width="128" height="48"></canvas></div>
+  </div>
+</div>
+
+<!-- ── SECTION 02: Impact Dust Sheet ── -->
+<div class="section">
+  <div class="section-title">02 — Impact Dust Sheet · 32×32 per cell · 4 frames</div>
+  <div class="section-note">슬램 임팩트 먼지 파티클 · Frame 0→3: 퍼짐 진행</div>
+  <div class="row-wrap">
+    <div class="row-lbl">SHEET</div>
+    <div class="canvas-frame"><canvas id="dust-sheet" width="128" height="32"></canvas></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+// ═══════════════════════════════════════════
+// KEYBOARD DRAWING
+// ═══════════════════════════════════════════
+// cx, cy = center of keyboard
+// w, h = dimensions
+// accent = border/key color (white for Unity tinting, or colored for preview)
+function drawKeyboard(ctx, cx, cy, w, h, accent, bodyAlpha) {
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const [r,g,b] = accent;
+
+  // Body shadow
+  ctx.fillStyle = `rgba(0,0,0,0.4)`;
+  roundRect(ctx, -w/2+1.5, -h/2+1.5, w, h, 3); ctx.fill();
+
+  // Body fill
+  ctx.fillStyle = `rgba(${Math.round(r*0.08)},${Math.round(g*0.1)},${Math.round(b*0.12)},${bodyAlpha})`;
+  roundRect(ctx, -w/2, -h/2, w, h, 3); ctx.fill();
+
+  // Body border
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.95)`;
+  ctx.lineWidth = 1.4;
+  roundRect(ctx, -w/2, -h/2, w, h, 3); ctx.stroke();
+
+  // Inner bevel (top highlight)
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`;
+  ctx.lineWidth = 0.8;
+  roundRect(ctx, -w/2+2, -h/2+2, w-4, h*0.5, 2); ctx.stroke();
+
+  // Key grid — 3 rows × 6 cols
+  const cols = 6, rows = 3;
+  const kw = (w * 0.78) / cols - 1.2;
+  const kh = (h * 0.6)  / rows - 1.2;
+  const gx = -w * 0.39;
+  const gy = -h * 0.24;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const kx = gx + col * (kw + 1.2);
+      const ky = gy + row * (kh + 1.2);
+      // Key shadow
+      ctx.fillStyle = `rgba(0,0,0,0.3)`;
+      roundRect(ctx, kx+0.8, ky+0.8, kw, kh, 1); ctx.fill();
+      // Key face
+      ctx.fillStyle = `rgba(${r},${g},${b},0.22)`;
+      roundRect(ctx, kx, ky, kw, kh, 1); ctx.fill();
+      // Key top highlight
+      ctx.fillStyle = `rgba(${r},${g},${b},0.12)`;
+      ctx.fillRect(kx+1, ky+0.5, kw-2, kh*0.4);
+    }
+  }
+
+  // Space bar (bottom row wider key)
+  const sbW = w * 0.42;
+  const sbH = kh * 0.85;
+  const sbX = -sbW * 0.5;
+  const sbY = gy + rows * (kh + 1.2) + 1;
+  ctx.fillStyle = `rgba(0,0,0,0.3)`;
+  roundRect(ctx, sbX+0.8, sbY+0.8, sbW, sbH, 1); ctx.fill();
+  ctx.fillStyle = `rgba(${r},${g},${b},0.28)`;
+  roundRect(ctx, sbX, sbY, sbW, sbH, 1); ctx.fill();
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.35)`;
+  ctx.lineWidth = 0.7;
+  roundRect(ctx, sbX, sbY, sbW, sbH, 1); ctx.stroke();
+
+  // Brand text
+  ctx.fillStyle = `rgba(${r},${g},${b},0.45)`;
+  ctx.font = `bold ${Math.round(h*0.16)}px Courier New`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('KB', 0, h*0.3);
+
+  // USB cord from top center (bezier)
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -h/2);
+  ctx.bezierCurveTo(3, -h/2-5, -3, -h/2-10, 1, -h/2-15);
+  ctx.stroke();
+  // USB connector nub
+  ctx.fillStyle = `rgba(${r},${g},${b},0.4)`;
+  ctx.fillRect(-2.5, -h/2-16, 5, 4);
+
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+// SECTION 01: KEYBOARD SHEET
+// ═══════════════════════════════════════════
+const kbCtx = document.getElementById('kb-sheet').getContext('2d');
+
+// Frame 0: NORMAL — white (Unity will tint at runtime)
+drawKeyboard(kbCtx,  32, 24, 52, 38, [255,255,255], 0.92);
+
+// Frame 1: CRIT — warm gold tint baked in for preview clarity
+drawKeyboard(kbCtx,  96, 24, 52, 38, [255,215,80],  0.92);
+
+// ═══════════════════════════════════════════
+// SECTION 02: IMPACT DUST SHEET
+// ═══════════════════════════════════════════
+const dustCtx = document.getElementById('dust-sheet').getContext('2d');
+const dustW = 128, dustH = 32;
+const frames = 4;
+
+for (let f = 0; f < frames; f++) {
+  const cx = f * 32 + 16;
+  const cy = 16;
+  const prog = (f + 1) / frames; // 0.25 → 1.0
+  const spread = 10 + prog * 6;
+  const alpha  = 1 - prog * 0.65;
+  const count  = 8;
+  const ctx = dustCtx;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 / count) * i + Math.PI * 0.1;
+    // Only downward fan (bottom half)
+    const aFan = Math.PI * 0.1 + (Math.PI * 0.8 / (count-1)) * i;
+    const px = cx + Math.cos(aFan) * spread;
+    const py = cy + Math.abs(Math.sin(aFan)) * spread * 0.8 + prog * 3;
+    const r  = (2.5 - prog * 1.2) * (1 - i%2 * 0.3);
+    if (r <= 0) continue;
+
+    ctx.fillStyle = `rgba(200,200,200,0.9)`;
+    ctx.beginPath(); ctx.arc(px, py, Math.max(0.3, r), 0, Math.PI*2); ctx.fill();
+  }
+
+  // Center impact cross (only frame 0)
+  if (f === 0) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx-4, cy); ctx.lineTo(cx+4, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy-4); ctx.lineTo(cx, cy+4); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Resource Sprites — Click to Commit</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #060b14;
+    color: #c8d0e0;
+    font-family: 'Courier New', monospace;
+    padding: 32px;
+  }
+
+  h1 {
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: #4a6fa5;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 11px;
+    color: #3a4a5a;
+    margin-bottom: 40px;
+  }
+
+  /* ── LAYOUT ── */
+  .family-group {
+    margin-bottom: 48px;
+  }
+  .family-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #3a5070;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #0e1a28;
+    padding-bottom: 8px;
+  }
+  .sprite-row {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .sprite-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .sprite-name {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #506070;
+  }
+
+  /* ── FRAME STRIP ── */
+  .frame-strip {
+    display: flex;
+    gap: 4px;
+    background: #070d18;
+    padding: 8px;
+    border: 1px solid #0e1a28;
+  }
+  .frame-label {
+    font-size: 8px;
+    color: #2a3a4a;
+    text-align: center;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* ── SPRITE CANVAS ── */
+  .sprite {
+    width: 64px;
+    height: 64px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* ── BODY SHAPES ── */
+  .body {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Language: rounded square */
+  .shape-lang {
+    border-radius: 8px;
+    background: var(--bg);
+    border: 2px solid var(--col);
+    box-shadow: 0 0 8px var(--glow), inset 0 0 12px var(--inner);
+  }
+
+  /* Framework: hexagon via clip-path
+     owner 피드백(2026-08-18) — clip-path 도형은 CSS border가 폴리곤 윤곽을 따라가지 않고 박스 사각
+     모서리에만 어긋나게 걸려 사실상 안 보인다. 그래서 바깥 레이어를 --col(밝은 색)로 꽉 채우고,
+     inset된 ::after를 --inner2(어두운 색)로 덮어 "테두리만 남기는" 방식으로 그린다 — 지금까지
+     바깥 레이어가 --bg(어두운 색)였던 게 버그: 안쪽·바깥쪽이 둘 다 어두워서 테두리가 사라져 있었다
+     (CI/Git/Unity/React/Pattern/Clean 전부 해당, Language만 border 속성이 있어 멀쩡했음). */
+  .shape-fw {
+    clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+    background: var(--col);
+    box-shadow: 0 0 8px var(--glow), inset 0 0 12px var(--inner);
+  }
+  .shape-fw::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+    background: var(--inner2);
+  }
+
+  /* Tooling: diamond */
+  .shape-tool {
+    clip-path: polygon(50% 4%, 96% 50%, 50% 96%, 4% 50%);
+    background: var(--col);
+    box-shadow: 0 0 8px var(--glow), inset 0 0 12px var(--inner);
+  }
+  .shape-tool::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    clip-path: polygon(50% 4%, 96% 50%, 50% 96%, 4% 50%);
+    background: var(--inner2);
+  }
+
+  /* Architecture: sharp octagon */
+  .shape-arch {
+    clip-path: polygon(29% 4%, 71% 4%, 96% 29%, 96% 71%, 71% 96%, 29% 96%, 4% 71%, 4% 29%);
+    background: var(--col);
+    box-shadow: 0 0 8px var(--glow), inset 0 0 12px var(--inner);
+  }
+  .shape-arch::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    clip-path: polygon(29% 4%, 71% 4%, 96% 29%, 96% 71%, 71% 96%, 29% 96%, 4% 71%, 4% 29%);
+    background: var(--inner2);
+  }
+
+  /* ── LABEL ── */
+  .label {
+    position: absolute;
+    z-index: 2;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0px;
+    color: var(--col);
+    text-shadow: 0 0 6px var(--glow);
+    pointer-events: none;
+    line-height: 1;
+  }
+
+  /* ── GLOW RING ── */
+  .glow-ring {
+    position: absolute;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--col);
+    opacity: 0.18;
+  }
+
+  /* ── IDLE ANIMATION ── */
+  @keyframes idle-float {
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-4px); }
+    100% { transform: translateY(0px); }
+  }
+  @keyframes idle-glow {
+    0%   { opacity: 0.18; transform: scale(1); }
+    50%  { opacity: 0.36; transform: scale(1.12); }
+    100% { opacity: 0.18; transform: scale(1); }
+  }
+  @keyframes label-pulse {
+    0%   { text-shadow: 0 0 6px var(--glow); }
+    50%  { text-shadow: 0 0 14px var(--glow), 0 0 4px var(--col); }
+    100% { text-shadow: 0 0 6px var(--glow); }
+  }
+
+  /* ── HIT ANIMATION ── */
+  @keyframes hit-flash {
+    0%   { filter: brightness(1); transform: scale(1); }
+    20%  { filter: brightness(4) saturate(0); transform: scale(1.1); }
+    60%  { filter: brightness(1.2); transform: scale(0.96); }
+    100% { filter: brightness(1); transform: scale(1); }
+  }
+  @keyframes hit-ring {
+    0%   { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  /* 방향성 피격: --kx/--ky 넉백 단위벡터(프레임 클래스가 지정) 방향으로 밀려난다 */
+  @keyframes hit-flash-dir {
+    0%   { filter: brightness(1);              transform: translate(0,0) scale(1); }
+    20%  { filter: brightness(4) saturate(0);  transform: translate(calc(var(--kx,0) * 7px),  calc(var(--ky,0) * 7px))  scale(1.12); }
+    60%  { filter: brightness(1.2);            transform: translate(calc(var(--kx,0) * 2.5px), calc(var(--ky,0) * 2.5px)) scale(0.95); }
+    100% { filter: brightness(1);              transform: translate(0,0) scale(1); }
+  }
+
+  /* ── DEATH SHATTER ── */
+  @keyframes death-shatter {
+    0%   { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); }
+    12%  { opacity: 1; transform: scale(1.13) rotate(0deg); filter: brightness(6) saturate(0); }
+    35%  { opacity: 0.7; transform: scale(0.82) rotate(8deg); filter: brightness(1.6); }
+    70%  { opacity: 0.25; transform: scale(0.42) rotate(22deg); filter: brightness(0.8) blur(1px); }
+    100% { opacity: 0; transform: scale(0.05) rotate(35deg); filter: brightness(0.2) blur(3px); }
+  }
+  @keyframes death-ring-burst {
+    0%   { transform: scale(0.9); opacity: 0.9; }
+    12%  { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(2.6); opacity: 0; }
+  }
+  /* fragments scatter in 6 directions using CSS custom props --tx --ty --rot */
+  @keyframes frag-fly {
+    0%   { opacity: 0; transform: translate(0px, 0px) scale(0.5) rotate(0deg); }
+    10%  { opacity: 0; transform: translate(0px, 0px) scale(0.5) rotate(0deg); }
+    16%  { opacity: 1; transform: translate(0px, 0px) scale(1.4) rotate(15deg); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.1) rotate(var(--rot)); }
+  }
+
+  /* ── HIT DEBRIS (무방향, 8방향 hit 대신 짧게 표시되는 임팩트) ── */
+  @keyframes debris-body-pop {
+    0%   { filter: brightness(1);               transform: scale(1); }
+    16%  { filter: brightness(3.2) saturate(0.15); transform: scale(1.1); }
+    45%  { filter: brightness(1.15);             transform: scale(0.97); }
+    100% { filter: brightness(1);                transform: scale(1); }
+  }
+  @keyframes debris-ring-pop {
+    0%   { transform: scale(1);    opacity: 0.5; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+  /* death shatter의 --tx/--ty/--rot 를 재사용하되 절반 거리에서 짧게 튀고 사라짐(파괴가 아닌 임팩트) */
+  @keyframes debris-frag-fly {
+    0%   { opacity: 0; transform: translate(0px, 0px) scale(0.35) rotate(0deg); }
+    14%  { opacity: 1; transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) scale(1.05) rotate(calc(var(--rot) * 0.35)); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.12) rotate(var(--rot)); }
+  }
+
+  /* ── FRAGMENT SHARDS ── */
+  .fragment {
+    position: absolute;
+    width: 10px;
+    height: 8px;
+    clip-path: polygon(10% 35%, 35% 0%, 80% 12%, 100% 65%, 65% 100%, 18% 85%);
+    background: var(--col);
+    opacity: 0;
+    box-shadow: 0 0 5px var(--glow);
+    pointer-events: none;
+  }
+
+  /* LIVE SPRITES (animated) */
+  .sprite.live .body       { animation: idle-float 2.4s ease-in-out infinite; }
+  .sprite.live .glow-ring  { animation: idle-glow  2.4s ease-in-out infinite; }
+  .sprite.live .label      { animation: label-pulse 2.4s ease-in-out infinite; }
+
+  .sprite.hit .body        { animation: hit-flash 0.5s ease-out forwards; }
+  .sprite.hit .glow-ring   { animation: hit-ring  0.5s ease-out forwards; }
+
+  .sprite.dead .body       { animation: death-shatter 0.9s ease-in forwards; }
+  .sprite.dead .glow-ring  { animation: death-ring-burst 0.9s ease-out forwards; }
+  .sprite.dead .label      { animation: death-shatter 0.9s ease-in forwards; animation-delay: -0.02s; }
+  .sprite.dead .fragment   { animation: frag-fly 0.9s ease-out forwards; }
+
+  /* ── FROZEN FRAMES (for capture) ── */
+  /* paused at keyframe % via negative delay trick */
+  .frame-idle0 .body      { animation: idle-float 2.4s ease-in-out infinite; animation-play-state: paused; animation-delay: 0s; }
+  .frame-idle1 .body      { animation: idle-float 2.4s ease-in-out infinite; animation-play-state: paused; animation-delay: -0.6s; }
+  .frame-idle2 .body      { animation: idle-float 2.4s ease-in-out infinite; animation-play-state: paused; animation-delay: -1.2s; }
+  .frame-idle3 .body      { animation: idle-float 2.4s ease-in-out infinite; animation-play-state: paused; animation-delay: -1.8s; }
+
+  /* 8방향 피격 프레임 (impact peak 에서 멈춤). --kx/--ky = 넉백 단위벡터(화면 y는 아래가 +) */
+  .frame-hit-e  { --kx:  1;    --ky:  0;    }
+  .frame-hit-ne { --kx:  0.7;  --ky: -0.7;  }
+  .frame-hit-n  { --kx:  0;    --ky: -1;    }
+  .frame-hit-nw { --kx: -0.7;  --ky: -0.7;  }
+  .frame-hit-w  { --kx: -1;    --ky:  0;    }
+  .frame-hit-sw { --kx: -0.7;  --ky:  0.7;  }
+  .frame-hit-s  { --kx:  0;    --ky:  1;    }
+  .frame-hit-se { --kx:  0.7;  --ky:  0.7;  }
+  .frame-hit-e  .body, .frame-hit-ne .body, .frame-hit-n  .body, .frame-hit-nw .body,
+  .frame-hit-w  .body, .frame-hit-sw .body, .frame-hit-s  .body, .frame-hit-se .body {
+    animation: hit-flash-dir 0.5s ease-out forwards; animation-play-state: paused; animation-delay: -0.1s;
+  }
+  .frame-hit-e  .glow-ring, .frame-hit-ne .glow-ring, .frame-hit-n  .glow-ring, .frame-hit-nw .glow-ring,
+  .frame-hit-w  .glow-ring, .frame-hit-sw .glow-ring, .frame-hit-s  .glow-ring, .frame-hit-se .glow-ring {
+    animation: hit-ring 0.5s ease-out forwards; animation-play-state: paused; animation-delay: -0.1s;
+  }
+
+  /* DEAD·0 = t=0.09s (flash peak), DEAD·1 = 0.27s, DEAD·2 = 0.54s, DEAD·3 = 0.81s */
+  .frame-dead0 .body,
+  .frame-dead0 .label   { animation: death-shatter 0.9s ease-in forwards paused; animation-delay: -0.09s; }
+  .frame-dead0 .glow-ring { animation: death-ring-burst 0.9s ease-out forwards paused; animation-delay: -0.09s; }
+  .frame-dead0 .fragment  { animation: frag-fly 0.9s ease-out forwards paused; animation-delay: -0.09s; }
+
+  .frame-dead1 .body,
+  .frame-dead1 .label   { animation: death-shatter 0.9s ease-in forwards paused; animation-delay: -0.27s; }
+  .frame-dead1 .glow-ring { animation: death-ring-burst 0.9s ease-out forwards paused; animation-delay: -0.27s; }
+  .frame-dead1 .fragment  { animation: frag-fly 0.9s ease-out forwards paused; animation-delay: -0.27s; }
+
+  .frame-dead2 .body,
+  .frame-dead2 .label   { animation: death-shatter 0.9s ease-in forwards paused; animation-delay: -0.54s; }
+  .frame-dead2 .glow-ring { animation: death-ring-burst 0.9s ease-out forwards paused; animation-delay: -0.54s; }
+  .frame-dead2 .fragment  { animation: frag-fly 0.9s ease-out forwards paused; animation-delay: -0.54s; }
+
+  .frame-dead3 .body,
+  .frame-dead3 .label   { animation: death-shatter 0.9s ease-in forwards paused; animation-delay: -0.81s; }
+  .frame-dead3 .glow-ring { animation: death-ring-burst 0.9s ease-out forwards paused; animation-delay: -0.81s; }
+  .frame-dead3 .fragment  { animation: frag-fly 0.9s ease-out forwards paused; animation-delay: -0.81s; }
+
+  /* DEBRIS·0 = t=0.08s(막 튐), DEBRIS·1 = 0.22s(비산 중), DEBRIS·2 = 0.42s(페이드) */
+  .frame-debris0 .body    { animation: debris-body-pop 0.5s ease-out forwards paused; animation-delay: -0.08s; }
+  .frame-debris0 .glow-ring { animation: debris-ring-pop 0.5s ease-out forwards paused; animation-delay: -0.08s; }
+  .frame-debris0 .fragment { animation: debris-frag-fly 0.5s ease-out forwards paused; animation-delay: -0.08s; }
+
+  .frame-debris1 .body    { animation: debris-body-pop 0.5s ease-out forwards paused; animation-delay: -0.22s; }
+  .frame-debris1 .glow-ring { animation: debris-ring-pop 0.5s ease-out forwards paused; animation-delay: -0.22s; }
+  .frame-debris1 .fragment { animation: debris-frag-fly 0.5s ease-out forwards paused; animation-delay: -0.22s; }
+
+  .frame-debris2 .body    { animation: debris-body-pop 0.5s ease-out forwards paused; animation-delay: -0.42s; }
+  .frame-debris2 .glow-ring { animation: debris-ring-pop 0.5s ease-out forwards paused; animation-delay: -0.42s; }
+  .frame-debris2 .fragment { animation: debris-frag-fly 0.5s ease-out forwards paused; animation-delay: -0.42s; }
+
+  /* ── EXPORT GRID (transparent bg per cell, for Puppeteer) ── */
+  #export-grid {
+    display: none;
+  }
+  #export-grid.visible {
+    display: block;
+  }
+  .export-grid-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    background: transparent;
+    /* width 는 JS(buildExportGrid)에서 FRAMES.length * CELL_SIZE 로 계산해 설정한다 —
+       프레임 수가 바뀌어도 여기 하드코딩을 다시 맞출 필요가 없도록 함(1 resource per row 강제 목적). */
+  }
+  .export-cell {
+    width: 64px;
+    height: 64px;
+    overflow: hidden;
+    background: transparent;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+  }
+  button {
+    background: #0e1a28;
+    color: #4a8aaa;
+    border: 1px solid #1a3a5a;
+    padding: 8px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  button:hover { background: #1a2a3a; color: #7ab8d8; }
+
+  .mode-indicator {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    font-size: 10px;
+    color: #2a4a6a;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Resource Sprites</h1>
+<p class="subtitle" id="subtitle-text">click-to-commit · phase-1 · dblclick LIVE = death preview</p>
+
+<!-- ─────────────── LANGUAGE ─────────────── -->
+<div class="family-group">
+  <div class="family-label">▸ Language  ·  Tier 1  ·  shape: rounded square</div>
+  <div class="sprite-row" id="lang-row"></div>
+</div>
+
+<!-- ─────────────── TOOLING ─────────────── -->
+<div class="family-group">
+  <div class="family-label">▸ Tooling  ·  Tier 1  ·  shape: diamond</div>
+  <div class="sprite-row" id="tool-row"></div>
+</div>
+
+<!-- ─────────────── FRAMEWORK ─────────────── -->
+<div class="family-group">
+  <div class="family-label">▸ Framework  ·  Tier 2  ·  shape: hexagon</div>
+  <div class="sprite-row" id="fw-row"></div>
+</div>
+
+<!-- ─────────────── ARCHITECTURE ─────────────── -->
+<div class="family-group">
+  <div class="family-label">▸ Architecture  ·  Tier 3  ·  shape: octagon</div>
+  <div class="sprite-row" id="arch-row"></div>
+</div>
+
+<!-- ─────────────── EXPORT GRID (hidden) ─────────────── -->
+<div id="export-grid">
+  <p style="font-size:10px;color:#2a4a6a;margin-bottom:8px;letter-spacing:2px;" id="export-mode-label">
+    EXPORT MODE
+  </p>
+  <div class="export-grid-inner" id="export-grid-inner"></div>
+</div>
+
+<div class="mode-indicator" id="mode-indicator">MODE: PREVIEW</div>
+<div class="controls">
+  <button onclick="toggleAnimations()">PAUSE / PLAY</button>
+  <button onclick="toggleExport()">EXPORT VIEW</button>
+</div>
+
+<script>
+const RESOURCES = [
+  // name, family, shape-class, col(hex), bg(hex), glow(rgba), inner(rgba), inner2(hex)
+  { id:'cs',      name:'C#',      family:'lang', shape:'shape-lang', col:'#66c8fa', bg:'rgba(8,20,40,0.95)',  glow:'rgba(100,200,250,0.5)', inner:'rgba(100,200,250,0.06)', inner2:'rgba(8,20,40,0.95)' },
+  { id:'js',      name:'JS',      family:'lang', shape:'shape-lang', col:'#fae248', bg:'rgba(30,24,4,0.95)',  glow:'rgba(250,220,70,0.5)',  inner:'rgba(250,220,70,0.06)',  inner2:'rgba(30,24,4,0.95)' },
+  { id:'ts',      name:'TS',      family:'lang', shape:'shape-lang', col:'#54a4fa', bg:'rgba(6,14,38,0.95)',  glow:'rgba(80,160,250,0.5)',  inner:'rgba(80,160,250,0.06)',  inner2:'rgba(6,14,38,0.95)' },
+  { id:'sql',     name:'SQL',     family:'lang', shape:'shape-lang', col:'#7ae8cc', bg:'rgba(4,22,22,0.95)',  glow:'rgba(100,230,200,0.5)', inner:'rgba(100,230,200,0.06)', inner2:'rgba(4,22,22,0.95)' },
+  { id:'java',    name:'Java',    family:'lang', shape:'shape-lang', col:'#ed8b00', bg:'rgba(30,16,0,0.95)',  glow:'rgba(237,139,0,0.5)',   inner:'rgba(237,139,0,0.06)',   inner2:'rgba(22,10,0,0.95)' },
+  { id:'cpp',     name:'C++',     family:'lang', shape:'shape-lang', col:'#4c9ede', bg:'rgba(4,14,30,0.95)', glow:'rgba(76,158,222,0.5)',  inner:'rgba(76,158,222,0.06)',  inner2:'rgba(4,10,22,0.95)' },
+  { id:'python',  name:'Python',  family:'lang', shape:'shape-lang', col:'#3776ab', bg:'rgba(4,14,26,0.95)', glow:'rgba(55,118,171,0.5)',  inner:'rgba(55,118,171,0.06)',  inner2:'rgba(4,14,26,0.95)' },
+  { id:'go',      name:'Go',      family:'lang', shape:'shape-lang', col:'#4de0ed', bg:'rgba(4,22,24,0.95)', glow:'rgba(77,224,237,0.5)',  inner:'rgba(77,224,237,0.06)',  inner2:'rgba(4,22,24,0.95)' },
+  { id:'rust',    name:'Rust',    family:'lang', shape:'shape-lang', col:'#f26e42', bg:'rgba(26,10,4,0.95)', glow:'rgba(242,110,66,0.5)',  inner:'rgba(242,110,66,0.06)',  inner2:'rgba(26,10,4,0.95)' },
+  { id:'php',     name:'PHP',     family:'lang', shape:'shape-lang', col:'#b291f5', bg:'rgba(18,10,28,0.95)', glow:'rgba(178,145,245,0.5)', inner:'rgba(178,145,245,0.06)', inner2:'rgba(18,10,28,0.95)' },
+
+  { id:'git',     name:'Git',     family:'tool', shape:'shape-tool', col:'#f88a4c', bg:'rgba(30,10,4,0.95)',  glow:'rgba(248,138,76,0.5)',  inner:'rgba(248,138,76,0.06)',  inner2:'rgba(20,8,4,0.95)' },
+  { id:'ci',      name:'CI',      family:'tool', shape:'shape-tool', col:'#c870f0', bg:'rgba(20,4,30,0.95)', glow:'rgba(200,110,240,0.5)', inner:'rgba(200,110,240,0.06)', inner2:'rgba(20,4,30,0.95)' },
+
+  { id:'unity',   name:'Unity',   family:'fw',   shape:'shape-fw',   col:'#f27c6e', bg:'rgba(30,6,6,0.95)',  glow:'rgba(242,124,110,0.5)', inner:'rgba(242,124,110,0.06)', inner2:'rgba(18,4,4,0.95)' },
+  { id:'react',   name:'React',   family:'fw',   shape:'shape-fw',   col:'#52eaf2', bg:'rgba(4,22,26,0.95)', glow:'rgba(80,235,242,0.5)',  inner:'rgba(80,235,242,0.06)',  inner2:'rgba(4,22,26,0.95)' },
+
+  { id:'pattern', name:'Pat.',    family:'arch', shape:'shape-arch', col:'#eebe54', bg:'rgba(26,18,4,0.95)', glow:'rgba(238,190,80,0.5)',  inner:'rgba(238,190,80,0.06)',  inner2:'rgba(18,12,4,0.95)' },
+  { id:'clean',   name:'Clean',   family:'arch', shape:'shape-arch', col:'#9ee06c', bg:'rgba(8,22,4,0.95)',  glow:'rgba(158,224,108,0.5)', inner:'rgba(158,224,108,0.06)', inner2:'rgba(8,22,4,0.95)' },
+];
+
+// 19프레임: idle0-3 / 8방향 hit(E,NE,N,NW,W,SW,S,SE) / dead0-3 / debris0-2(무방향 파편, append)
+// 순서는 capture-sprites.js FRAMES 및 런타임 인덱스(HitStart=4, DeadStart=12, DebrisStart=16)와 일치해야 함.
+const FRAMES = [
+  { cls: 'frame-idle0',  label: 'IDLE·0' },
+  { cls: 'frame-idle1',  label: 'IDLE·1' },
+  { cls: 'frame-idle2',  label: 'IDLE·2' },
+  { cls: 'frame-idle3',  label: 'IDLE·3' },
+  { cls: 'frame-hit-e',  label: 'HIT·E'  },
+  { cls: 'frame-hit-ne', label: 'HIT·NE' },
+  { cls: 'frame-hit-n',  label: 'HIT·N'  },
+  { cls: 'frame-hit-nw', label: 'HIT·NW' },
+  { cls: 'frame-hit-w',  label: 'HIT·W'  },
+  { cls: 'frame-hit-sw', label: 'HIT·SW' },
+  { cls: 'frame-hit-s',  label: 'HIT·S'  },
+  { cls: 'frame-hit-se', label: 'HIT·SE' },
+  { cls: 'frame-dead0',  label: 'DEAD·0' },
+  { cls: 'frame-dead1',  label: 'DEAD·1' },
+  { cls: 'frame-dead2',  label: 'DEAD·2' },
+  { cls: 'frame-dead3',  label: 'DEAD·3' },
+  { cls: 'frame-debris0', label: 'DEBRIS·0' },
+  { cls: 'frame-debris1', label: 'DEBRIS·1' },
+  { cls: 'frame-debris2', label: 'DEBRIS·2' },
+];
+const CELL_SIZE = 64;
+
+// 6 fragment directions: upper-R, upper-L, lower-R, lower-L, up, down
+const FRAG_DIRS = [
+  { tx: '26px',  ty: '-25px', rot: '130deg'  },
+  { tx: '-25px', ty: '-22px', rot: '-95deg'  },
+  { tx: '29px',  ty: '21px',  rot: '200deg'  },
+  { tx: '-22px', ty: '26px',  rot: '-160deg' },
+  { tx: '4px',   ty: '-32px', rot: '55deg'   },
+  { tx: '-3px',  ty: '30px',  rot: '-45deg'  },
+];
+
+function buildSprite(res, frameClass, live, options = {}) {
+  const { showLabel = true } = options;
+  const sprite = document.createElement('div');
+  sprite.className = `sprite ${live ? 'live' : frameClass}`;
+
+  // CSS vars
+  sprite.style.setProperty('--col',    res.col);
+  sprite.style.setProperty('--bg',     res.bg);
+  sprite.style.setProperty('--glow',   res.glow);
+  sprite.style.setProperty('--inner',  res.inner);
+  sprite.style.setProperty('--inner2', res.inner2);
+
+  const ring = document.createElement('div');
+  ring.className = 'glow-ring';
+
+  const body = document.createElement('div');
+  body.className = `body ${res.shape}`;
+
+  sprite.appendChild(ring);
+  sprite.appendChild(body);
+  if (showLabel) {
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = res.name;
+    sprite.appendChild(label);
+  }
+
+  // 6 fragment shards (scatter on death)
+  FRAG_DIRS.forEach(dir => {
+    const frag = document.createElement('div');
+    frag.className = 'fragment';
+    frag.style.setProperty('--tx',  dir.tx);
+    frag.style.setProperty('--ty',  dir.ty);
+    frag.style.setProperty('--rot', dir.rot);
+    sprite.appendChild(frag);
+  });
+
+  // single click → hit flash
+  sprite.addEventListener('click', () => {
+    sprite.classList.remove('live', 'hit', 'dead');
+    sprite.classList.add('hit');
+    setTimeout(() => {
+      sprite.classList.remove('hit');
+      sprite.classList.add('live');
+    }, 500);
+  });
+
+  // double click → death shatter preview
+  sprite.addEventListener('dblclick', () => {
+    sprite.classList.remove('live', 'hit', 'dead');
+    sprite.classList.add('dead');
+    setTimeout(() => {
+      sprite.classList.remove('dead');
+      sprite.classList.add('live');
+    }, 1000);
+  });
+
+  return sprite;
+}
+
+// Build preview rows (live animated)
+function buildRow(rowId, family) {
+  const row = document.getElementById(rowId);
+  RESOURCES.filter(r => r.family === family).forEach(res => {
+    const entry = document.createElement('div');
+    entry.className = 'sprite-entry';
+
+    // frame strip
+    const strip = document.createElement('div');
+    strip.className = 'frame-strip';
+
+    FRAMES.forEach(f => {
+      const cell = document.createElement('div');
+      const sp = buildSprite(res, f.cls, false);
+      const lbl = document.createElement('div');
+      lbl.className = 'frame-label';
+      lbl.textContent = f.label;
+      cell.appendChild(sp);
+      cell.appendChild(lbl);
+      strip.appendChild(cell);
+    });
+
+    // live preview
+    const liveWrap = document.createElement('div');
+    liveWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
+    const liveSp = buildSprite(res, '', true);
+    const liveLbl = document.createElement('div');
+    liveLbl.className = 'frame-label';
+    liveLbl.textContent = '● LIVE';
+    liveLbl.style.color = res.col;
+    liveLbl.style.opacity = '0.6';
+    liveWrap.appendChild(liveSp);
+    liveWrap.appendChild(liveLbl);
+
+    const name = document.createElement('div');
+    name.className = 'sprite-name';
+    name.textContent = res.id.toUpperCase();
+    name.style.color = res.col;
+    name.style.opacity = '0.5';
+
+    entry.appendChild(name);
+    entry.appendChild(strip);
+    entry.appendChild(liveWrap);
+    row.appendChild(entry);
+  });
+}
+
+buildRow('lang-row', 'lang');
+buildRow('tool-row', 'tool');
+buildRow('fw-row',   'fw');
+buildRow('arch-row', 'arch');
+
+// 프레임/자원 수는 FRAMES.length·RESOURCES.length 에서 파생 — 프레임 수가 바뀌어도 문구 수정 불필요
+document.getElementById('subtitle-text').textContent =
+  `click-to-commit · phase-1 · ${RESOURCES.length} resource types · ${FRAMES.length} frames each  ·  dblclick LIVE = death preview`;
+document.getElementById('export-mode-label').textContent =
+  `EXPORT MODE — ${CELL_SIZE}×${CELL_SIZE} × ${RESOURCES.length} resources × ${FRAMES.length} frames = ${FRAMES.length * CELL_SIZE}×${CELL_SIZE} grid per resource row (4 idle · 8 hit · 4 dead · 3 debris)`;
+
+// Build export grid (all resources × all frames, 64×64 each)
+function buildExportGrid() {
+  const grid = document.getElementById('export-grid-inner');
+  grid.innerHTML = '';
+  grid.style.width = (FRAMES.length * CELL_SIZE) + 'px'; // 1 resource per row 강제(폭 = 전체 프레임 수 × 셀 크기)
+  RESOURCES.forEach(res => {
+    FRAMES.forEach(f => {
+      const cell = document.createElement('div');
+      cell.className = 'export-cell';
+      cell.style.setProperty('--col',    res.col);
+      cell.style.setProperty('--bg',     res.bg);
+      cell.style.setProperty('--glow',   res.glow);
+      cell.style.setProperty('--inner',  res.inner);
+      cell.style.setProperty('--inner2', res.inner2);
+      const sp = buildSprite(res, f.cls, false, { showLabel: false });
+      sp.style.position = 'absolute';
+      cell.appendChild(sp);
+      grid.appendChild(cell);
+    });
+  });
+}
+buildExportGrid();
+
+// Controls
+let paused = false;
+function toggleAnimations() {
+  paused = !paused;
+  document.querySelectorAll('.sprite.live .body, .sprite.live .glow-ring, .sprite.live .label, .sprite.live .fragment')
+    .forEach(el => el.style.animationPlayState = paused ? 'paused' : 'running');
+}
+
+function toggleExport() {
+  const preview = document.querySelectorAll('.family-group');
+  const exportGrid = document.getElementById('export-grid');
+  const indicator = document.getElementById('mode-indicator');
+  if (exportGrid.classList.contains('visible')) {
+    exportGrid.classList.remove('visible');
+    preview.forEach(el => el.style.display = '');
+    indicator.textContent = 'MODE: PREVIEW';
+  } else {
+    exportGrid.classList.add('visible');
+    preview.forEach(el => el.style.display = 'none');
+    indicator.textContent = `MODE: EXPORT  ·  ${CELL_SIZE}×${CELL_SIZE} per cell  ·  ${RESOURCES.length * FRAMES.length} cells (${RESOURCES.length} res × ${FRAMES.length} frames)`;
+  }
+}
+</script>
+</body>
+</html>

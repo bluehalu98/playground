@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>피버 화염 스프라이트 정본 (P2)</title>
+<style>
+:root{--bg:#0b1016;--panel:#111823;--line:#1e2937;--txt:#e6ecf3;--dim:#8b95a3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:26px 30px 60px}
+h1{font-size:19px;margin:0 0 6px}
+h2{font-size:14px;margin:26px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;max-width:1060px;margin:6px 0 12px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.art{width:150px;height:150px;background:
+  linear-gradient(45deg,#141a22 25%,transparent 25%,transparent 75%,#141a22 75%),
+  linear-gradient(45deg,#141a22 25%,#0e1319 25%,#0e1319 75%,#141a22 75%);
+  background-size:16px 16px;background-position:0 0,8px 8px}
+.nm{font-size:11px;color:var(--dim);text-align:center;margin-top:6px;max-width:150px;line-height:1.5}
+svg{display:block;width:100%;height:100%}
+/* 조립 미리보기 — 1920×1080 을 480×270 으로 축소해 화면 테두리를 그대로 흉내낸다. */
+.stage{position:relative;width:480px;height:270px;background:#07131b;border-radius:8px;overflow:hidden}
+.stage img,.stage div{position:absolute}
+/* 런타임은 색 위에 `FeverFlameCoreAlpha`(0.42)를 곱한다 — 도해도 같은 세기로 낮춰야 "불"로 읽힌다.
+   하드 컷선 표식(.mark)은 설명용이라 이 감쇠 밖에 둔다. */
+.stage .fx{position:absolute;inset:0;opacity:.45}
+.stage .mark{position:absolute}
+/* C. 비교 도해 — 두 스테이지를 나란히 놓는다(캡션은 스테이지 밖이라 absolute 규칙에 안 걸린다). */
+.cmp{display:flex;flex-wrap:wrap;gap:20px}
+.cap{font-size:11px;color:var(--dim);line-height:1.7;max-width:480px;margin-top:9px}
+.cap b{color:var(--txt)}
+.cap .bad{color:#ff7b7b}
+.cap .good{color:#57d1b8}
+#export{display:none}
+#export.visible{display:block}
+.export-cell{width:512px;height:512px;background:transparent;padding:0;margin:0}
+.export-cell svg{width:512px;height:512px;display:block}
+</style>
+</head>
+<body>
+
+<h1>피버 화염 — 스프라이트 정본 (P2)</h1>
+<p class="note">
+  <b class="hi">현행</b>: 피버 테두리가 <b class="hi">Image 66장</b>이다 — 밴드 24(6단 × 4면) · 혓바닥 28(14열 × 상하) ·
+  엠버 10 · 림 4. 전부 런타임 사각형이라 <b class="hi">직선 띠</b>로 보이고 불꽃으로 안 읽힌다
+  (<code>RunFxView.cs:591-640</code> 생성 · <code>:723-770</code> 갱신).<br>
+  <b class="hi">밴드를 한 장으로 합치지 않는 이유</b>: 코드가 <b class="hi">4면을 각각 다른 위상으로 깜빡인다</b>
+  (<code>flickTop/Bottom/Left/Right</code>). 한 장으로 묶으면 그 깜빡임이 죽는다 ⇒ <b class="hi">면당 1장</b>으로
+  24 → 4 로 줄인다.<br>
+  언어는 P1·P5 와 같다 — <b class="hi">그레이스케일</b>로 굽고 색은 런타임 곱연산(<code>FeverFlameCoreColor</code> ·
+  <code>FeverThemeColor</code>)이 정본이다. 여기서는 <b class="hi">알파</b>가 그라디언트를 만든다.
+</p>
+<p class="note">
+  <b class="hi">2026-09-06 갱신 — 좌우를 걷어내고 상하로 몰았다</b>
+  (<code>fever-edge-flames-updown-plan</code>, owner 지시 <i>"버닝 때 좌우에 너무 직사각형으로 이펙트가
+  나오는데 차라리 상하에 나오는 불꽃이 나오게 해줘"</i>).<br>
+  <code>fever_band</code> 는 <b class="hi">위가 불투명 → 아래로 소멸</b>하는 <b class="hi">세로</b> 경사다.
+  상(0°)·하(180°)는 불투명면이 화면 바깥을 향해 정상이지만, <b class="hi">좌우로 눕히면 하드 컷선이
+  화면 안쪽</b>(x=132 / x=1788)에 서서 "직사각형 띠"로 읽혔다. 그래서 좌우 밴드 2장 + 좌우 핫 림 2장을
+  제거하고, 남은 Image 예산을 상하 혓바닥(14 → <b class="hi">18</b>열)으로 옮겼다. §B 가 그 결과,
+  §C 가 현행과의 병렬 비교다.<br>
+  <b class="hi">회전 부호 각주(해소됨)</b>: 플랜 §1 은 이 문서의 좌 <code>+90°</code>/우 <code>−90°</code> 가
+  코드의 좌 <code>−90°</code>/우 <code>+90°</code> 와 <b class="hi">부호가 반대</b>라고 기록했다.
+  실제로는 <b class="hi">좌표 손잡이(handedness) 차이</b>다 — CSS <code>rotate()</code> 는 y-down 화면에서
+  <b class="hi">시계방향</b>, Unity <code>Euler z</code> 는 y-up Canvas 에서 <b class="hi">반시계방향</b>이라
+  같은 그림을 만들려면 부호가 반대여야 한다. 즉 <b class="hi">둘은 화면상 같은 결과</b>였고,
+  <b class="hi">둘 다</b> 하드 컷을 안쪽에 세우고 있었다(<code>RunFxView.cs</code> "각 면이 화면 바깥쪽을
+  위로" 주석 쪽이 틀렸던 것). 좌우 밴드를 지운 지금 이 불일치는 <b class="hi">소멸</b>한다 — 남은 회전은
+  상 0° / 하 180° 뿐이고 두 표기가 부호와 무관하게 일치한다.
+</p>
+
+<h2>A. 굽는 그림 3장</h2>
+<div class="grid" id="grid"></div>
+
+<h2>B. 조립 미리보기 — 상하 강화(정본) (1920×1080 → 480×270)</h2>
+<p class="note">
+  상·하 밴드 2면 + 혓바닥 <b class="hi">18</b>열 × 상하 + 엠버 10(상·하 2면 순환) + 상·하 핫 림 2.
+  실제 색(<code>#ff9a3c</code> 계열)을 곱해 보여준다. <b class="hi">좌·우에는 아무 것도 놓지 않는다</b>
+  — 밴드도, 3px 핫 림도, 엠버도 없다.
+</p>
+<div class="stage" id="stage"></div>
+
+<h2>C. 비교 — 현행(4면) vs 상하 강화(좌우 제거)</h2>
+<p class="note">
+  owner 눈 확인용 병렬 도해. 같은 산식·같은 상수로 그린다(아래 <code>buildStage()</code> 하나가 둘 다 그린다).
+  왼쪽의 <span style="color:#ff7b7b">붉은 점선</span>이 좌우 밴드의 <b class="hi">안쪽 하드 컷선</b>
+  (x=132 / x=1788)이고, 그 바깥 세로 흰 선이 <b class="hi">핫 이너 림 3px</b> 이다 — 밴드만 지우고 림을
+  남기면 이 세로 직사각형이 그대로 잔존한다.
+</p>
+<div class="cmp">
+  <div>
+    <div class="stage" id="stageBefore"></div>
+    <div class="cap">
+      <b>현행(4면)</b> — 밴드 4 · 혓바닥 14열(진폭 0.50 · 폭비 0.60) · 엠버 4면 순환 · 림 4.<br>
+      <span class="bad">문제 ①</span> 좌우 밴드의 불투명 하드 컷이 화면 <b>안쪽</b>에 서서 세로 직사각형으로 읽힌다.<br>
+      <span class="bad">문제 ②</span> 상단 혓바닥은 <code>localScale=(1,−1,1)</code> 이 <code>CanvasUi.Place</code> 의
+      pivot(0,1) 강제와 충돌해 rect 가 y&lt;0 으로 반사된다 — 도해에서 <b>흐리게</b> 칠한 부분이 그것으로,
+      실제 화면에서는 안 보인다(코드 수준 재현 확정 · 런타임 실측은 owner 몫).
+    </div>
+  </div>
+  <div>
+    <div class="stage" id="stageAfter"></div>
+    <div class="cap">
+      <b>상하 강화(좌우 제거)</b> — 밴드 2 · 혓바닥 <b>18</b>열(진폭 <b>0.62</b> · 폭비 <b>0.66</b>) ·
+      엠버 상하 2면 순환 · 림 2.<br>
+      <span class="good">해소 ①</span> 좌우에 요소가 0 이라 안쪽 하드 컷선이 생길 자리가 없다.<br>
+      <span class="good">해소 ②</span> 상단 혓바닥은 배치 y 를 높이만큼 내려 pivot 반사를 상쇄한다
+      (<code>Place(x, topHeight, w, topHeight)</code>) — 미러는 유지되고 rect 는 [0, topHeight] 에 앉는다.<br>
+      <span class="good">예산</span> 좌우에서 뺀 4장(밴드 2 + 림 2)을 혓바닥 8장 증설에 쓴다 —
+      활성 Image 49 → <b>53</b> 장(상한 60).
+    </div>
+  </div>
+</div>
+
+<div id="export"></div>
+
+<script>
+const svgWrap = (inner) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+// 조립 도해 전용 — `preserveAspectRatio="none"`. 기본값(xMidYMid meet)이면 480×33 같은 납작한 칸에서
+// 그림이 33×33 정사각으로 **레터박싱**돼 밴드가 화면 가운데 네모로 찍힌다(2026-09-06 이전 §B 의 결함).
+// Unity `Image` 는 `preserveAspect` 를 안 켜면 rect 에 그냥 늘어나므로 `none` 이 코드와 같은 거동이다.
+const svgFill = (inner) =>
+  `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+// ── 3장 정의 ───────────────────────────────────────────────────────
+// ⚠ 회색값이 아니라 **알파**로 그라디언트를 만든다 — 코드가 색과 알파를 따로 곱하기 때문이다
+//   (`stepColor` = Lerp(core, theme), `stepAlpha` = Lerp(coreAlpha, 0)). 흰색 고정 + 알파 경사.
+const PIECES = [
+  {
+    name: 'fever_band',
+    use: '테두리 밴드 — 화면 안쪽으로 사라지는 경사. 4면에 회전해 쓴다(24 → 4장)',
+    svg: `<defs><linearGradient id="fb" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#fff" stop-opacity="1"/>
+            <stop offset="18%"  stop-color="#fff" stop-opacity="0.72"/>
+            <stop offset="45%"  stop-color="#fff" stop-opacity="0.34"/>
+            <stop offset="75%"  stop-color="#fff" stop-opacity="0.10"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient></defs>
+          <rect x="0" y="0" width="100" height="100" fill="url(#fb)"/>`,
+  },
+  {
+    name: 'fever_tongue',
+    use: '화염 혓바닥 — 아래가 넓고 위가 갈라지는 불꽃. 세로로 늘여 쓴다(높이는 코드가 매 프레임 바꾼다)',
+    svg: `<defs><linearGradient id="ft" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%"   stop-color="#fff" stop-opacity="1"/>
+            <stop offset="55%"  stop-color="#fff" stop-opacity="0.62"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient></defs>
+          <path d="M22 100
+                   C 22 74 30 62 34 44
+                   C 38 60 44 64 48 72
+                   C 52 52 46 30 56 4
+                   C 60 34 70 46 74 64
+                   C 78 78 78 90 78 100 Z" fill="url(#ft)"/>`,
+  },
+  {
+    name: 'fever_ember',
+    use: '엠버 — 중심이 흰 불티. 현행은 민무늬 원이라 화면에서 점으로만 보인다',
+    svg: `<defs><radialGradient id="fe" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#fff" stop-opacity="1"/>
+            <stop offset="35%"  stop-color="#fff" stop-opacity="0.75"/>
+            <stop offset="70%"  stop-color="#fff" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient></defs>
+          <circle cx="50" cy="50" r="50" fill="url(#fe)"/>`,
+  },
+];
+
+document.getElementById('grid').innerHTML = PIECES.map(p => `
+  <div class="tile"><div class="art">${svgWrap(p.svg)}</div>
+  <div class="nm"><b>${p.name}</b><br>${p.use}</div></div>`).join('');
+
+// ── 조립 빌더 (B·C 공용) ────────────────────────────────────────────
+// 실제 상수와 같은 비율·같은 산식으로 배치한다. §B(상하 강화 정본)와 §C(현행 vs 변경 후)를
+// **같은 함수 하나**가 그리므로 두 도해의 수치가 어긋날 수 없다.
+//   화면 1920×1080 → 480×270 · 밴드 두께 `FeverOverlayBandThickness` = 132.
+const S = 480, H = 270;
+const bandPx = (132 / 1080) * H;
+const rimPx = Math.max(1, (3 / 1080) * H);   // FeverOverlayBorderThickness = 3
+const tint = '#ff9a3c';                       // FeverThemeColor 계열
+const hot = 'rgba(255,236,180,.75)';          // FeverFlameCoreColor 계열(핫 이너 림)
+const asImg = (piece, style) =>
+  `<div style="${style}">${svgFill(piece.svg.replace(/#fff/g, tint))}</div>`;
+const band = PIECES[0], tongue = PIECES[1], ember = PIECES[2];
+
+// 혓바닥 높이 — 코드(`RunFxView.SyncFeverFlameBorder`)와 같은 식이다.
+//   heightRatio = 0.5 + 0.5·sin(col · FeverFlameTongueFreq(0.9))
+//   height      = FeverOverlayBandThickness · FeverFlameTongueAmplitude · heightRatio · flicker
+// 정지 컷이므로 flicker = 1 · Time.time = 0 으로 고정한다.
+const tongueH = (col, amp) => bandPx * amp * (0.5 + 0.5 * Math.sin(col * 0.9));
+
+// sides=true 면 좌우 밴드·좌우 림·4면 엠버까지 그린다(= 현행). false 면 상하만(= 변경 후).
+// ghostTop=true 면 상단 혓바닥을 흐리게 칠한다(pivot 반사로 화면에서 안 보이는 상태의 표기).
+function buildStage({ sides, count, amp, widthRatio, ghostTop }) {
+  let html = '';
+  let marks = '';   // 설명용 표식 — 알파 감쇠(.fx) 밖에 둔다.
+
+  // 상·하 밴드 — 회전 0°/180° 라 불투명면이 화면 바깥을 향한다(정상).
+  html += asImg(band, `left:0;top:0;width:${S}px;height:${bandPx}px;`);
+  html += asImg(band, `left:0;bottom:0;width:${S}px;height:${bandPx}px;transform:rotate(180deg);`);
+
+  if (sides) {
+    // 좌·우 밴드(현행) — ⚠ CSS 는 시계방향, Unity Euler z 는 반시계방향이라 부호가 반대일 뿐
+    //   **화면 결과는 코드와 같다**: 불투명 하드 컷이 화면 **안쪽**에 선다.
+    html += asImg(band, `left:${-(H - bandPx) / 2}px;top:${(H - bandPx) / 2}px;width:${H}px;height:${bandPx}px;transform:rotate(90deg);`);
+    html += asImg(band, `right:${-(H - bandPx) / 2}px;top:${(H - bandPx) / 2}px;width:${H}px;height:${bandPx}px;transform:rotate(-90deg);`);
+    // 하드 컷선 표식 — 원좌표 x=132 / x=1788.
+    marks += `<div class="mark" style="left:${bandPx}px;top:0;width:0;height:${H}px;border-left:1px dashed #ff5a5a;"></div>`;
+    marks += `<div class="mark" style="left:${S - bandPx}px;top:0;width:0;height:${H}px;border-left:1px dashed #ff5a5a;"></div>`;
+    // 좌·우 핫 이너 림 3px — 밴드만 지우면 이게 세로 직사각형으로 잔존한다(T2 ②).
+    html += `<div style="left:0;top:0;width:${rimPx}px;height:${H}px;background:${hot};"></div>`;
+    html += `<div style="right:0;top:0;width:${rimPx}px;height:${H}px;background:${hot};"></div>`;
+  }
+
+  // 상·하 핫 이너 림.
+  html += `<div style="left:0;top:0;width:${S}px;height:${rimPx}px;background:${hot};"></div>`;
+  html += `<div style="left:0;bottom:0;width:${S}px;height:${rimPx}px;background:${hot};"></div>`;
+
+  // 혓바닥 — 폭 = (화면폭 / 열수) × 폭비. 상단은 코드와 같이 y 미러(scaleY(-1))다.
+  const w = (S / count) * widthRatio;
+  for (let c = 0; c < count; c++) {
+    const x = (c / (count - 1)) * S;
+    const h = tongueH(c, amp);
+    html += asImg(tongue, `left:${x - w / 2}px;top:0;width:${w}px;height:${h}px;transform:scaleY(-1);`
+      + (ghostTop ? 'opacity:.16;' : ''));
+    html += asImg(tongue, `left:${x - w / 2}px;bottom:0;width:${w}px;height:${h}px;`);
+  }
+
+  // 엠버 10개 — 현행은 4면 순환(상·우·하·좌), 변경 후는 상·하 2면 순환. 위상 간격 0.37 도 코드와 같다.
+  const inset = bandPx * 0.4;   // FeverFlameEmberInsetRatio = 0.4
+  for (let i = 0; i < 10; i++) {
+    const pos = (i * 0.37) % 1;
+    const style = sides
+      ? [`left:${pos * S}px;top:${inset}px;`,
+         `right:${inset}px;top:${pos * H}px;`,
+         `left:${pos * S}px;bottom:${inset}px;`,
+         `left:${inset}px;top:${pos * H}px;`][i % 4]
+      : (i % 2 === 0 ? `left:${pos * S}px;top:${inset}px;` : `left:${pos * S}px;bottom:${inset}px;`);
+    html += asImg(ember, `${style}width:9px;height:9px;`);
+  }
+  return `<div class="fx">${html}</div>${marks}`;
+}
+
+// B. 정본 = 변경 후(상하 강화). C. 비교 = 현행 / 변경 후 병렬.
+const AFTER = { sides: false, count: 18, amp: 0.62, widthRatio: 0.66, ghostTop: false };
+const BEFORE = { sides: true, count: 14, amp: 0.50, widthRatio: 0.60, ghostTop: true };
+document.getElementById('stage').innerHTML = buildStage(AFTER);
+document.getElementById('stageBefore').innerHTML = buildStage(BEFORE);
+document.getElementById('stageAfter').innerHTML = buildStage(AFTER);
+
+// D. 캡처 셀
+document.getElementById('export').innerHTML = PIECES.map(p => `
+  <div class="export-cell" data-name="${p.name}">${svgWrap(p.svg)}</div>`).join('');
+</script>
+</body>
+</html>

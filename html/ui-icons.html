@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>UI 아이콘 시트 — 이모지 대체 9칸</title>
+<style>
+  :root{
+    --bg:#0b1116; --panel:#111a20; --rule:#1e2c34; --ink:#e3ecef; --muted:#7f959f;
+    --signal:#34d399; --gold:#f5a623;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif;font-size:14px;line-height:1.7}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 28px 80px}
+  h1{font-size:28px;margin:0 0 6px;letter-spacing:-.02em}
+  h2{font-size:17px;margin:44px 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin:0}
+  .note{color:var(--muted);font-size:12.5px;margin:6px 0 16px;max-width:74ch}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88em;
+    background:#0d161c;padding:1px 5px;border-radius:3px;color:#b3c4cb}
+  hr{border:0;border-top:1px solid var(--rule);margin:34px 0 0}
+
+  /* 참조/미리보기 격자 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:14px;margin-top:14px}
+  .tile{background:var(--panel);border:1px solid var(--rule);border-radius:8px;
+    padding:14px 10px 10px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .tile .art{width:64px;height:64px;display:flex;align-items:center;justify-content:center}
+  .tile .art svg,.tile .art img{width:64px;height:64px;display:block}
+  .tile .art img{filter:none}
+  .tile .nm{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted);
+    text-align:center;line-height:1.4;word-break:break-all}
+  .tile .gl{font-size:11px;color:var(--signal)}
+  .tile.is-new{border-color:#2c4a3f}
+
+  /* 실사용 크기 판독 */
+  .legib{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:18px 20px;margin-top:14px}
+  .legib .row{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--rule)}
+  .legib .row:first-child{border-top:0}
+  .legib .lab{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);width:52px;flex:0 0 auto}
+  .legib .s16 svg{width:16px;height:16px;display:block}
+  .legib .s20 svg{width:20px;height:20px;display:block}
+  .legib .s24 svg{width:24px;height:24px;display:block}
+  .legib .s40 svg{width:40px;height:40px;display:block}
+  .legib .ctx{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--ink)}
+  .legib .ctx.gold{color:var(--gold)}
+
+  /* 캡처용 — 스크립트가 .visible 을 붙인다 */
+  #export{display:none}
+  #export.visible{display:block}
+  .export-cell{width:512px;height:512px;background:transparent;padding:0;margin:0;
+    display:flex;align-items:center;justify-content:center}
+  .export-cell svg{width:512px;height:512px;display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>UI 아이콘 시트 — 이모지 대체 9칸</h1>
+  <p class="sub">출처: owner 2026-09-03 결정 <b>ㄴ(우리 스프라이트)</b> · 플랜 <code>emoji-asset-path-plan.md</code></p>
+  <p class="note">
+    폰트에 글리프가 없어 <code>Renderable()</code> 가 지우거나 두부 <code>□</code> 로 나오는 자리를 스프라이트로 덮는다.
+    <b>기준 문법은 기존 <code>UI/Progression/**</code> 19장</b> — 512×512, 흰 단색 실루엣, 외곽선 없음, 투명 배경.
+    런타임에서 <code>Image.color</code> 로 틴트하므로 <b>반드시 흰색 단색</b>이어야 한다.
+    산출물은 <code>Assets/Resources/UI/Progression/Icons/&lt;name&gt;.png</code>, 캡처는 <code>npm run capture:ui-icons</code>.
+  </p>
+
+  <h2>A. 기준 — 기존 에셋 (참조용, 손대지 않는다)</h2>
+  <p class="note">이 19장이 톤의 정본이다. 신규 9칸은 이 두께·여백·둥근 정도를 따른다.</p>
+  <div class="grid" id="refGrid"></div>
+
+  <hr>
+
+  <h2>B. 신규 9칸</h2>
+  <p class="note">
+    3칸(🏆 <code>crown</code> · 🔒 <code>padlock-locked</code> · 🎲 <code>chest</code>)은 기존 에셋으로 덮으므로 여기 없다 —
+    <b>두부 <code>□</code> 16곳은 그 두 장(crown·padlock)으로 닫힌다.</b>
+  </p>
+  <div class="grid" id="newGrid"></div>
+
+  <h2>C. 실사용 크기 판독</h2>
+  <p class="note">게임에서 실제로 나오는 크기다. 16~24px 에서 형태가 뭉개지지 않는지가 합격 기준.</p>
+  <div class="legib" id="legib"></div>
+
+  <h2>D. 호버 프레임 (2026-09-05 · ② 스왑 · ③ 스트립)</h2>
+  <p class="note">
+    왼쪽부터 f0(기본) → f1…f5. <b>f0 은 기본 아이콘 자신</b>이라 png 를 따로 만들지 않는다.
+    오른쪽 칸은 게임과 같은 12fps 로 돌린다 — 정지 그림으로는 판정이 안 되는 물건이라 여기서 눈으로 본다.
+    색은 프레임 사이에 바뀌지 않는다(런타임 틴트가 정본).
+  </p>
+  <div class="legib" id="anim"></div>
+
+  <div id="export"></div>
+</div>
+
+<script>
+// ── 신규 아이콘 정의 ────────────────────────────────────────────────
+// path/markup 은 viewBox 512 기준. 전부 흰색 단색 — 런타임 틴트 전제.
+const W = '#ffffff';
+const ICONS = [
+  { name:'check', glyph:'✓', use:'도전과제 달성 배지',
+    svg:`<path d="M104 270 L206 372 L408 148" fill="none" stroke="${W}" stroke-width="78"
+          stroke-linecap="round" stroke-linejoin="round"/>` },
+
+  // 16px 판독을 위해 **6톱니**로 간다 — 8톱니는 24px 에서 톱니 사이 간격이 1px 미만이라
+  // 별표처럼 뭉갠다(2026-09-03 실측). 톱니를 넓히고 허브를 키워 기존 19장의 두께에 맞춘다.
+  { name:'gear', glyph:'⚙', use:'BUILD PIPELINE 타이틀',
+    svg:`<mask id="mGear">
+           <rect x="0" y="0" width="512" height="512" fill="#fff"/>
+           <circle cx="256" cy="256" r="56" fill="#000"/>
+         </mask>
+         <g mask="url(#mGear)" fill="${W}">
+           <circle cx="256" cy="256" r="150"/>
+           <g>
+             <rect x="210" y="46" width="92" height="96" rx="26"/>
+             <rect x="210" y="46" width="92" height="96" rx="26" transform="rotate(60 256 256)"/>
+             <rect x="210" y="46" width="92" height="96" rx="26" transform="rotate(120 256 256)"/>
+             <rect x="210" y="46" width="92" height="96" rx="26" transform="rotate(180 256 256)"/>
+             <rect x="210" y="46" width="92" height="96" rx="26" transform="rotate(240 256 256)"/>
+             <rect x="210" y="46" width="92" height="96" rx="26" transform="rotate(300 256 256)"/>
+           </g>
+         </g>` },
+
+  // 초판의 "안쪽 혓바닥" 패스는 흰색 위 흰색이라 아무것도 안 그렸다(죽은 패스) — 지웠다.
+  // 대신 실루엣 자체에 허리를 넣어 16px 에서도 불꽃으로 읽히게 했다.
+  { name:'flame', glyph:'🔥', use:'젬 합성 CTA',
+    svg:`<path d="M268 28
+                 C 268 118 318 146 352 196
+                 C 380 238 386 268 386 292
+                 C 386 366 328 420 256 420
+                 C 184 420 126 366 126 292
+                 C 126 234 160 200 190 152
+                 C 200 196 222 214 234 240
+                 C 258 200 274 128 268 28 Z"
+          fill="${W}"/>` },
+
+  { name:'bolt', glyph:'⚡', use:'소켓 자동 채우기',
+    svg:`<path d="M306 30 L132 292 L230 292 L206 482 L380 220 L282 220 Z"
+          fill="${W}" stroke="${W}" stroke-width="16" stroke-linejoin="round"/>` },
+
+  { name:'arrow-down-bar', glyph:'⤓', use:'합성 자동 채우기',
+    svg:`<g fill="${W}">
+           <rect x="224" y="60" width="64" height="196" rx="26"/>
+           <path d="M148 236 L364 236 L256 372 Z" stroke="${W}" stroke-width="20" stroke-linejoin="round"/>
+           <rect x="136" y="410" width="240" height="60" rx="26"/>
+         </g>` },
+
+  // 초판은 날이 좁고 자루가 길어 16px 에서 "세로줄 + 가로줄"로 뭉갰다 — 날을 넓히고(112→144)
+  // 자루를 줄여 실루엣 무게를 위로 올렸다.
+  { name:'sword', glyph:'⚔', use:'무기 카드 타이틀',
+    svg:`<g fill="${W}">
+           <path d="M256 24 L328 118 L328 316 L184 316 L184 118 Z"/>
+           <rect x="112" y="320" width="288" height="64" rx="28"/>
+           <rect x="218" y="384" width="76" height="60"/>
+           <circle cx="256" cy="462" r="46"/>
+         </g>` },
+
+  { name:'scope', glyph:'◎', use:'파이프라인 SCOPE 심볼',
+    svg:`<mask id="mScope">
+           <rect x="0" y="0" width="512" height="512" fill="#fff"/>
+           <circle cx="256" cy="256" r="140" fill="#000"/>
+         </mask>
+         <circle cx="256" cy="256" r="196" fill="${W}" mask="url(#mScope)"/>
+         <circle cx="256" cy="256" r="80" fill="${W}"/>` },
+
+  // 초판은 α51% 로 혼자 무거웠다(다른 칸 15~34%). 스트로크 확장을 빼고 크기를 낮춰
+  // 광학 무게를 맞춘다 — 육각형은 면적이 커서 같은 외접원이어도 더 무겁게 읽힌다.
+  { name:'hexagon', glyph:'⬢', use:'파이프라인 ARTIFACT 심볼',
+    svg:`<path d="M256 68 L412 158 L412 338 L256 428 L100 338 L100 158 Z"
+          fill="${W}" stroke="${W}" stroke-width="22" stroke-linejoin="round"/>` },
+
+  { name:'chevron', glyph:'◀▶', use:'서랍 손잡이(코드에서 z 회전)',
+    svg:`<path d="M196 108 L344 256 L196 404" fill="none" stroke="${W}" stroke-width="82"
+          stroke-linecap="round" stroke-linejoin="round"/>` },
+];
+
+// ── 호버 애니메이션 프레임 (2026-09-05) ──────────────────────────
+// owner 지시: 호버 모션 3단계 중 **②2프레임 스왑 · ③스트립**.
+//
+//   ② 스왑  : `<name>-hover` 1장. 호버 동안 그 한 장으로 바꾼다.
+//   ③ 스트립: `<name>-f1` ~ `-f5`. **f0 은 만들지 않는다** — 기본 아이콘 자신이 0번 프레임이라
+//             파일을 따로 두면 두 장이 어긋날 때 이음매가 튄다(같은 그림 두 벌 금지).
+//
+// 규약은 기존 9장과 동일 — 512×512 · 흰 단색 · 투명 배경 · 개별 파일. 런타임 틴트 전제라
+// 프레임 사이에 **색을 바꾸지 않는다**(색은 뷰가 정한다) — 움직이는 것은 실루엣뿐이다.
+
+// 불꽃 흔들림 — 기본 실루엣의 꼭지(tx,ty) · 오른 어깨(rs) · 몸통 오른끝(br) · 안쪽 혓바닥(tgx,tgy)만 흔든다.
+// 기본값 268/28/352/386/234/240 이 `flame` 원본과 같은 수다(= f0 이 원본과 이어진다).
+const flamePath = (tx, ty, rs, br, tgx, tgy) => `<path d="M${tx} ${ty}
+                 C ${tx} ${ty + 90} ${rs - 34} ${ty + 118} ${rs} 196
+                 C ${br - 6} 238 ${br} 268 ${br} 292
+                 C ${br} 366 328 420 256 420
+                 C 184 420 126 366 126 292
+                 C 126 234 160 200 190 152
+                 C 200 196 ${tgx - 12} 214 ${tgx} ${tgy}
+                 C 258 200 274 128 ${tx} ${ty} Z" fill="${W}"/>`;
+
+// 불꽃에서 떨어져 나온 불티 — 물방울을 뒤집은 모양(위가 뾰족).
+const ember = (x, y, r) => `<path d="M${x} ${y - r}
+                 C ${x + r * 0.9} ${y - r * 0.15} ${x + r * 0.62} ${y + r} ${x} ${y + r}
+                 C ${x - r * 0.62} ${y + r} ${x - r * 0.9} ${y - r * 0.15} ${x} ${y - r} Z" fill="${W}"/>`;
+
+// 번개 불티 — 번개 실루엣은 **고정**이고(정체성이 흔들리면 다른 아이콘으로 읽힌다) 주변 불티만 터진다.
+const BOLT_BODY = `<path d="M306 30 L132 292 L230 292 L206 482 L380 220 L282 220 Z"
+          fill="${W}" stroke="${W}" stroke-width="16" stroke-linejoin="round"/>`;
+const chip = (x, y, r) => `<path d="M${x} ${y - r} L${x + r} ${y} L${x} ${y + r} L${x - r} ${y} Z" fill="${W}"/>`;
+const boltFrame = (chips) => BOLT_BODY + chips.map(([x, y, r]) => chip(x, y, r)).join('');
+
+const FRAMES = [
+  // ③ 스트립 — 합성 CTA 불꽃(5프레임 + 기본 = 6단 루프)
+  // 2026-09-05 owner 회신: *"플레임만 좀 이글거리는 컨셉이어야할듯"* — 초판은 흔들림이 너무 작았다.
+  // **실제 사용 크기가 18px** 이라 작은 디테일은 안 보인다 ⇒ 읽히는 건 **실루엣 크기**뿐이다.
+  // 그래서 (a) 키를 크게 위아래로(꼭지 y 6↔66 = 60텍셀 = 아이콘 높이의 12%) (b) 좌우로 기울이고
+  // (c) 불티를 띄운다. 불티는 18px 에서 1px 남짓이라 큰 판(§B·§D)용 장식이고, 작은 판의 "이글"은
+  // 키·기울기가 만든다.
+  { name:'flame-f1', kind:'strip', of:'flame', svg: flamePath(292, 6, 372, 396, 250, 222) + ember(196, 58, 30) },
+  { name:'flame-f2', kind:'strip', of:'flame', svg: flamePath(240, 58, 330, 372, 220, 272) + ember(330, 44, 26) },
+  { name:'flame-f3', kind:'strip', of:'flame', svg: flamePath(286, 14, 366, 392, 246, 228) },
+  { name:'flame-f4', kind:'strip', of:'flame', svg: flamePath(236, 66, 326, 368, 216, 280) + ember(344, 74, 28) },
+  { name:'flame-f5', kind:'strip', of:'flame', svg: flamePath(268, 30, 352, 384, 234, 244) + ember(180, 40, 20) },
+
+  // ③ 스트립 — 소켓 자동 채우기 번개(불티가 터졌다 잦아든다)
+  { name:'bolt-f1', kind:'strip', of:'bolt', svg: boltFrame([[352, 86, 14], [150, 352, 12]]) },
+  { name:'bolt-f2', kind:'strip', of:'bolt', svg: boltFrame([[368, 70, 20], [140, 368, 18], [300, 462, 12]]) },
+  { name:'bolt-f3', kind:'strip', of:'bolt', svg: boltFrame([[386, 58, 16], [126, 384, 14], [316, 470, 16], [104, 206, 12]]) },
+  { name:'bolt-f4', kind:'strip', of:'bolt', svg: boltFrame([[400, 48, 12], [114, 398, 10], [330, 476, 12]]) },
+  { name:'bolt-f5', kind:'strip', of:'bolt', svg: boltFrame([[408, 42, 8], [106, 406, 7]]) },
+
+  // ② 스왑 — 합성 자동 채우기 화살표가 **막대 쪽으로 내려앉는다**(자루 짧아지고 머리가 내려온다).
+  { name:'arrow-down-bar-hover', kind:'swap', of:'arrow-down-bar',
+    svg:`<g fill="${W}">
+           <rect x="224" y="112" width="64" height="148" rx="26"/>
+           <path d="M148 252 L364 252 L256 392 Z" stroke="${W}" stroke-width="20" stroke-linejoin="round"/>
+           <rect x="136" y="410" width="240" height="60" rx="26"/>
+         </g>` },
+];
+
+// 기존 에셋 (참조) — file:// 상대 경로
+const REF = [
+  ['Gacha','crown'],['Gacha','padlock-locked'],['Gacha','chest'],['Gacha','star'],
+  ['Gacha','star-alt'],['Gacha','exp'],['Gacha','rewards'],
+  ['Relics','settings-wrench'],['Relics','camera'],['Relics','inbox'],['Relics','ladder'],
+  ['Relics','puzzle'],['Relics','spa'],['Relics','volume-full'],
+  ['Currency','coin'],['Currency','coin2'],['Currency','diamond'],['Currency','paper'],
+  ['Currency','reading-book'],
+];
+
+const svgWrap = (inner) =>
+  `<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+// A. 참조 격자
+document.getElementById('refGrid').innerHTML = REF.map(([dir, n]) => `
+  <div class="tile">
+    <div class="art"><img src="../Assets/Resources/UI/Progression/${dir}/${n}.png" alt="${n}"></div>
+    <div class="nm">${dir}/${n}</div>
+  </div>`).join('');
+
+// B. 신규 격자
+document.getElementById('newGrid').innerHTML = ICONS.map(ic => `
+  <div class="tile is-new">
+    <div class="art">${svgWrap(ic.svg)}</div>
+    <div class="gl">${ic.glyph}</div>
+    <div class="nm">${ic.name}<br>${ic.use}</div>
+  </div>`).join('');
+
+// C. 실사용 크기
+document.getElementById('legib').innerHTML = ICONS.map(ic => `
+  <div class="row">
+    <span class="lab">${ic.name}</span>
+    <span class="s16">${svgWrap(ic.svg)}</span>
+    <span class="s20">${svgWrap(ic.svg)}</span>
+    <span class="s24">${svgWrap(ic.svg)}</span>
+    <span class="s40">${svgWrap(ic.svg)}</span>
+    <span class="ctx"><span class="s20">${svgWrap(ic.svg)}</span> ${ic.use}</span>
+  </div>`).join('');
+
+// C-2. 호버 프레임 — 기본(f0) + 프레임들을 한 줄에 늘어놓고, 오른쪽에 실제 재생 속도로 돌린다.
+const baseOf = (n) => ICONS.find(ic => ic.name === n);
+const animGroups = [...new Set(FRAMES.map(f => f.of))];
+const animEl = document.getElementById('anim');
+if (animEl) {
+  animEl.innerHTML = animGroups.map(name => {
+    const frames = FRAMES.filter(f => f.of === name);
+    const kind = frames[0].kind;
+    const all = [baseOf(name).svg, ...frames.map(f => f.svg)];
+    const cells = [`<span class="s40" title="${name} (f0 = 기본)">${svgWrap(baseOf(name).svg)}</span>`]
+      .concat(frames.map(f => `<span class="s40" title="${f.name}">${svgWrap(f.svg)}</span>`)).join('');
+    return `<div class="row">
+      <span class="lab">${name}<br><small>${kind === 'strip' ? '③ 스트립' : '② 스왑'}</small></span>
+      ${cells}
+      <span class="ctx"><span class="s40 play" data-name="${name}"></span> 재생(호버 시 게임과 같은 속도)</span>
+    </div>`;
+  }).join('');
+
+  // 재생 — 스트립은 루프, 스왑은 기본↔호버 왕복. 게임 값과 같은 12fps.
+  animGroups.forEach(name => {
+    const frames = FRAMES.filter(f => f.of === name);
+    const seq = frames[0].kind === 'strip'
+      ? [baseOf(name).svg, ...frames.map(f => f.svg)]
+      : [baseOf(name).svg, frames[0].svg];
+    const host = animEl.querySelector(`.play[data-name="${name}"]`);
+    let i = 0;
+    setInterval(() => { host.innerHTML = svgWrap(seq[i % seq.length]); i += 1; }, 1000 / 12);
+  });
+}
+
+// D. 캡처 셀 — 스크립트가 data-name 으로 찾는다
+document.getElementById('export').innerHTML = ICONS.concat(FRAMES).map(ic => `
+  <div class="export-cell" data-name="${ic.name}">${svgWrap(ic.svg)}</div>`).join('');
+</script>
+</body>
+</html>

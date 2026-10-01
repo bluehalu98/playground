@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>젬 상자 · 합성 디스크 스프라이트 정본 (P5)</title>
+<style>
+:root{--bg:#0b1016;--panel:#111823;--line:#1e2937;--txt:#e6ecf3;--dim:#8b95a3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:26px 30px 60px}
+h1{font-size:19px;margin:0 0 6px}
+h2{font-size:14px;margin:26px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;max-width:1080px;margin:6px 0 12px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.art{width:128px;height:128px}
+.nm{font-size:11px;color:var(--dim);text-align:center;margin-top:6px}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;gap:26px;flex-wrap:wrap}
+.mock{position:relative;width:430px;height:430px;background:#0a0f15;border-radius:12px;overflow:hidden}
+.mock img,.mock div.layer{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.caption{font-size:11px;color:var(--dim);text-align:center;margin-top:8px}
+svg{display:block;width:100%;height:100%}
+#export{display:none}
+#export.visible{display:block}
+.export-cell{width:512px;height:512px;background:transparent;padding:0;margin:0}
+.export-cell svg{width:512px;height:512px;display:block}
+</style>
+</head>
+<body>
+
+<h1>젬 상자 · 합성 디스크 — 스프라이트 정본 (P5)</h1>
+<p class="note">
+  <b class="hi">현행</b>: 상자는 <code>Image</code> 12장으로 세로 그라디언트를 흉내내고 라운드 모서리는 직각 근사다
+  (<code>GemDrawView.BoxWidget</code>). 디스크는 <b class="hi">틱 28개 + 스포크 3 + 마름모 슬롯</b>을 전부
+  런타임 사각형으로 그린다(<code>GemFusionView</code>). 두 탭의 주인공인데 에셋이 <b class="hi">0장</b>이다.<br>
+  <b class="hi">언어는 P1 젬과 같다</b> — 그레이스케일 <code>0.55~1.00</code> 램프 · 안쪽일수록 밝고
+  <b class="hi">좌상단으로 밀린</b> 단(= 솟음) · 색은 런타임 <code>Image.color</code> 곱연산이 정본.
+  owner 가 P1 에서 확정한 <b class="hi">C3R</b> 그대로다.<br>
+  ⚠ <b class="hi">회전하는 것은 회전축을 코드가 돌린다</b> — 링은 틱 28개를 한 장에 구워서 이미지 하나를
+  돌린다(현행은 매 프레임 28개를 다시 놓는다).
+</p>
+
+<h2>A. 굽는 그림 10장 (회색 원본)</h2>
+<div class="grid" id="grid"></div>
+
+<h2>B. 조립 미리보기 — 실제로 겹쳤을 때</h2>
+<p class="note">왼쪽 = 젬 뽑기 상자(닫힘/열림) · 오른쪽 = 합성 디스크. 색은 런타임 틴트를 흉내낸 것이다.</p>
+<div class="stage" id="stage"></div>
+
+<div id="export"></div>
+
+<script>
+// ── 공통 ───────────────────────────────────────────────────────────
+// P1 과 같은 램프. 0.55 가 바깥, 1.00 이 코어(= 등급색 원본).
+const G = (v) => { const c = Math.round(v * 255); return `rgb(${c},${c},${c})`; };
+const RAMP = [0.55, 0.68, 0.80, 0.90, 1.00];
+
+const svgWrap = (inner) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+// 라운드 사각형 — 상자 몸통·뚜껑 공용.
+const rr = (x, y, w, h, r, fill) =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" ry="${r}" fill="${fill}"/>`;
+
+// 5단 베벨을 사각형에 적용 — 안쪽 단일수록 좌상단으로 민다(P1 과 같은 규칙).
+function bevelRect(x, y, w, h, r) {
+  return RAMP.map((g, i) => {
+    const k = 1 - i * 0.11;                 // 안쪽으로 줄어드는 비율
+    const dw = w * (1 - k), dh = h * (1 - k);
+    const dx = -i * 0.9, dy = -i * 0.7;     // 좌상단 광원
+    return rr(x + dw * 0.5 + dx, y + dh * 0.5 + dy, w * k, h * k, r * k, G(g));
+  }).join('');
+}
+
+// 방사 글로우 — 가운데가 밝고 밖으로 사라진다. 알파로 빠지므로 램프와 별개다.
+const radialGlow = (id, stops) => `<defs><radialGradient id="${id}" cx="50%" cy="50%" r="50%">
+  ${stops.map(([o, c, a]) => `<stop offset="${o}%" stop-color="${G(c)}" stop-opacity="${a}"/>`).join('')}
+</radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#${id})"/>`;
+
+// 링 틱 28개 — 현행 `DiscTickCount` 와 같은 수. 한 장에 구워 코드가 이미지를 돌린다.
+function ringTicks(count, len, width, gray) {
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const a = (i * 360) / count;
+    out += `<rect x="${50 - width / 2}" y="${4}" width="${width}" height="${len}" fill="${G(gray)}"
+             transform="rotate(${a} 50 50)"/>`;
+  }
+  return out;
+}
+
+// ── 기계 어휘(M1b) ─────────────────────────────────────────────────
+// owner·쿠키네모 2026-09-05 확정: 디스크는 **기어**다. 쿠키네모 추가 요구 —
+// "합성칸에 톱니바퀴를 덮어서 중첩되는 톱니바퀴 형식".
+//
+// ⚠ **회전하는 조각과 고정된 조각을 나눠 굽는다.** 코드에서 `_ringRoot` 만 돌기 때문이다 —
+//   큰 톱니는 회전 루트에, 허브(볼트·육각)와 슬롯 톱니는 고정 루트에 붙는다.
+//   한 장에 다 구우면 볼트와 마름모 홈까지 같이 돌아 재료 아이콘이 기울어진다.
+function gearTeeth(count, rOuter, rInner, widthDeg, gray) {
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const mid = (i * 360) / count;
+    const p = (r, deg) => {
+      const rad = (deg - 90) * Math.PI / 180;
+      return `${(50 + Math.cos(rad) * r).toFixed(2)} ${(50 + Math.sin(rad) * r).toFixed(2)}`;
+    };
+    const nar = widthDeg * 0.62;
+    out += `<path d="M${p(rInner, mid - widthDeg / 2)} L${p(rOuter, mid - nar / 2)}
+             L${p(rOuter, mid + nar / 2)} L${p(rInner, mid + widthDeg / 2)} Z" fill="${G(gray)}"/>`;
+  }
+  return out;
+}
+// 볼트 머리 — 원 + 비스듬한 홈. 기계로 읽히는 가장 싼 신호다.
+function bolt(cx, cy, r, gray) {
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${G(gray)}"/>
+          <circle cx="${(cx - r * 0.18).toFixed(2)}" cy="${(cy - r * 0.18).toFixed(2)}" r="${(r * 0.72).toFixed(2)}"
+                  fill="${G(Math.min(1, gray + 0.18))}"/>
+          <rect x="${(cx - r * 0.55).toFixed(2)}" y="${(cy - r * 0.13).toFixed(2)}"
+                width="${(r * 1.1).toFixed(2)}" height="${(r * 0.26).toFixed(2)}" rx="${(r * 0.1).toFixed(2)}"
+                fill="${G(Math.max(0, gray - 0.2))}" transform="rotate(28 ${cx} ${cy})"/>`;
+}
+
+// 마름모(45° 사각) — 소재 슬롯. P1 의 square 와 같은 기하다.
+function diamond(scale, dx, dy, gray) {
+  const r = 44 * scale;
+  const p = [[50, 50 - r], [50 + r, 50], [50, 50 + r], [50 - r, 50]]
+    .map(([x, y]) => `${(x + dx).toFixed(2)} ${(y + dy).toFixed(2)}`).join(' L');
+  return `<path d="M${p} Z" fill="${G(gray)}"/>`;
+}
+
+// ── 9장 정의 ───────────────────────────────────────────────────────
+// ⛔ 상자 4장(`box_body`·`box_lid`·`box_seam`·`box_glow`)은 2026-09-15 에 **삭제됐다.**
+//   2026-09-05 에 굽기만 하고 코드 배선을 한 번도 안 한 고아였고(`.cs` 소비 0건),
+//   젬 뽑기 상자는 2026-09-14 owner G1=ⓑ 확정으로 **색을 구운 `gacha_box_{body,lid}`** 가 그린다
+//   (`gacha-box-art-plan`). 이 페이지는 **회색조 + 런타임 틴트** 전제라 ⓑ 와 색 규약이 반대다
+//   ⇒ 여기서 다시 굽는 길은 닫혔다. 상자 아트의 저작 정본은 `scripts/art/gacha_box_*.svg` 다.
+const PIECES = [
+  // 디스크 5장
+  { name:'disc_face', use:'합성 디스크 판(안쪽이 솟은 원반)',
+    svg: RAMP.map((g, i) => {
+      const r = 48 * (1 - i * 0.13);
+      return `<circle cx="${(50 - i * 0.9).toFixed(2)}" cy="${(50 - i * 0.7).toFixed(2)}" r="${r.toFixed(2)}" fill="${G(g)}"/>`;
+    }).join('') },
+  { name:'disc_ring', use:'회전 링(v1 눈금판) — M1b 로 대체됐지만 폴백용으로 남긴다',
+    svg: ringTicks(28, 12, 2.2, 1.0) },
+
+  // ── M1b 기어 3조각 (2026-09-05 쿠키네모 확정) ──
+  // 쿠키네모 2026-09-05 ①: *"가장자리 톱니들을 크기를 좀 키워서 꽉채우는건 어때"*
+  // 이빨을 바깥 46→50 · 안쪽 37→30 으로 늘리고 폭도 13→16° 로 키워 링 영역을 꽉 채운다.
+  { name:'disc_gear_main', use:'중앙 큰 톱니 — **회전 루트**(이빨 16, 2026-09-05 확대판)',
+    svg: gearTeeth(16, 50, 30, 16, 0.72)
+      + `<circle cx="50" cy="50" r="31" fill="none" stroke="${G(0.9)}" stroke-width="3.2"/>` },
+  { name:'disc_hub', use:'중심 허브 — **고정 루트**(볼트 3 + 육각). 같이 돌면 안 되는 조각',
+    svg: [0, 120, 240].map(a => {
+      const rad = (a - 90) * Math.PI / 180;
+      return bolt(50 + Math.cos(rad) * 24, 50 + Math.sin(rad) * 24, 4.4, 0.8);
+    }).join('')
+      + `<circle cx="49" cy="49" r="17" fill="${G(0.55)}"/>`
+      + `<path d="M50 36 L61.3 43 L61.3 57 L50 64 L38.7 57 L38.7 43 Z" fill="${G(1.0)}"/>` },
+  // 쿠키네모 2026-09-05 ②: *"합성칸 톱니에 배경채우고 밝기 100으로 올려서 잘 보이도록"*
+  // 속을 **불투명하게 채운다**(0.5 → 0.88). 뒤에 깔린 큰 톱니가 비쳐 홈이 뭉개지던 것을 막는다.
+  // 밝기 100 은 코드 쪽(alpha 1.0 고정)에서 준다 — 에셋은 회색값 상한이 1.0 이라 여기서 못 올린다.
+  { name:'disc_gear_slot', use:'합성칸 톱니 — 슬롯 3칸에 하나씩. 속을 채워 뒤가 안 비친다',
+    svg: gearTeeth(9, 47, 34, 20, 0.82)
+      + `<circle cx="50" cy="50" r="35" fill="${G(0.88)}"/>`
+      + `<circle cx="50" cy="50" r="27" fill="${G(0.55)}"/>`
+      + `<circle cx="50" cy="50" r="35" fill="none" stroke="${G(1.0)}" stroke-width="4.6"/>` },
+  { name:'disc_slot', use:'마름모 소재 슬롯 3칸(빈 홈)',
+    svg: diamond(1.0, 0, 0, 0.55) + diamond(0.74, -1.4, -1.1, 0.68) + diamond(0.5, -2.8, -2.2, 0.8) },
+  { name:'disc_spoke', use:'차지 스포크 — 중심에서 슬롯으로 뻗는 막대',
+    svg: `<rect x="46.5" y="8" width="7" height="42" rx="3.5" fill="${G(0.7)}"/>` +
+         `<rect x="47.6" y="10" width="4.8" height="38" rx="2.4" fill="${G(0.95)}"/>` },
+  { name:'disc_core', use:'디스크 중심 코어(합성 순간 밝아지는 자리)',
+    svg: RAMP.map((g, i) => `<circle cx="${(50 - i * 1.1).toFixed(2)}" cy="${(50 - i * 0.9).toFixed(2)}"
+           r="${(30 * (1 - i * 0.17)).toFixed(2)}" fill="${G(g)}"/>`).join('') },
+
+  // 공용 1장 — P3(연출 프리미티브)에서도 다시 쓴다.
+  { name:'fx_ring_soft', use:'공용 — 부드러운 링(확산 웨이브·헤일로)',
+    svg: `<defs><radialGradient id="rs" cx="50%" cy="50%" r="50%">
+            <stop offset="62%" stop-color="${G(1)}" stop-opacity="0"/>
+            <stop offset="82%" stop-color="${G(1)}" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="${G(0.8)}" stop-opacity="0"/>
+          </radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#rs)"/>` },
+];
+
+// A. 회색 원본
+document.getElementById('grid').innerHTML = PIECES.map(p => `
+  <div class="tile"><div class="art">${svgWrap(p.svg)}</div>
+  <div class="nm">${p.name}<br><span style="opacity:.7">${p.use}</span></div></div>`).join('');
+
+// B. 조립 미리보기 — 런타임 틴트를 흉내내 CSS filter 대신 색을 직접 곱한 SVG 를 만든다.
+function tintedSvg(piece, hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const [R, Gc, B] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const out = piece.svg.replace(/rgb\((\d+),(\d+),(\d+)\)/g, (m, r) => {
+    const g = Number(r) / 255;
+    return `rgb(${Math.round(R * g)},${Math.round(Gc * g)},${Math.round(B * g)})`;
+  });
+  return svgWrap(out);
+}
+const P = (n) => PIECES.find(p => p.name === n);
+const layer = (piece, hex, size, dx = 0, dy = 0, extra = '') =>
+  `<div class="layer" style="width:${size}px;height:${size}px;margin-left:${dx}px;margin-top:${dy}px;${extra}">
+     ${tintedSvg(piece, hex)}</div>`;
+
+document.getElementById('stage').innerHTML = `
+  <!-- ⛔ 젬 상자 조립 미리보기 2종(닫힘·열림)은 2026-09-15 에 삭제됐다 —
+       PIECES 의 상자 4장이 사라져 P('box_*') 가 undefined 가 된다. 사유는 PIECES 위 주석 참고. -->
+  <div>
+    <div class="mock">
+      ${layer(P('fx_ring_soft'), '#57d1b8', 400)}
+      ${layer(P('disc_face'), '#2b3a4d', 300)}
+      ${layer(P('disc_ring'), '#57d1b8', 320)}
+      ${layer(P('disc_spoke'), '#57d1b8', 150, 0, -46)}
+      ${layer(P('disc_slot'), '#9ca3af', 62, 0, -96)}
+      ${layer(P('disc_slot'), '#3b82f6', 62, 84, 48)}
+      ${layer(P('disc_slot'), '#a855f7', 62, -84, 48)}
+      ${layer(P('disc_core'), '#eaf7ff', 96)}
+    </div>
+    <div class="caption">합성 디스크 — 슬롯 3칸 + 스포크 1개 차지</div>
+  </div>`;
+
+// C. 캡처 셀
+document.getElementById('export').innerHTML = PIECES.map(p => `
+  <div class="export-cell" data-name="${p.name}">${svgWrap(p.svg)}</div>`).join('');
+</script>
+</body>
+</html>

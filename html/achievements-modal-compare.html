@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>도전과제 오버레이 — 현재 vs V2 비교</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Jua&display=swap">
+<style>
+  /* 게임 본문 폰트 — 리포의 실제 파일을 그대로 물린다(비교의 공정성). */
+  @font-face{
+    font-family:"PretendardLocal";
+    src:url("../Assets/Resources/Fonts/Pretendard-Regular.otf") format("opentype");
+    font-weight:400 700; font-display:swap;
+  }
+  :root{
+    /* UiTheme 실측 근사 — 캡처(look/shots/asset-survey-rich)에서 뽑은 값 */
+    --deep:#05090c;      --ground:#0b1116;
+    --panel:#101a20;     --panel-2:#0d161c;
+    --head-a:#17242c;    --head-b:#121d24;
+    --rule:#1e2c34;      --rule-2:#2c3f49;
+    --teal:#34d399;      --teal-dim:rgba(52,211,153,.34);
+    --gold:#f5a623;
+    --ink:#e3ecef;       --cap:#8ba0aa;      --mute:#5f7480;
+    --lock:#43535c;
+    --display:"PretendardLocal","Malgun Gothic",sans-serif;  /* 스위처가 덮어씀 */
+    --body:"PretendardLocal","Malgun Gothic",sans-serif;
+    --scale:0.85;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#070c10;color:var(--ink);
+    font-family:var(--body);font-size:14px;line-height:1.7}
+  .page{max-width:1360px;margin:0 auto;padding:36px 24px 90px}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--cap);margin:0 0 4px;font-size:13.5px}
+  .note{color:var(--mute);font-size:12.5px;margin:6px 0 0;max-width:82ch}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88em;
+    background:#0d161c;padding:1px 5px;border-radius:3px;color:#b3c4cb}
+
+  /* ── 컨트롤 ─────────────────────────────── */
+  .controls{display:flex;flex-wrap:wrap;gap:26px;margin:26px 0 8px;
+    padding:16px 18px;background:#0c141a;border:1px solid var(--rule);border-radius:10px}
+  .ctl{display:flex;align-items:center;gap:9px}
+  .ctl .lab{font-size:11.5px;letter-spacing:.08em;color:var(--mute);text-transform:uppercase;
+    font-family:"JetBrains Mono",monospace}
+  .chip{background:#101a20;border:1px solid var(--rule-2);color:var(--cap);
+    padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px}
+  .chip:hover{border-color:var(--teal-dim);color:var(--ink)}
+  .chip[aria-pressed="true"]{background:rgba(52,211,153,.13);border-color:var(--teal);color:var(--teal)}
+  .chip:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  h2{font-size:16px;margin:34px 0 10px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px}
+  h2 .tag{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.1em;
+    text-transform:uppercase;padding:3px 8px;border-radius:3px}
+  h2 .tag.now{background:rgba(148,168,177,.14);color:#94a8b1}
+  h2 .tag.v2{background:rgba(52,211,153,.14);color:var(--teal)}
+  h2 small{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--mute);font-weight:400}
+
+  /* ── 1920×1080 무대 ─────────────────────── */
+  .frame{width:100%;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--rule);
+    border-radius:10px;position:relative;background:var(--deep)}
+  .stage{position:absolute;inset:0;width:1920px;height:1080px;
+    transform-origin:0 0;font-family:var(--body)}
+  /* 메뉴 배경 근사 — 절차적 비네트(Rendering.cs GetMenuBackdropTexture) */
+  .stage .bg{position:absolute;inset:0;
+    background:radial-gradient(circle at 50% 38%, #16232b 0%, #0d1720 55%, #05090c 100%)}
+  /* ⚠ CSS `mask:url(file://…)` 는 CORS 로 막힌다(headless·로컬 브라우저 공통) — 아이콘은 `<img>` 로 넣는다.
+     리포의 아이콘이 전부 흰 실루엣이라 틴트 없이 그대로 쓰면 게임과 같은 그림이 나온다. */
+
+  .scrim{position:absolute;inset:0;background:rgba(4,8,11,.55)}
+  .scrim.deep{background:rgba(4,8,11,.78)}
+
+  .panel{position:absolute;background:var(--panel);border:1px solid var(--teal-dim);
+    border-radius:14px;overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 40px 120px -30px rgba(0,0,0,.9)}
+  .head{height:58px;flex:0 0 auto;margin:8px 24px 0;border-radius:12px;
+    background:linear-gradient(175deg,var(--head-a),var(--head-b));
+    border:1px solid var(--rule-2);display:flex;align-items:center;gap:14px;padding:0 20px}
+  .head .crown{width:26px;height:26px;flex:0 0 auto;object-fit:contain;display:block}
+  .head .ttl{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .head .cnt{font-size:13px;color:var(--gold);font-weight:700;font-family:var(--display)}
+  .head .close{margin-left:auto;font-size:12px;color:var(--cap);
+    border:1px solid var(--rule-2);border-radius:7px;padding:6px 14px;background:#0f1920}
+
+  .body{flex:1 1 auto;display:flex;gap:16px;padding:16px 24px 24px;min-height:0}
+
+  /* 사이드바 (V2 전용) */
+  .side{width:240px;flex:0 0 auto;display:flex;flex-direction:column;gap:6px}
+  .side .cat{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;
+    background:var(--panel-2);border:1px solid var(--rule);cursor:pointer;
+    font-family:var(--display);font-size:15px;color:var(--cap)}
+  .side .cat .n{margin-left:auto;font-size:12px;color:var(--mute);font-family:"JetBrains Mono",monospace}
+  .side .cat[aria-pressed="true"]{background:rgba(52,211,153,.10);border-color:var(--teal);color:var(--ink)}
+  .side .cat[aria-pressed="true"] .n{color:var(--teal)}
+  .side .cat:hover{border-color:var(--teal-dim)}
+  .side .spacer{flex:1 1 auto}
+  .side .foot{font-size:11.5px;color:var(--mute);padding:10px 4px;border-top:1px solid var(--rule)}
+
+  .list{flex:1 1 auto;overflow:auto;padding-right:8px;display:flex;flex-direction:column;gap:0}
+
+  /* 카테고리 줄 + ㄴ 트리 */
+  .grp{display:flex;align-items:center;gap:12px;padding:16px 4px 10px}
+  .grp .bar{width:4px;height:17px;border-radius:2px;background:var(--teal)}
+  .grp .nm{font-family:var(--display);font-size:16px;letter-spacing:-.01em}
+  .grp .n{font-size:11.5px;color:var(--mute);font-family:"JetBrains Mono",monospace}
+  .grp .ln{flex:1 1 auto;height:1px;background:var(--rule)}
+
+  .branch{position:relative;padding-left:34px}
+  .branch::before{content:"";position:absolute;left:12px;top:-10px;bottom:50%;
+    width:14px;border-left:2px solid var(--rule-2);border-bottom:2px solid var(--rule-2);
+    border-bottom-left-radius:8px}
+  .branch.mid::after{content:"";position:absolute;left:12px;top:50%;bottom:-10px;
+    width:2px;background:var(--rule-2)}
+
+  .card{display:flex;align-items:center;gap:16px;padding:14px 18px;margin:5px 0;
+    background:var(--panel-2);border:1px solid var(--rule);border-radius:12px}
+  .card.done{border-color:var(--teal);background:rgba(52,211,153,.06)}
+  .badge{width:40px;height:40px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;
+    background:var(--lock)}
+  .card.done .badge{background:var(--teal)}
+  .badge img{width:22px;height:22px;display:block;object-fit:contain}
+  .card .txt{flex:1 1 auto;min-width:0}
+  .card .t{font-family:var(--display);font-size:17px;letter-spacing:-.01em}
+  .card.done .t{color:var(--teal)}
+  .card .d{font-size:12.5px;color:var(--cap);margin-top:2px}
+  .card .right{width:200px;flex:0 0 auto;text-align:right}
+  .card .val{font-size:12px;color:var(--mute);font-family:"JetBrains Mono",monospace;
+    font-variant-numeric:tabular-nums}
+  .card.done .val{color:var(--teal);font-family:var(--display);font-size:12.5px}
+  .card .track{height:6px;border-radius:3px;background:#16222a;margin-top:7px;overflow:hidden}
+  .card .fill{height:100%;background:var(--teal);border-radius:3px}
+
+  .legend{margin-top:12px;font-size:12.5px;color:var(--mute)}
+  .legend b{color:var(--cap);font-weight:500}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>도전과제 오버레이 — 현재 vs V2</h1>
+  <p class="sub">owner 2026-09-03 요구: <b>모달감(80~90%)</b> · <b>좌측 카테고리 사이드바</b> · <b>「전체」에서 카테고리 줄 + ㄴ 트리</b> · <b>게임다운 폰트</b></p>
+  <p class="note">
+    두 무대 모두 게임과 같은 <b>1920×1080 가상 캔버스</b>에 그렸고, 색은 <code>UiTheme</code> 실측 근사다.
+    아이콘·본문 폰트는 <b>리포의 실제 파일</b>을 물려 놨다(왕관·자물쇠·체크 png, Pretendard otf) — 그래서 폰트만 바꿔도
+    게임에서 보일 모습과 거의 같다. 아래 컨트롤로 <b>크기·폰트·카테고리</b>를 직접 바꿔 보고 고르면 된다.
+  </p>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="lab">모달 크기</span>
+      <button class="chip" data-size="0.80">80%</button>
+      <button class="chip" data-size="0.85" aria-pressed="true">85%</button>
+      <button class="chip" data-size="0.90">90%</button>
+      <button class="chip" data-size="0.979">현재(97.9%)</button>
+    </div>
+    <div class="ctl">
+      <span class="lab">제목 폰트</span>
+      <button class="chip" data-font="PretendardLocal" aria-pressed="true">현재(Pretendard)</button>
+      <button class="chip" data-font="Black Han Sans">검은고딕</button>
+      <button class="chip" data-font="Do Hyeon">도현</button>
+      <button class="chip" data-font="Jua">주아</button>
+    </div>
+    <div class="ctl">
+      <span class="lab">카테고리</span>
+      <span id="catChips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+    </div>
+  </div>
+
+  <h2><span class="tag now">현재</span> 전체화면에 가깝다 <small>폭 97.9% · 높이 96.3% — 뒤가 거의 안 보인다</small></h2>
+  <div class="frame" id="frameNow"><div class="stage" id="stageNow"></div></div>
+
+  <h2><span class="tag v2">V2</span> 모달 + 카테고리 사이드바 + ㄴ 트리 <small id="v2meta"></small></h2>
+  <div class="frame" id="frameV2"><div class="stage" id="stageV2"></div></div>
+
+  <p class="legend">
+    <b>ㄴ 트리</b>는 문자가 아니라 <b>CSS 로 그린 연결선</b>이다(폰트에 의존하지 않게 — 이 프로젝트가 이모지로 겪은 문제와 같은 이유).
+    구현 시 uGUI 에서는 1~2px <code>Image</code> 두 장으로 같은 모양이 나온다.
+  </p>
+</div>
+
+<script>
+// 리포의 실제 아이콘 — 전부 흰 실루엣이라 그대로 얹으면 게임과 같은 그림이다.
+const ICON_DIR   = '../Assets/Resources/UI/Progression/';
+const ICON_CROWN = ICON_DIR + 'Gacha/crown.png';
+const ICON_LOCK  = ICON_DIR + 'Gacha/padlock-locked.png';
+const ICON_CHECK = ICON_DIR + 'Icons/check.png';
+
+// ── 데이터: 실제 15종 + 제안 카테고리 ──────────────────────────────
+const CATS = [
+  { id:'all',    name:'전체' },
+  { id:'prog',   name:'진행' },
+  { id:'econ',   name:'경제' },
+  { id:'skill',  name:'스킬·무기' },
+  { id:'gear',   name:'장비' },
+  { id:'combat', name:'전투' },
+];
+const ACH = [
+  { c:'prog',   t:'첫 커밋',        d:'총 클리어 1회 달성',        cur:1,      max:1 },
+  { c:'prog',   t:'리팩터링 마스터', d:'총 클리어 10,000회 달성',   cur:522,    max:10000 },
+  { c:'prog',   t:'베테랑 러너',    d:'총 런 100회 완료',          cur:20,     max:100 },
+  { c:'prog',   t:'시니어 개발자',  d:'플레이어 레벨 25 달성',      cur:24,     max:25 },
+  { c:'prog',   t:'테크 리드',      d:'플레이어 레벨 50 달성',      cur:24,     max:50 },
+  { c:'econ',   t:'골드 백만장자',  d:'누적 획득 골드 1,000,000',   cur:8530,   max:1000000 },
+  { c:'econ',   t:'아키텍트',       d:'누적 아키텍트 토큰 500 획득', cur:500,    max:500 },
+  { c:'skill',  t:'스킬 수집가',    d:'스킬 노드 25개 해금',        cur:25,     max:25 },
+  { c:'skill',  t:'첫 각성',        d:'무기 각성 1종 활성화',       cur:1,      max:1 },
+  { c:'skill',  t:'풀 오토메이션',  d:'무기 4종 전부 각성',         cur:1,      max:4 },
+  { c:'gear',   t:'첫 장비',        d:'장비 카드 1회 확정',         cur:0,      max:1 },
+  { c:'gear',   t:'레전더리',       d:'레전더리 등급 카드 획득',     cur:0,      max:1 },
+  { c:'gear',   t:'풀 빌드',        d:'임의 슬롯 티어 7(MAX) 달성',  cur:0,      max:1 },
+  { c:'combat', t:'골든 헌터',      d:'골든 노드 누적 처치 100',     cur:37,     max:100 },
+  { c:'combat', t:'피버 브레이크',  d:'피버 발동 누적 25',          cur:25,     max:25 },
+];
+const done = (a) => a.cur >= a.max;
+const catName = (id) => (CATS.find((c) => c.id === id) || {}).name || id;
+const fmt = (n) => n.toLocaleString('en-US');
+
+let size = 0.85, cat = 'all';
+
+function cardHtml(a){
+  const ok = done(a);
+  const pct = Math.min(100, (a.cur / a.max) * 100);
+  return `<div class="card${ok ? ' done' : ''}">
+    <div class="badge"><img src="${ok ? ICON_CHECK : ICON_LOCK}" alt=""></div>
+    <div class="txt"><div class="t">${a.t}</div><div class="d">${a.d}</div></div>
+    <div class="right">
+      <div class="val">${ok ? '달성 완료' : fmt(a.cur) + ' / ' + fmt(a.max)}</div>
+      <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+    </div>
+  </div>`;
+}
+
+function listHtml(withTree){
+  if (!withTree) return ACH.map(cardHtml).join('');
+  if (cat !== 'all') return ACH.filter((a) => a.c === cat).map(cardHtml).join('');
+  return CATS.filter((c) => c.id !== 'all').map((c) => {
+    const rows = ACH.filter((a) => a.c === c.id);
+    const inner = rows.map((a, i) => {
+      const mid = i < rows.length - 1 ? ' mid' : '';
+      return `<div class="branch${mid}">${cardHtml(a)}</div>`;
+    }).join('');
+    return `<div class="grp"><span class="bar"></span><span class="nm">${c.name}</span>
+      <span class="n">${rows.filter(done).length} / ${rows.length}</span><span class="ln"></span></div>${inner}`;
+  }).join('');
+}
+
+function sideHtml(){
+  return `<div class="side">` + CATS.map((c) => {
+    const n = c.id === 'all' ? ACH.length : ACH.filter((a) => a.c === c.id).length;
+    const k = c.id === 'all' ? ACH.filter(done).length : ACH.filter((a) => a.c === c.id && done(a)).length;
+    return `<div class="cat" aria-pressed="${c.id === cat}" data-cat="${c.id}">
+      <span>${c.name}</span><span class="n">${k}/${n}</span></div>`;
+  }).join('') + `<div class="spacer"></div>
+    <div class="foot">「전체」는 카테고리 줄 아래로<br>업적이 ㄴ 로 딸려 나온다</div></div>`;
+}
+
+function panelHtml(ratio, withSide){
+  const W = Math.round(1920 * ratio), H = Math.round(1080 * ratio);
+  const x = Math.round((1920 - W) / 2), y = Math.round((1080 - H) / 2);
+  const doneAll = ACH.filter(done).length;
+  return `<div class="scrim${withSide ? ' deep' : ''}"></div>
+  <div class="panel" style="left:${x}px;top:${y}px;width:${W}px;height:${H}px">
+    <div class="head">
+      <img class="crown" src="${ICON_CROWN}" alt=""><span class="ttl">도전과제</span>
+      <span class="cnt">달성 ${doneAll} / ${ACH.length}</span>
+      <span class="close">닫기</span>
+    </div>
+    <div class="body">${withSide ? sideHtml() : ''}<div class="list">${listHtml(withSide)}</div></div>
+  </div>`;
+}
+
+function fit(frameId, stageId){
+  const f = document.getElementById(frameId), s = document.getElementById(stageId);
+  s.style.transform = `scale(${f.clientWidth / 1920})`;
+}
+
+function render(){
+  document.getElementById('stageNow').innerHTML = `<div class="bg"></div>` + panelHtml(0.979, false);
+  document.getElementById('stageV2').innerHTML = `<div class="bg"></div>` + panelHtml(size, true);
+  const W = Math.round(1920 * size), H = Math.round(1080 * size);
+  document.getElementById('v2meta').textContent =
+    `${Math.round(size * 100)}% · ${W}×${H} · 사이드바 240 · ${cat === 'all' ? '전체(트리)' : catName(cat)}`;
+  fit('frameNow','stageNow'); fit('frameV2','stageV2');
+  document.querySelectorAll('#stageV2 .cat').forEach((el) => {
+    el.addEventListener('click', () => { cat = el.dataset.cat; syncCatChips(); render(); });
+  });
+}
+
+function syncCatChips(){
+  document.querySelectorAll('#catChips .chip').forEach((b) =>
+    b.setAttribute('aria-pressed', String(b.dataset.cat === cat)));
+}
+
+document.getElementById('catChips').innerHTML = CATS.map((c) =>
+  `<button class="chip" data-cat="${c.id}" aria-pressed="${c.id === 'all'}">${c.name}</button>`).join('');
+document.querySelectorAll('#catChips .chip').forEach((b) =>
+  b.addEventListener('click', () => { cat = b.dataset.cat; syncCatChips(); render(); }));
+
+document.querySelectorAll('[data-size]').forEach((b) => b.addEventListener('click', () => {
+  size = parseFloat(b.dataset.size);
+  document.querySelectorAll('[data-size]').forEach((o) =>
+    o.setAttribute('aria-pressed', String(o === b)));
+  render();
+}));
+
+document.querySelectorAll('[data-font]').forEach((b) => b.addEventListener('click', () => {
+  document.documentElement.style.setProperty('--display',
+    `"${b.dataset.font}","PretendardLocal","Malgun Gothic",sans-serif`);
+  document.querySelectorAll('[data-font]').forEach((o) =>
+    o.setAttribute('aria-pressed', String(o === b)));
+}));
+
+window.addEventListener('resize', () => { fit('frameNow','stageNow'); fit('frameV2','stageV2'); });
+render();
+</script>
+</body>
+</html>

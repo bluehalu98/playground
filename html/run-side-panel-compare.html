@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>런 우측 패널 점유 — 현재 vs V2 비교본 (G1~G4 판정용)</title>
+<!--
+  run-side-panel-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : run-side-panel-footprint-plan **T1** 산출물. owner 가 §2 의 결정 4건
+          (G1 무엇을 줄이나 / G2 남는 폭 / G3 런 중 정보 최소치 / G4 런 목표 줄 거처)을
+          **눈으로 판정**하기 위한 정적 비교본이다. 실조작·게임 로직 없음.
+  소유  : docs/archives/ui-ux/run-side-panel-footprint-plan.md T1
+  게이트: 게이트1 R3 APPROVE(docs/reviews/2026-08-30-run-side-panel-footprint-plan.md)
+          → 이 비교본의 **owner 승인이 T2 착수의 선행 조건**이다(플랜 §4 마지막 항).
+  정본  : html/ui-prototype.html 은 **무수정**(#game :1635 / #rl-side :346 읽기만).
+          .cs 파일도 무수정 — 여기 수치는 전부 코드 실측 인용이다.
+  팔레트: ui-prototype.html :49-86 토큰 그대로. **신규 raw 색 0.**
+          도해의 색(teal/amber/gold/red/green/purple)은 **블록 구분자**이지
+          제안하는 UI 색이 아니다.
+  자기완결: 외부 요청 0 — 폰트·스크립트·이미지 전부 인라인/시스템 폰트.
+
+  ⚠ 이 비교본이 명시하는 기준 2건
+   1) 프로토타입 #rl-side { width:38% }(ui-prototype.html:346)는 **코드 실측과 다른 값**이다.
+      코드 실측 패널 폭은 707.6px = 36.85%, 38.0% 는 "비-보드 영역"(1920−1190.4)이다.
+      아래 도해는 전부 **코드 실측** 기준이며 프로토타입 하드코딩 38% 를 쓰지 않는다.
+   2) 면적 점유율의 정본 정의는 **패널 rect 면적의 합 ÷ (1920×1080)** 이고
+      패널 사이 14px 간격(SidePanelGap)은 **분자에서 제외**한다(§B 각주 참조).
+-->
+<style>
+:root{
+  /* ── ui-prototype.html :49-86 토큰 (그대로 복사) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --bg-deep:#070c11; --field-surface:#0c1621; --field-grid:rgba(87,209,184,.11);
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 80px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1500px; margin:0 auto;}
+h1{font-size:21px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:13px; margin:0 0 4px; letter-spacing:.09em; color:var(--teal); text-transform:uppercase;}
+h3{font-size:12px; margin:22px 0 8px; letter-spacing:.04em; color:var(--text-title);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 20px;}
+code{font-family:'Consolas','D2Coding',ui-monospace,monospace; font-size:.92em; color:var(--text-num);}
+.sec{margin:0 0 40px; padding:18px 20px 20px; border:1px solid var(--hairline);
+     border-radius:9px; background:var(--surface-card);}
+.sec > .lead{color:var(--muted); font-size:12px; margin:0 0 16px;}
+
+.quote{border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:12px 16px; margin:0 0 20px; border-radius:0 5px 5px 0; color:var(--text-caption); font-size:13px;}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px;}
+
+.warn{border-left:3px solid var(--red); background:rgba(255,107,107,.06);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; color:var(--text-caption); font-size:12px;}
+.info{border-left:3px solid var(--teal); background:rgba(87,209,184,.05);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; color:var(--text-caption); font-size:12px;}
+
+/* ── 배지 ── */
+.badges{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0;}
+.badge{font-size:10.5px; letter-spacing:.02em; padding:3px 8px; border-radius:3px;
+  border:1px solid currentColor; white-space:nowrap;}
+.badge.red{color:var(--red); background:rgba(255,107,107,.08);}
+.badge.green{color:var(--green); background:rgba(52,211,153,.08);}
+.badge.teal{color:var(--teal); background:rgba(87,209,184,.08);}
+.badge.purple{color:var(--purple); background:rgba(191,156,254,.08);}
+.badge.gold{color:var(--gold); background:rgba(245,232,89,.07);}
+.badge.amber{color:var(--amber); background:rgba(251,176,59,.08);}
+.badge.muted{color:var(--muted); background:rgba(140,153,173,.07);}
+
+/* ── 도해 ── */
+.hud{position:relative; background:var(--bg-deep); border:1px solid var(--btn-border);
+  border-radius:4px; overflow:hidden; flex:0 0 auto;}
+.hud .blk{position:absolute; overflow:hidden;}
+.hud .board{background:
+    linear-gradient(rgba(87,209,184,.055), rgba(87,209,184,.055)),
+    var(--field-surface);
+  border:1px solid rgba(87,209,184,.22); border-radius:2px;}
+.hud .board::after{content:''; position:absolute; inset:0;
+  background-image:linear-gradient(var(--field-grid) 1px, transparent 1px),
+                   linear-gradient(90deg, var(--field-grid) 1px, transparent 1px);
+  background-size:22px 22px;}
+.hud .panel{background:var(--surface-raised-b); border:1px solid var(--hairline); border-radius:3px;}
+.hud .panel.pipe{border-color:rgba(87,209,184,.45);}
+.hud .panel.dps{border-color:rgba(251,176,59,.45);}
+.hud .panel.goalstrip{border-color:rgba(245,232,89,.6); background:rgba(245,232,89,.05);}
+.hud .deadmargin{border:1px dashed rgba(140,153,173,.4); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(140,153,173,.10) 0 5px, transparent 5px 10px);}
+.hud .waste{border:1px dashed rgba(255,107,107,.5); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(255,107,107,.16) 0 5px, transparent 5px 10px);}
+.hud .slack{border:1px dashed rgba(140,153,173,.35); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(140,153,173,.09) 0 5px, transparent 5px 10px);}
+.hud .content{border:1px solid rgba(52,211,153,.45); border-radius:2px; background:rgba(52,211,153,.07);}
+.hud .goalbar{background:rgba(245,232,89,.30); border:1px solid var(--gold); border-radius:1px;}
+.hud .stage{background:var(--surface-raised-a); border:1px solid rgba(87,209,184,.3); border-radius:2px;}
+.hud .rule{background:var(--hairline);}
+.hud .txt{position:absolute; font-size:9.5px; line-height:1.25; letter-spacing:.01em;
+  color:var(--text-caption); white-space:nowrap; pointer-events:none;}
+.hud .txt.sm{font-size:8.5px;}
+.hud .txt.md{font-size:11px;}
+.hud .txt.mut{color:var(--muted);}
+.hud .txt.red{color:var(--red);}
+.hud .txt.gold{color:var(--gold);}
+.hud .txt.green{color:var(--green);}
+.hud .txt.teal{color:var(--teal);}
+.hud .txt.amber{color:var(--amber);}
+.hud .txt.b{font-weight:700;}
+
+.figcap{font-size:11px; color:var(--muted); margin:7px 0 0; line-height:1.55;}
+.figcap b{color:var(--text-caption);}
+.figcap .pct{color:var(--gold); font-weight:700;}
+
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; align-items:start;}
+.grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start;}
+/* 도해는 1:1 축소라 폭이 고정이다 — 좁아지면 컬럼을 접는다(가로 스크롤 대신). */
+@media (max-width:1420px){ .grid3{grid-template-columns:1fr;} }
+@media (max-width:980px){ .grid2{grid-template-columns:1fr;} }
+.card{border:1px solid var(--hairline); border-radius:7px; background:var(--surface-raised-b);
+  padding:13px 14px 15px; overflow-x:auto;}
+.card.pick{border-color:rgba(87,209,184,.5);}
+.card.risk{border-color:rgba(255,107,107,.42);}
+.card h4{margin:0 0 3px; font-size:12.5px; color:var(--text-title); letter-spacing:.02em;}
+.card .k{font-size:10.5px; color:var(--muted); letter-spacing:.09em; text-transform:uppercase; margin:0 0 9px;}
+
+table{border-collapse:collapse; width:100%; font-size:12px; margin:8px 0 0;}
+th,td{border:1px solid var(--hairline); padding:6px 9px; text-align:left; vertical-align:top;}
+th{color:var(--teal); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;
+   background:rgba(87,209,184,.04);}
+td{color:var(--text-caption);}
+td.num{color:var(--text-num); font-variant-numeric:tabular-nums; white-space:nowrap;}
+tr.now td{background:rgba(140,153,173,.05);}
+tr.best td{background:rgba(52,211,153,.06);}
+td .ok{color:var(--green);} td .no{color:var(--red);} td .hi{color:var(--gold); font-weight:700;}
+caption{caption-side:bottom; text-align:left; font-size:11px; color:var(--muted); padding:8px 2px 0; line-height:1.6;}
+
+/* ── 텍스트 폭 회귀 데모 (1:1 스케일) ── */
+.wdemo{display:flex; gap:22px; flex-wrap:wrap; margin-top:10px; overflow-x:auto;}
+.wbox{background:var(--surface-raised-b); border:1px solid var(--hairline); border-radius:3px; padding:8px;}
+.wbox .inner{border:1px dashed rgba(87,209,184,.35); padding:0; color:var(--text-caption);
+  font-size:14px; line-height:1.45;}
+.wbox .cap{font-size:10.5px; color:var(--muted); margin-bottom:6px; letter-spacing:.03em;}
+
+/* ── 결정 박스 ── */
+.decide{border:1px solid var(--gold); border-radius:9px; background:rgba(245,232,89,.035); padding:20px 22px 22px;}
+.decide h2{color:var(--gold);}
+.dgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px 26px; margin-top:14px;}
+@media (max-width:860px){ .dgrid{grid-template-columns:1fr;} }
+.dblock{border:1px solid var(--hairline); border-radius:6px; background:var(--surface-card); padding:13px 15px 14px;}
+.dblock > .t{font-size:12px; color:var(--text-title); font-weight:700; margin:0 0 3px;}
+.dblock > .h{font-size:11px; color:var(--muted); margin:0 0 10px; line-height:1.55;}
+.opt{display:flex; align-items:flex-start; gap:8px; padding:5px 0; font-size:12px; color:var(--text-caption);
+  border-top:1px solid rgba(27,40,54,.7);}
+.opt:first-of-type{border-top:none;}
+.opt input{margin:3px 0 0; accent-color:#f5e859; width:14px; height:14px; flex:0 0 auto;}
+.opt .lab b{color:var(--text-title);}
+.opt .lab .m{display:block; color:var(--muted); font-size:10.5px; line-height:1.5; margin-top:1px;}
+.sign{margin-top:16px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--hairline); padding-top:12px;}
+.sign .line{display:inline-block; border-bottom:1px solid var(--btn-border); min-width:180px; margin:0 10px;}
+
+.legend{display:flex; flex-wrap:wrap; gap:14px; margin:0 0 14px; font-size:11px; color:var(--muted);}
+.legend span{display:inline-flex; align-items:center; gap:6px;}
+.legend i{width:13px; height:11px; border-radius:2px; display:inline-block;}
+.foot{font-size:11px; color:var(--muted); line-height:1.8; margin-top:8px;}
+.foot b{color:var(--text-caption);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>런 우측 패널(파이프라인 + DPS) 점유 — 현재 vs V2 비교본</h1>
+  <p class="sub">
+    <code>run-side-panel-footprint-plan</code> <b>T1</b> ·
+    게이트1 R3 APPROVE(<code>docs/reviews/2026-08-30-run-side-panel-footprint-plan.md</code>) ·
+    이 비교본의 <b style="color:var(--gold)">owner 승인이 T2 착수의 선행 조건</b>입니다.
+    수치는 전부 코드 실측(<code>RunHudView.cs:522-537</code> · <code>MvpGameController.Setup.cs:27,69,75-78</code>).
+  </p>
+
+  <div class="quote">
+    “run 화면 오른쪽 번들 파이프라인이랑 데미지 통계 쪽이 화면의 30프로 정도를 먹고있는데 ㅋㅋㅋㅋ
+    이거 저 정도로 크게 화면을 먹을 일인가 싶긴하네”
+    <span class="who">owner Play QA · 2026-08-28</span>
+  </div>
+
+  <div class="info" style="margin:0 0 26px;">
+    <b>모순된 두 피드백이 이 결정의 핵심입니다.</b>
+    2026-08-18 “패널 텍스트가 비좁다”(→ 넓힌 이력) ↔ 2026-08-28 “너무 크다”.
+    그래서 <b>폭을 그냥 줄이는 안</b>(G1=(a))과 <b>세로 낭비만 걷어내는 안</b>(G1=(b)/(e))이 성격이 완전히 다릅니다 —
+    §E 의 텍스트 폭 회귀 데모를 함께 보고 판단해 주세요.
+  </div>
+
+  <!-- ══════════ A. 현재 ══════════ -->
+  <section class="sec">
+    <h2>A. 현재 — 1920 × 1080 실측 도해</h2>
+    <p class="lead">
+      블록 기하는 1920×1080 가상 좌표를 <b>1:1 비례 축소</b>한 것입니다(글자 크기만 가독성 위해 비례하지 않음).
+    </p>
+
+    <div class="legend">
+      <span><i style="background:rgba(87,209,184,.18); border:1px solid rgba(87,209,184,.4);"></i>보드(카메라 viewport)</span>
+      <span><i style="background:var(--surface-raised-b); border:1px solid rgba(87,209,184,.45);"></i>파이프라인 패널</span>
+      <span><i style="background:var(--surface-raised-b); border:1px solid rgba(251,176,59,.45);"></i>DPS 패널</span>
+      <span><i style="background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.45);"></i>실제 내용</span>
+      <span><i style="background:rgba(255,107,107,.16); border:1px dashed rgba(255,107,107,.5);"></i>낭비(빈 공간)</span>
+      <span><i style="background:rgba(245,232,89,.3); border:1px solid var(--gold);"></i>런 목표 줄 <code>_dpsGoal</code></span>
+    </div>
+
+    <div id="fig-now"></div>
+
+    <div class="warn">
+      <b>낭비의 절반은 폭이 아니라 50:50 분할입니다.</b>
+      <code>half = (1080 − 14×2 − 14) × 0.5 = 519px</code>(<code>RunHudView.cs:531</code>)로 두 패널을 <b>정확히 반반</b> 나눠 두는데,
+      DPS 패널의 실내용은 <b>캡션 → 값 → 구분선 → 처치/최고/피버 3줄 → 런 목표 줄</b>까지 합쳐
+      <b style="color:var(--red)">174px</b>(<code>DpsPad 14 + 142 + 18</code>)뿐입니다 —
+      <b style="color:var(--red)">345px(패널의 66%)가 항상 비어 있습니다.</b>
+    </div>
+
+    <div class="warn" style="border-left-color:var(--gold); background:rgba(245,232,89,.05);">
+      <b style="color:var(--gold)">⚠ DPS 패널의 세 번째 거주자 — 런 목표 줄 <code>_dpsGoal</code></b>
+      (<code>RunHudView.cs:611-612</code>, <code>run-micro-goal-plan</code> T6 산출물).
+      자리 선정 주석(<code>:607-610</code>)이 <i>“런 HUD 상단·하단 중앙·좌상단은 <code>run-cycle-defects</code> 겹침
+      3건(B1/B2/B3)이 미해결이라 피했다 — 여기는 우측 DPS 패널 내부라 그 셋과 rect 교집합이 없다”</i>고
+      근거를 박아뒀습니다. <b>DPS 를 접거나 옮기면 이 줄의 거처를 반드시 함께 정해야 합니다(→ G4).</b>
+    </div>
+  </section>
+
+  <!-- ══════════ B. 면적 산식표 ══════════ -->
+  <section class="sec">
+    <h2>B. 안별 면적 점유 산식표</h2>
+    <p class="lead">
+      정본 지표는 <b>면적</b>입니다 — 폭 분모(1920)로는 (b)/(d)/(e)가 전부 36.85% 로 나와 <b>구분이 불가능</b>합니다
+      (패널 폭을 안 건드리는 안들이라). 플랜 §4 목표: <b>(b) 단독 ≤ 20% · (b)+(e) 조합 ≤ 13%</b>.
+    </p>
+    <div id="tbl-area"></div>
+  </section>
+
+  <!-- ══════════ C. G1 안별 도해 ══════════ -->
+  <section class="sec">
+    <h2>C. G1 — 무엇을 줄이나 (안별 V2 도해)</h2>
+    <p class="lead">G1 의 (a)~(e)는 <b>서로 조합 가능</b>합니다. 특히 (b)+(e)가 유일하게 13% 목표선 아래로 들어갑니다.</p>
+
+    <h3>C-1. G1=(a) 폭 축소 — 보드 <code>0.62 → 0.72</code></h3>
+    <div class="grid2">
+      <div class="card risk">
+        <div id="fig-a"></div>
+      </div>
+      <div>
+        <div class="badges">
+          <span class="badge red">⚠ G2=(a) 카메라 변경 강제 — 따로 고를 수 없음</span>
+          <span class="badge red">줌(<code>orthographicSize</code>) 변화</span>
+          <span class="badge red">screen↔world 매핑 이동</span>
+          <span class="badge amber">2026-08-18 “비좁다” 회귀 위험</span>
+        </div>
+        <p class="figcap" style="margin-top:12px;">
+          <b>왜 강제인가:</b> <code>RunBoardViewportWidthRatio</code>(<code>Setup.cs:27</code>)는
+          패널 위치(<code>RunHudView.cs:529</code>)와 <b>카메라 rect</b>(<code>Setup.cs:69</code>)가
+          <b>같은 상수</b>를 씁니다. 폭을 줄이려고 0.72 로 올리는 순간 카메라 rect 와
+          <code>orthographicSize</code> 파생(<code>:75-78</code>)이 같이 바뀝니다 —
+          <b>플랜 결정표의 <code>G1(a) + G2(b)</code> 조합은 존재할 수 없습니다.</b>
+        </p>
+        <p class="figcap">
+          <b>세로 낭비는 그대로입니다.</b> 50:50 분할을 안 건드리므로 DPS 패널의 빈 345px 은 폭만 좁아진 채 남습니다
+          (515.6 × 345 = 177,882px² 가 여전히 공백).
+        </p>
+      </div>
+    </div>
+
+    <h3>C-2. G1=(b) DPS 접이식(기본 접힘, 헤더 1줄) — <b style="color:var(--gold)">G4 목표 줄 거처 3안</b></h3>
+    <div class="badges" style="margin-bottom:12px;">
+      <span class="badge teal">플랜 권장안</span>
+      <span class="badge green">카메라 무접촉 — 좌표계 무변경</span>
+      <span class="badge green"><code>SyncDpsPanel</code>(<code>:931-960</code>) 순수 쓰기 경로 — 스킵해도 게임 상태 부작용 0</span>
+      <span class="badge muted">상태 필드 1 + 토글 1(뷰 로컬 인메모리, 세이브 무접촉)</span>
+    </div>
+    <div class="grid3">
+      <div class="card"><div id="fig-b1"></div></div>
+      <div class="card"><div id="fig-b2"></div></div>
+      <div class="card"><div id="fig-b3"></div></div>
+    </div>
+    <div class="warn" style="border-left-color:var(--gold); background:rgba(245,232,89,.05);">
+      <b>G4 선택이 면적 목표를 가릅니다.</b> (a)·(b)는 <b class="ok" style="color:var(--green)">19.1% — 플랜 목표 ≤20% 충족</b>,
+      (c) 별도 유지는 <b style="color:var(--red)">20.6% — 목표선 0.6pp 초과</b>입니다.
+      G4=(b) “파이프라인 하단 이사”는 파이프라인 패널이 이미
+      <b>결과/버프 영역에 359px 여유</b>(<code>resultHeight = 519 − 148 − 12</code>)를 갖고 있어 <b>추가 면적 비용 0</b> 입니다.
+    </div>
+
+    <h3>C-3. G1=(c) DPS 를 결과 화면으로 이동</h3>
+    <div class="grid2">
+      <div class="card"><div id="fig-c"></div></div>
+      <div>
+        <div class="badges">
+          <span class="badge purple">소관 경계 — <code>MainMenuOverlayViews.cs</code>(<code>:175</code> “런 결과”)가 대상 파일에 추가됨</span>
+          <span class="badge purple"><code>result-goal-line-fill</code>(01-defined — PR #181 병합 시 02)과 구역 조정 필요</span>
+          <span class="badge red">G4 강제 — 목표 줄이 갈 곳이 DPS 패널 밖뿐</span>
+          <span class="badge amber">G3 전제: “런 중 DPS 수치 불필요”에 owner 가 동의해야 성립</span>
+        </div>
+        <p class="figcap" style="margin-top:12px;">
+          런 중 DPS 패널이 <b>통째로 사라집니다</b>. 면적은 <span class="pct">17.7%</span>(G4=(b) 이사 기준)로 (b)보다 낮지만,
+          <b>범위가 조용히 한 파일 늘어나고</b> 결과 오버레이 쪽 플랜과 구역이 겹칩니다.
+        </p>
+      </div>
+    </div>
+
+    <h3>C-4. G1=(e) 분할비 조정 — 50:50 을 버린다</h3>
+    <div class="badges" style="margin-bottom:12px;">
+      <span class="badge green">상태 필드 0 · 토글 0 — <b>상수만 바꾸는 가장 싼 안</b></span>
+      <span class="badge green">카메라 무접촉</span>
+      <span class="badge gold">목표 줄이 DPS 패널 안에 그대로 — G4 결정 불요</span>
+    </div>
+    <div class="grid2">
+      <div class="card"><div id="fig-e1"></div></div>
+      <div class="card"><div id="fig-e2"></div></div>
+    </div>
+
+    <h3>C-5. <b style="color:var(--gold)">(b) + (e) 조합</b> — 유일하게 13% 목표선 아래</h3>
+    <div class="grid2">
+      <div class="card pick"><div id="fig-be"></div></div>
+      <div>
+        <div class="badges">
+          <span class="badge gold">면적 12.3% — 플랜 목표 ≤13% 충족</span>
+          <span class="badge green">카메라 무접촉 — §1-b 소비처 5건 전부 <b>불변</b></span>
+          <span class="badge teal">패널 폭 707.6 무변경 → 2026-08-18 “비좁다” 회귀 위험 0</span>
+          <span class="badge muted">비용: 상수 2개 + 토글 1 + 뷰 로컬 bool 1</span>
+        </div>
+        <p class="figcap" style="margin-top:12px;">
+          파이프라인을 <b>내용에 맞춘 고정 높이 320px</b>(스테이지 행 <code>66..134</code> + 결과/버프 영역
+          <code>320 − 148 − 12 = 160px</code>)로 내리고, DPS 는 <b>헤더 1줄(40px)로 접습니다</b>.
+          목표 줄은 G4=(b) 로 파이프라인 하단(<code>y = 320 − 12 − 18</code>)에 이사하므로 결과/버프 영역은
+          <b>136px(≈ 5~6줄)</b>이 됩니다 — <b>추가 면적 0</b>.
+        </p>
+        <p class="figcap">
+          <b>펼침 상태는 현행 유지</b>입니다(토글로 519px DPS 를 그대로 되살림) — 즉 “정보를 없앤 게 아니라 기본값을 접은 것”.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ D. G2 ══════════ -->
+  <section class="sec">
+    <h2>D. G2 — 남는 폭을 어디에 주나 (패널 폭을 줄이는 안을 고른 경우에만 유효)</h2>
+    <p class="lead">
+      ⚠ <b>G1=(b)/(c)/(e)만 고르면 패널 폭은 707.6px 그대로라 G2 는 자동으로 (b)</b> 입니다 —
+      줄어드는 게 세로이기 때문입니다. G2 가 실제 결정이 되는 건 <b>폭을 줄이는 안</b>을 고를 때뿐입니다.
+    </p>
+    <div class="grid2">
+      <div class="card risk">
+        <div class="k">G2 = (a)</div>
+        <h4>남는 폭을 보드가 먹는다 — 비율 0.62 → 0.72</h4>
+        <div id="fig-g2a" style="margin-top:10px;"></div>
+        <div class="badges">
+          <span class="badge red">⚠ 줌·screen↔world 매핑 변화</span>
+          <span class="badge red">G1=(a) 를 고르면 자동으로 여기</span>
+        </div>
+      </div>
+      <div class="card pick">
+        <div class="k">G2 = (b)</div>
+        <h4>여백으로 둔다 — 비율 무변경, 패널만 우측으로 좁힌다</h4>
+        <div id="fig-g2b" style="margin-top:10px;"></div>
+        <div class="badges">
+          <span class="badge green">좌표계 무변경 — 안전</span>
+          <span class="badge green">카메라 파일(<code>Setup.cs</code>) 무접촉</span>
+          <span class="badge muted">비용: 좌측 인셋 상수 1개 신설</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>D-1. G2=(a) 를 고르면 실제로 바뀌는 것 — 카메라</h3>
+    <div id="tbl-cam"></div>
+
+    <h3>D-2. G2=(a) 를 고르면 같이 움직이는 <code>boardRightEdge</code> 파생 5건</h3>
+    <div id="tbl-move"></div>
+  </section>
+
+  <!-- ══════════ E. 텍스트 폭 회귀 ══════════ -->
+  <section class="sec">
+    <h2>E. 2026-08-18 “비좁다” 회귀 체크 — 패널 폭별 줄바꿈</h2>
+    <p class="lead">
+      1:1 스케일(가상 1920 좌표 = CSS px)로 파이프라인 힌트 문자열을 실제 <code>inner</code> 폭에 넣어 본 것입니다.
+      <code>inner = sideWidth − PipelinePad×2</code> · <code>FontLabel = 14</code>.
+      ⚠ TMP SDF 와 브라우저 폰트 메트릭이 달라 <b>근사</b>입니다 — 줄 수의 경향만 봅니다.
+    </p>
+    <div class="wdemo">
+      <div class="wbox">
+        <div class="cap">현재 · <code>sideWidth 707.6</code> → <code>inner 683.6px</code></div>
+        <div class="inner" id="w-now" style="width:683.6px;"></div>
+      </div>
+      <div class="wbox">
+        <div class="cap" style="color:var(--red);">폭 축소안(G1=(a) / G2=(b)) · <code>sideWidth 515.6</code> → <code>inner 491.6px</code></div>
+        <div class="inner" id="w-cut" style="width:491.6px; border-color:rgba(255,107,107,.45);"></div>
+      </div>
+    </div>
+    <div id="w-verdict"></div>
+    <div class="info">
+      <b>읽는 법:</b> 오른쪽 상자가 왼쪽보다 <b>줄 수가 늘면</b> 그게 2026-08-18 피드백(“패널 텍스트가 비좁다”)의 재발 경로입니다.
+      <b>세로만 줄이는 안(b)/(e)/(b)+(e)는 이 상자가 왼쪽과 완전히 동일</b>합니다 — 폭을 안 건드리기 때문입니다.<br>
+      ⚠ <b>이 데모는 하한(lower bound)입니다.</b> 여기 쓴 문자열은 코드에 <b>리터럴로 박힌 것</b>뿐이고
+      (<code>RunHudView.cs:580</code> 힌트 · <code>:543</code> 타이틀 · <code>:588</code> 캡션),
+      실제 최장 문자열인 <b>버프 목록·등급·목표 진행</b>은 런타임에 조립돼 정적으로 알 수 없습니다.
+      폭 축소안을 고르면 <b>T2 에서 실제 최장 케이스로 다해상도 2종 캡처 검증이 필요</b>합니다(플랜 §4 4번째 항).
+    </div>
+  </section>
+
+  <!-- ══════════ F. 판정표 ══════════ -->
+  <section class="sec">
+    <h2>F. 종합 판정표</h2>
+    <div id="tbl-judge"></div>
+  </section>
+
+  <!-- ══════════ G. 결정 박스 ══════════ -->
+  <section class="sec decide">
+    <h2>G. owner 결정 박스</h2>
+    <p class="lead" style="color:var(--text-caption);">
+      네 항목 모두 owner 몫입니다. <b>G1 은 복수 선택(조합) 가능</b>하고, G4 는 G1 이 현상유지가 아닐 때 <b>필수</b>입니다.
+    </p>
+
+    <div class="dgrid">
+
+      <div class="dblock">
+        <p class="t">G1 — 무엇을 줄이나 <span style="color:var(--gold); font-weight:400;">(복수 선택 = 조합 가능)</span></p>
+        <p class="h">§C 도해 · §B 면적 산식표 참조</p>
+        <label class="opt"><input type="checkbox" name="g1" value="a"><span class="lab"><b>(a) 폭 축소 — 보드 0.62 → 0.72</b>
+          <span class="m">면적 25.8% · ⚠ G2=(a) 강제(카메라 변경) · 텍스트 폭 −28%</span></span></label>
+        <label class="opt"><input type="checkbox" name="g1" value="b"><span class="lab"><b>(b) DPS 접이식 — 기본 접힘, 헤더 1줄</b>
+          <span class="m">면적 19.1%(G4=(a)/(b) 기준) · 플랜 권장 · G4 결정 필수</span></span></label>
+        <label class="opt"><input type="checkbox" name="g1" value="c"><span class="lab"><b>(c) DPS 를 결과 화면으로 이동</b>
+          <span class="m">면적 17.7% · <code>MainMenuOverlayViews.cs</code> 범위 추가 · G4 강제</span></span></label>
+        <label class="opt"><input type="checkbox" name="g1" value="d"><span class="lab"><b>(d) 둘 다 접이식 + 핀 고정</b>
+          <span class="m">파이프라인까지 접는다 — 가장 공격적. G3 에서 “런 중 파이프라인 불필요” 동의 필요</span></span></label>
+        <label class="opt"><input type="checkbox" name="g1" value="e"><span class="lab"><b>(e) 분할비 조정 — 파이프라인 고정 + DPS 내용 높이</b>
+          <span class="m">면적 24.1%(보수) / 17.3%(타이트) · <b>상태 필드 0 — 최저비용</b> · (b)와 조합 시 12.3%</span></span></label>
+        <label class="opt"><input type="checkbox" name="g1" value="none"><span class="lab"><b>현상 유지</b>
+          <span class="m">면적 35.4% — 이 플랜을 닫는다</span></span></label>
+      </div>
+
+      <div class="dblock">
+        <p class="t">G2 — 남는 폭</p>
+        <p class="h">폭을 줄이는 안을 고른 경우에만 유효. §D 참조</p>
+        <label class="opt"><input type="checkbox" name="g2" value="a"><span class="lab"><b>(a) 보드가 먹는다 — 비율 0.62 → 0.72</b>
+          <span class="m">⚠ 카메라 rect + <code>orthographicSize</code> 변경 → 줌 −13.9%, 필드 화면 크기 +16.1%,
+          screen↔world 매핑 이동. <b>G1=(a) 를 고르면 자동 선택됨</b></span></span></label>
+        <label class="opt"><input type="checkbox" name="g2" value="b"><span class="lab"><b>(b) 여백으로 둔다 — 좌표계 무변경</b>
+          <span class="m">보드 우변 1190.4 고정 · 인접 5건 전부 불변 · 좌측 인셋 상수 1개 신설</span></span></label>
+        <label class="opt"><input type="checkbox" name="g2" value="na"><span class="lab"><b>해당 없음 — 폭을 안 줄인다</b>
+          <span class="m">G1=(b)/(c)/(e) 만 고른 경우. 패널 폭 707.6 유지</span></span></label>
+      </div>
+
+      <div class="dblock">
+        <p class="t">G3 — 런 중 반드시 보여야 하는 정보</p>
+        <p class="h">체크한 것만 항상 가시. 이 답이 (b)/(c)/(d)/(e) 를 가릅니다</p>
+        <label class="opt"><input type="checkbox" name="g3" value="pipe"><span class="lab"><b>파이프라인 진행</b>
+          <span class="m">스테이지 3칸 + 등급 + 발동 버프. 체크 해제 시 (d) 가 열림</span></span></label>
+        <label class="opt"><input type="checkbox" name="g3" value="dps"><span class="lab"><b>DPS 수치</b>
+          <span class="m">DAMAGE/SEC + 처치/최고/피버. 체크 해제 시 (b)/(c) 가 열림</span></span></label>
+        <label class="opt"><input type="checkbox" name="g3" value="goal"><span class="lab"><b>런 목표 줄 <code>_dpsGoal</code></b>
+          <span class="m">⚠ 하드 제약 3 — <code>run-micro-goal-plan</code> 산출물이라 <b>런 중 소멸 금지</b>.
+          해제하려면 그 플랜을 되돌리는 별도 결정입니다</span></span></label>
+      </div>
+
+      <div class="dblock">
+        <p class="t">G4 — 런 목표 줄의 거처 <span style="color:var(--red); font-weight:400;">(G1 ≠ 현상유지면 필수)</span></p>
+        <p class="h">⚠ 어느 쪽이든 <code>:607-610</code> 주석이 배제한 자리(런 HUD 상단·하단 중앙·좌상단 — B1/B2/B3 겹침)로 보내지 않습니다</p>
+        <label class="opt"><input type="checkbox" name="g4" value="a"><span class="lab"><b>(a) 접힘 헤더 1줄에 병합</b>
+          <span class="m">면적 19.1% · 한 줄에 DPS 값과 목표를 같이 — 가장 좁음(잘림 위험 확인 필요)</span></span></label>
+        <label class="opt"><input type="checkbox" name="g4" value="b"><span class="lab"><b>(b) 파이프라인 패널 하단으로 이사</b>
+          <span class="m">면적 19.1% · 파이프라인 결과 영역 359px 여유 활용 — <b>추가 면적 비용 0</b>, 폭도 넉넉</span></span></label>
+        <label class="opt"><input type="checkbox" name="g4" value="c"><span class="lab"><b>(c) 접힘과 무관하게 목표 줄만 별도 유지</b>
+          <span class="m">면적 20.6% — <b style="color:var(--red)">플랜 목표 ≤20% 초과</b>. 별도 46px 스트립 신설</span></span></label>
+      </div>
+
+    </div>
+
+    <div class="sign">
+      승인 시 T2 착수 가능(플랜 §4 마지막 항). 결정 결과는 플랜 §2 아래에 기록합니다.<br>
+      owner <span class="line"></span> 일자 <span class="line"></span>
+    </div>
+  </section>
+
+  <p class="foot">
+    <b>각주 1 — 프로토타입 기준 차이.</b> <code>html/ui-prototype.html:346</code> 의
+    <code>#rl-side { width:38% }</code> 는 하드코딩 단일값으로, <b>코드 실측(패널 폭 36.85%)과 다른 기준</b>입니다.
+    38.0% 는 “비-보드 영역”(<code>(1920 − 1920×0.62) / 1920</code>) 쪽 수치입니다. 이 비교본은 전부 코드 실측을 씁니다.<br>
+    <b>각주 2 — 면적 분자 정의.</b> 이 문서의 면적 = <b>패널 rect 면적의 합</b> ÷ (1920×1080).
+    패널 사이 14px 간격(<code>SidePanelGap</code>)은 분자에서 <b>제외</b>합니다.
+    플랜 §4·리뷰 R2 의 현행 <b>35.9%</b> 는 간격을 포함한 세로 span(1052px) 기준이고, 같은 리뷰의
+    (b) 19.1% · (e) 24.1% 는 간격 제외 기준입니다 — 여기서는 <b>간격 제외로 통일</b>했으므로
+    현행이 <b>35.4%</b>, (a)가 <b>25.8%</b> 로 각각 0.4~0.5pp 낮게 나옵니다. <b>목표선 판정에는 영향 없습니다.</b><br>
+    <b>각주 3 — 무수정 대상.</b> 이 파일 외 <code>html/ui-prototype.html</code>·모든 <code>.cs</code> 는 읽기만 했습니다(diff 0).
+  </p>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ── 코드 실측 상수 (RunHudView.cs:71,85-90 · Setup.cs:27,33,39 · MvpGameController.cs:88-89) ── */
+  var W=1920, H=1080, PAD=14, GAP=14, RIGHT=8;
+  var DPS_PAD=14, PIPE_PAD=12;
+  var DEN=W*H;
+  var BOX_W=13.5, MARGIN_F=1.025;
+
+  var DPS_CONTENT=174;      // DpsPad 14 + 142(goal y) + 18(goal h)
+  var DPS_FIT=188;          // 위 + 하단 pad 14
+  var PIPE_FIT=320;         // (e) 타이트: 결과/버프 영역 160px(≈6~7줄) 확보
+
+  function geom(v){
+    var br = W*v.ratio;
+    var sx = (v.sideX!=null) ? v.sideX : br+PAD;
+    var sw = (v.sideW!=null) ? v.sideW : W-sx-RIGHT;
+    return {br:br, sx:sx, sw:sw};
+  }
+  function sumH(v){ var s=0; for(var i=0;i<v.stack.length;i++) s+=v.stack[i].h; return s; }
+  function pct(v){ var g=geom(v); return g.sw*sumH(v)/DEN*100; }
+  function f1(n){ return n.toFixed(1); }
+
+  /* ── 안 정의 ─────────────────────────────────────────────────────── */
+  var V = {
+    now:  {name:'현재', ratio:0.62, stack:[{k:'pipe',h:519,detail:1},{k:'dps',h:519,detail:1,goal:'content'}]},
+    a:    {name:'G1=(a) 폭 축소 0.72', ratio:0.72, stack:[{k:'pipe',h:519},{k:'dps',h:519,goal:'content'}]},
+    b1:   {name:'G1=(b) + G4=(a)', ratio:0.62, stack:[{k:'pipe',h:519},{k:'dpsc',h:40,goal:'header'}]},
+    b2:   {name:'G1=(b) + G4=(b)', ratio:0.62, stack:[{k:'pipe',h:519,goal:'bottom'},{k:'dpsc',h:40}]},
+    b3:   {name:'G1=(b) + G4=(c)', ratio:0.62, stack:[{k:'pipe',h:519},{k:'dpsc',h:40},{k:'goal',h:46}]},
+    c:    {name:'G1=(c) DPS 결과 화면 이동', ratio:0.62, stack:[{k:'pipe',h:519,goal:'bottom'}]},
+    e1:   {name:'G1=(e) 보수 — DPS 만 내용 높이', ratio:0.62, stack:[{k:'pipe',h:519},{k:'dps',h:DPS_FIT,goal:'content'}]},
+    e2:   {name:'G1=(e) 타이트 — 파이프라인도 고정', ratio:0.62, stack:[{k:'pipe',h:PIPE_FIT},{k:'dps',h:DPS_FIT,goal:'content'}]},
+    be:   {name:'(b)+(e) 조합', ratio:0.62, stack:[{k:'pipe',h:PIPE_FIT,goal:'bottom'},{k:'dpsc',h:40}]},
+    g2b:  {name:'G2=(b) 여백', ratio:0.62, sideX:1396.4, sideW:515.6, stack:[{k:'pipe',h:519},{k:'dps',h:519,goal:'content'}]}
+  };
+
+  /* ── 도해 렌더 ───────────────────────────────────────────────────── */
+  function el(cls, style, html){
+    var d=document.createElement('div');
+    if(cls) d.className=cls;
+    if(style) d.setAttribute('style', style);
+    if(html!=null) d.innerHTML=html;
+    return d;
+  }
+  function box(parent,cls,k,x,y,w,h,extra){
+    var s='left:'+(x*k).toFixed(2)+'px;top:'+(y*k).toFixed(2)+'px;'
+         +'width:'+(w*k).toFixed(2)+'px;height:'+(h*k).toFixed(2)+'px;'+(extra||'');
+    var d=el('blk '+cls, s); parent.appendChild(d); return d;
+  }
+  /* 라벨은 글자 크기가 비례하지 않으므로 y 는 "가상좌표 앵커 × k + 픽셀 오프셋" 으로 쌓는다.
+     (앵커만 쓰면 축소 배율에서 줄끼리 겹친다 — 렌더 검증에서 실제로 겹쳤다.) */
+  function tx(parent,cls,k,x,y,html,dy){
+    var d=el('txt '+cls,'left:'+(x*k).toFixed(2)+'px;top:'+(y*k+(dy||0)).toFixed(2)+'px;',html);
+    parent.appendChild(d); return d;
+  }
+
+  function draw(v,k,opt){
+    opt=opt||{};
+    var g=geom(v);
+    var big = k >= 0.4;                       // 히어로 도해에서만 부연 라벨을 켠다
+    var hud=el('hud','width:'+(W*k).toFixed(1)+'px;height:'+(H*k).toFixed(1)+'px;');
+
+    /* 보드 */
+    box(hud,'board',k,0,0,g.br,H);
+    tx(hud,'teal b'+(big?' md':''),k,14,0,'보드 (카메라 viewport)',8);
+    tx(hud,'mut sm',k,14,0,Math.round(v.ratio*100)+'% · '+f1(g.br)+' × 1080',big?24:21);
+
+    /* 보드↔패널 사이 여백 (G2=(b) 처럼 넓을 때만 표시) */
+    var gapW = g.sx - g.br;
+    if(gapW > 40){
+      box(hud,'deadmargin',k,g.br+6,PAD,gapW-12,H-PAD*2);
+      tx(hud,'mut sm',k,g.br+12,H*0.42,'죽은 여백',0);
+      tx(hud,'mut sm',k,g.br+12,H*0.42,Math.round(gapW)+'px',12);
+    }
+
+    /* 패널 스택 */
+    var y=PAD;
+    for(var i=0;i<v.stack.length;i++){
+      var b=v.stack[i];
+      if(b.k==='pipe'){
+        box(hud,'panel pipe',k,g.sx,y,g.sw,b.h);
+        tx(hud,'teal b',k,g.sx+12,y,'⚙ BUILD PIPELINE',5);
+        tx(hud,'mut sm',k,g.sx+12,y,'파이프라인 '+b.h+'px',17);
+        /* 스테이지 3칸 (RunHudView.cs:551-561 — stageY 66 · 높이 68) */
+        if(b.h>=200){
+          var inner=g.sw-PIPE_PAD*2, sgap=8, sw3=(inner-sgap*2)/3;
+          for(var s=0;s<3;s++) box(hud,'stage',k,g.sx+PIPE_PAD+s*(sw3+sgap),y+66,sw3,68);
+          /* 결과/버프 영역 (resultHeight = h − 148 − PipelinePad) */
+          var rY=y+148, rH=b.h-148-PIPE_PAD;
+          if(b.goal==='bottom') rH -= 24;
+          if(rH>30){
+            box(hud,'slack',k,g.sx+PIPE_PAD,rY,inner,rH);
+            tx(hud,'mut sm',k,g.sx+PIPE_PAD+8,rY,'결과 / 버프 영역 '+Math.round(rH)+'px',5);
+            if(big && opt.slackNote)
+              tx(hud,'mut sm',k,g.sx+PIPE_PAD+8,rY,'(평시 힌트 1~2줄 뒤 대부분 공백)',17);
+          }
+        }
+        if(b.goal==='bottom'){
+          box(hud,'goalbar',k,g.sx+PIPE_PAD,y+b.h-PIPE_PAD-18,g.sw-PIPE_PAD*2,18);
+          tx(hud,'gold sm b',k,g.sx+PIPE_PAD,y+b.h-PIPE_PAD-18,'런 목표 줄 → 파이프라인 하단 (G4=(b))',-11);
+        }
+      }
+      else if(b.k==='dps'){
+        box(hud,'panel dps',k,g.sx,y,g.sw,b.h);
+        tx(hud,'amber b',k,g.sx+DPS_PAD,y,'DAMAGE / SEC',4);
+        /* 실내용 174px (DpsPad 14 + 142 + 18) */
+        box(hud,'content',k,g.sx+DPS_PAD-4,y+DPS_PAD-4,g.sw-DPS_PAD*2+8,DPS_CONTENT-DPS_PAD+8);
+        var goalDy = 142*k;                    // 앵커(y+DpsPad) 로부터 목표 줄까지의 실제 픽셀 거리
+        if(big){
+          box(hud,'rule',k,g.sx+DPS_PAD,y+DPS_PAD+72,g.sw-DPS_PAD*2,1);
+          tx(hud,'green sm',k,g.sx+DPS_PAD+2,y+DPS_PAD,'값 · 구분선 · 처치 / 최고 / 피버 3줄',18);
+        }
+        tx(hud,'green sm b',k,g.sx+DPS_PAD+2,y+DPS_PAD,
+           '실내용 '+DPS_CONTENT+'px'+(big?' (목표 줄 포함)':''), Math.max(big?32:16, goalDy-12));
+        /* 목표 줄 */
+        if(b.goal==='content'){
+          box(hud,'goalbar',k,g.sx+DPS_PAD,y+DPS_PAD+142,g.sw-DPS_PAD*2,18);
+          tx(hud,'gold sm b',k,g.sx+DPS_PAD+2,y+DPS_PAD+142,
+             big?'런 목표 줄 _dpsGoal (RunHudView.cs:611-612)':'런 목표 줄 _dpsGoal',0);
+        }
+        /* 낭비 */
+        var wY=y+DPS_CONTENT, wH=b.h-DPS_CONTENT;
+        if(wH>20){
+          box(hud,'waste',k,g.sx+6,wY+6,g.sw-12,wH-12);
+          tx(hud,'red sm b',k,g.sx+16,wY,'낭비 '+Math.round(wH)+'px',14);
+          tx(hud,'red sm',k,g.sx+16,wY,'(패널의 '+Math.round(wH/b.h*100)+'%가 항상 공백)',26);
+        } else {
+          tx(hud,'green sm',k,g.sx+DPS_PAD+2,y+b.h,'낭비 0 — 내용 높이에 맞춤',4);
+        }
+      }
+      else if(b.k==='dpsc'){
+        box(hud,'panel dps',k,g.sx,y,g.sw,b.h,'background:rgba(251,176,59,.07);');
+        tx(hud,'amber b',k,g.sx+DPS_PAD,y,big?'▸ DAMAGE / SEC   1,240':'▸ DPS 1,240',3);
+        if(b.goal==='header'){
+          box(hud,'goalbar',k,g.sx+g.sw*0.50,y+11,g.sw*0.46,18);
+          tx(hud,'gold sm b',k,g.sx+g.sw*0.50+4,y,'목표 8/12 (헤더 병합)',3);
+        }
+        /* 아래에 블록이 더 있으면(G4=(c) 목표 스트립) 주석 줄이 겹치므로 생략한다 — 캡션에 있다. */
+        if(i===v.stack.length-1)
+          tx(hud,'mut sm',k,g.sx+DPS_PAD,y+b.h,'접힘 헤더 '+b.h+'px — 토글로 519px 펼침',4);
+      }
+      else if(b.k==='goal'){
+        box(hud,'panel goalstrip',k,g.sx,y,g.sw,b.h);
+        box(hud,'goalbar',k,g.sx+DPS_PAD,y+DPS_PAD,g.sw-DPS_PAD*2,18);
+        tx(hud,'gold sm b',k,g.sx+DPS_PAD+2,y+DPS_PAD,'목표 줄 별도 스트립 ('+b.h+'px)',0);
+      }
+      y += b.h + GAP;
+    }
+    if(v.stack.length===1){
+      tx(hud,'mut sm',k,g.sx+12,y,'DPS 패널 없음 → 결과 오버레이로 이동',6);
+    }
+    return hud;
+  }
+
+  function figure(target, key, k, opt){
+    var v=V[key], g=geom(v), host=document.getElementById(target);
+    if(!host) return;
+    host.appendChild(draw(v,k,opt));
+    var cap=el('figcap',null,
+      '<b>'+v.name+'</b> — 패널 폭 <b>'+f1(g.sw)+'px</b> ('+(g.sw/W*100).toFixed(2)+'%) · '
+      +'세로 합 <b>'+sumH(v)+'px</b> · 면적 점유 <span class="pct">'+f1(pct(v))+'%</span>'
+      +(opt&&opt.extra ? '<br>'+opt.extra : ''));
+    host.appendChild(cap);
+  }
+
+  figure('fig-now','now',0.50,{slackNote:true});
+  figure('fig-a','a',0.28);
+  figure('fig-b1','b1',0.232,{extra:'목표 줄을 <b>접힘 헤더에 병합</b>'});
+  figure('fig-b2','b2',0.232,{extra:'목표 줄을 <b>파이프라인 하단으로 이사</b> — 추가 면적 0'});
+  figure('fig-b3','b3',0.232,{extra:'목표 줄 <b>별도 스트립 유지</b> — <span style="color:var(--red)">≤20% 초과</span>'});
+  figure('fig-c','c',0.28,{extra:'목표 줄은 G4=(b) 이사 가정. G4=(c) 면 19.3%'});
+  figure('fig-e1','e1',0.28,{extra:'파이프라인 519 유지 + DPS 를 내용 높이 188px 로'});
+  figure('fig-e2','e2',0.28,{extra:'파이프라인도 320px 고정 + DPS 188px'});
+  figure('fig-be','be',0.28);
+  figure('fig-g2a','a',0.26,{extra:'보드 1190.4 → <b>1382.4</b> (+192px)'});
+  figure('fig-g2b','g2b',0.26,{extra:'보드 <b>1190.4 고정</b> · 죽은 여백 206px'});
+
+  /* ── §E 텍스트 폭 회귀: 코드 리터럴 문자열을 두 폭에 넣고 줄 수를 실측한다 ── */
+  (function(){
+    var STRINGS = [
+      {s:'보물상자를 부수면 토큰이 나오고, 파이프라인이 자동 실행됩니다.', src:'RunHudView.cs:580 파이프라인 힌트'},
+      {s:'⚙ BUILD PIPELINE', src:'RunHudView.cs:543 타이틀'},
+      {s:'DAMAGE / SEC', src:'RunHudView.cs:588 DPS 캡션'}
+    ];
+    var now=document.getElementById('w-now'), cut=document.getElementById('w-cut');
+    if(!now||!cut) return;
+    function fill(host){
+      for(var i=0;i<STRINGS.length;i++){
+        var d=el('ln','padding:3px 5px;border-bottom:1px solid rgba(27,40,54,.8);',STRINGS[i].s);
+        host.appendChild(d);
+      }
+    }
+    fill(now); fill(cut);
+    var LH=14*1.45, rows=[], grew=0;
+    for(var i=0;i<STRINGS.length;i++){
+      var a=Math.round(now.children[i].clientHeight/LH), b=Math.round(cut.children[i].clientHeight/LH);
+      if(b>a) grew++;
+      rows.push({numTo:0,c:['<code>'+STRINGS[i].src+'</code>', a+'줄', b>a?'<span class="no">'+b+'줄 (+'+(b-a)+')</span>':'<span class="ok">'+b+'줄 (동일)</span>']});
+    }
+    var host=document.getElementById('w-verdict');
+    var t=document.createElement('table');
+    var body='';
+    for(var r=0;r<rows.length;r++){
+      body+='<tr>'; for(var c=0;c<rows[r].c.length;c++) body+='<td>'+rows[r].c[c]+'</td>'; body+='</tr>';
+    }
+    t.innerHTML='<thead><tr><th>문자열(코드 리터럴)</th><th>inner 683.6px (현재)</th><th>inner 491.6px (폭 축소안)</th></tr></thead>'
+      +'<tbody>'+body+'</tbody><caption>'
+      +(grew
+        ? '<b style="color:#ff6b6b">실측: '+grew+'건이 줄바꿈이 늘어납니다</b> — 폭 축소안은 2026-08-18 회귀 경로가 실재합니다.'
+        : '<b style="color:#34d399">실측: 리터럴 문자열 범위에서는 줄 수 증가 0</b> — 다만 아래 경고대로 <b>하한</b>이며, '
+          +'실제 최장 케이스(버프 목록·등급·목표 진행)는 런타임 조립이라 이 표로 반증되지 않습니다.')
+      +'</caption>';
+    host.appendChild(t);
+  })();
+
+  /* ── 표 ──────────────────────────────────────────────────────────── */
+  function table(host, head, rows, cap){
+    var h=document.getElementById(host); if(!h) return;
+    var t=document.createElement('table');
+    var th='<tr>'; for(var i=0;i<head.length;i++) th+='<th>'+head[i]+'</th>'; th+='</tr>';
+    var body='';
+    for(var r=0;r<rows.length;r++){
+      body+='<tr class="'+(rows[r].cls||'')+'">';
+      for(var c=0;c<rows[r].c.length;c++){
+        body+='<td'+(c>0&&rows[r].num!==false&&c<=(rows[r].numTo||0)?' class="num"':'')+'>'+rows[r].c[c]+'</td>';
+      }
+      body+='</tr>';
+    }
+    t.innerHTML='<thead>'+th+'</thead><tbody>'+body+'</tbody>'+(cap?'<caption>'+cap+'</caption>':'');
+    h.appendChild(t);
+  }
+
+  function arow(key,label,note,cls,extraH){
+    var v=V[key], g=geom(v), tot=sumH(v)+(extraH||0);
+    var p=g.sw*tot/DEN*100;
+    return {cls:cls, numTo:5, c:[
+      label,
+      f1(g.sw),
+      (g.sw/W*100).toFixed(2)+'%',
+      String(tot),
+      f1(g.sw)+' × '+tot+' ÷ 2,073,600',
+      '<span class="hi">'+f1(p)+'%</span>',
+      note
+    ]};
+  }
+
+  table('tbl-area',
+    ['안','패널 폭(px)','폭 점유<br>(분모 1920)','패널 세로 합(px)','면적 산식<br>(분모 1920×1080)','면적 점유','판정'],
+    [
+      arow('now','<b>현재</b> — 50:50','기준값. 플랜 표기 35.9% 는 간격 포함(각주 2)','now'),
+      arow('a','G1=(a) 폭 0.62→0.72','<span class="no">⚠ 카메라 변경 강제</span>'),
+      arow('b1','G1=(b) + G4=(a) 헤더 병합','<span class="ok">≤20% 충족</span>'),
+      arow('b2','G1=(b) + G4=(b) 파이프라인 이사','<span class="ok">≤20% 충족 · 면적 비용 0</span>'),
+      arow('b3','G1=(b) + G4=(c) 별도 스트립','<span class="no">≤20% 초과 (+0.6pp)</span>'),
+      arow('c','G1=(c) DPS 결과 화면 이동','소관 경계 +1 파일'),
+      arow('e1','G1=(e) 보수 (DPS 만 188)','<span class="ok">상태 필드 0</span>'),
+      arow('e2','G1=(e) 타이트 (파이프라인 320)','<span class="ok">상태 필드 0</span>'),
+      arow('be','<b>(b)+(e) 조합</b>','<span class="hi">≤13% 충족 — 유일</span>','best'),
+      arow('g2b','G2=(b) 여백 (폭만 515.6)','보드 불변 · 세로 낭비 그대로')
+    ],
+    '분자 = 패널 rect 면적의 합(패널 사이 14px 간격 제외 — 각주 2). '
+    +'폭 점유율은 (b)/(d)/(e) 계열에서 전부 36.85% 로 동일해 <b>구분 지표가 되지 못합니다</b>.'
+  );
+
+  /* 카메라 표 */
+  (function(){
+    function cam(ratio){
+      var brPx = W*ratio;
+      var aspect = brPx/H;
+      var req = (BOX_W*0.5)/aspect*MARGIN_F;
+      var minH = (BOX_W*9/16)*0.5 + 0.3;
+      var size = Math.max(minH, req);
+      return {br:brPx, aspect:aspect, size:size, wpp:(2*size)/H};
+    }
+    var c0=cam(0.62), c1=cam(0.72);
+    table('tbl-cam',
+      ['항목','산식 / 코드 위치','0.62 (현행)','0.72 (G2=(a))','변화'],
+      [
+       {numTo:0,c:['카메라 rect 폭','<code>Setup.cs:69</code> <code>new Rect(0,0,ratio,1)</code>',
+         '0.62 (1190.4px)','0.72 (1382.4px)','<span class="no">+192px</span>']},
+       {numTo:0,c:['<code>cameraAspect</code>','<code>Setup.cs:75</code> <code>(Screen.width×ratio)/Screen.height</code>',
+         c0.aspect.toFixed(4), c1.aspect.toFixed(4),'<span class="no">+16.1%</span>']},
+       {numTo:0,c:['<b><code>orthographicSize</code></b>','<code>Setup.cs:76-78</code> <code>(BoxWidth×0.5)/aspect×1.025</code>',
+         c0.size.toFixed(4), c1.size.toFixed(4),'<span class="no">−13.9% (줌 인)</span>']},
+       {numTo:0,c:['world / px (세로)','<code>2×orthographicSize ÷ 1080</code>',
+         c0.wpp.toFixed(6), c1.wpp.toFixed(6),'<span class="no">필드가 화면에서 +16.1% 커짐</span>']},
+       {numTo:0,c:['<code>_fieldBounds</code>','<code>Setup.cs:134</code> — 월드 상수',
+         '(−6.75, −3.797, 13.5, 7.594)','<b>동일</b>','<span class="ok">불변 (검증 위양성 주의)</span>']}
+      ],
+      '⚠ <b><code>_fieldBounds</code> “동일” 확인은 위양성입니다</b> — 월드 상수라 카메라를 바꿔도 절대 안 움직입니다. '
+      +'실질 검증축은 <b>줌(<code>orthographicSize</code>)과 screen↔world 매핑</b>입니다'
+      +'(<code>Rendering.cs:541,572,639</code> · <code>UI.cs:166-167</code> · <code>UI.cs:3905</code> · <code>Queue.cs:325</code>). '
+      +'AOE 링(<code>Rendering.cs:611-618</code>)·화폐 플라이어 <b>착지</b>(<code>RunHudView.cs:658-660</code>)는 카메라 무관이라 검증 항목이 아닙니다.'
+    );
+  })();
+
+  table('tbl-move',
+    ['소비처','산식','0.62 (현행)','0.72 (G2=(a))','G2=(b) 선택 시'],
+    [
+     {numTo:0,c:['버프 상단 바 폭 <code>RunFxView.cs:812</code>','<code>boardRightEdge − 372 − 212</code>','606.4','<span class="no">798.4</span>','<span class="ok">606.4 불변</span>']},
+     {numTo:0,c:['온보딩 토스트 폭 <code>RunHudView.cs:266</code>','<code>boardRightEdge − 372 − 212</code>','606.4','<span class="no">798.4</span>','<span class="ok">606.4 불변</span>']},
+     {numTo:0,c:['타이머 x <code>RunHudView.cs:405</code>','<code>boardRightEdge − 198</code>','992.4','<span class="no">1184.4</span>','<span class="ok">992.4 불변</span>']},
+     {numTo:0,c:['세션 종료 <b>버튼</b> x <code>RunHudView.cs:517</code>','<code>boardRightEdge − 198</code>','992.4','<span class="no">1184.4</span>','<span class="ok">992.4 불변</span>']},
+     {numTo:0,c:['러시 카운트다운 x <code>RunFxView.cs:510</code>','<code>boardRightEdge×0.5 − 180</code>','415.2','<span class="no">511.2</span>','<span class="ok">415.2 불변</span>']}
+    ],
+    '다섯 건 전부 <code>boardRightEdge</code>(= 비율×1920) 파생이라 <b>G2=(a) 에서는 “불변 확인”이 아니라 “이동 예상표 대조”가 검증</b>입니다. '
+    +'여백 관계는 비율에 비례 보존됩니다(0.72 에서 타이머 우변 1368.4 &lt; <code>sideX</code> 1396.4) — <b>통과 가능한 기준</b>.'
+  );
+
+  /* 판정표 */
+  (function(){
+    function jrow(key,label,collapsed,goal,clip,cam,cost,cls,extraH){
+      var v=V[key], g=geom(v), tot=sumH(v)+(extraH||0);
+      return {cls:cls,numTo:0,c:[label, f1(g.sw), f1(g.sw*tot/DEN*100)+'%', collapsed, goal, clip, cam, cost]};
+    }
+    table('tbl-judge',
+      ['안','패널 폭','면적 점유','접힘 헤더 높이','런 목표 줄 거처','펼침 시 텍스트 잘림','카메라 접촉','비용'],
+      [
+        jrow('now','<b>현재</b>','—','DPS 패널 내부 <code>:611</code>','<span class="ok">없음(기준)</span>','<span class="ok">없음</span>','—','now'),
+        jrow('a','G1=(a) 폭 0.72','—','DPS 패널 내부','<span class="no">위험 — inner 683.6 → 491.6 (−28%)</span><br>§E 리터럴로는 미재현 — T2 실측 필요','<span class="no">필수 변경</span>','상수 1 + 카메라 검증 전수'),
+        jrow('b1','G1=(b)+G4=(a)','40px','접힘 헤더에 병합','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','bool 1 + 토글 1'),
+        jrow('b2','G1=(b)+G4=(b)','40px','파이프라인 하단','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','bool 1 + 토글 1 + Place 1','best'),
+        jrow('b3','G1=(b)+G4=(c)','40px','별도 46px 스트립','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','bool 1 + 토글 1 + 패널 1'),
+        jrow('c','G1=(c)','— (패널 소멸)','파이프라인 하단(강제)','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','+1 파일(<code>MainMenuOverlayViews</code>)'),
+        jrow('e1','G1=(e) 보수','—','DPS 패널 내부(그대로)','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','<span class="ok">상수 1 — 상태 0</span>'),
+        jrow('e2','G1=(e) 타이트','—','DPS 패널 내부(그대로)','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','<span class="ok">상수 2 — 상태 0</span>'),
+        jrow('be','<b>(b)+(e)</b>','40px','파이프라인 하단','<span class="ok">없음(폭 무변경)</span>','<span class="ok">무접촉</span>','상수 2 + bool 1 + 토글 1','best'),
+        jrow('g2b','G2=(b) 여백만','—','DPS 패널 내부','<span class="no">위험 — inner 491.6 (−28%)</span><br>§E 리터럴로는 미재현 — T2 실측 필요','<span class="ok">무접촉</span>','인셋 상수 1')
+      ],
+      'R1 Finding 9 요구 3항목(안별 점유율 수치 · 접힌 헤더 높이 · 펼침 시 잘림 여부)을 컬럼으로 담았습니다. '
+      +'“펼침 시 텍스트 잘림”은 §E 데모 기준 — <b>폭을 안 건드리는 안은 구조적으로 회귀 0</b> 입니다.'
+    );
+  })();
+})();
+</script>
+</body>
+</html>

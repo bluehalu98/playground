@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Worker Thread — Skill Prototype</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#060b14; color:#c8d0e0; font-family:'Courier New',monospace; padding:32px; user-select:none; }
+h1 { font-size:13px; letter-spacing:3px; color:#F59E0B; text-transform:uppercase; margin-bottom:4px; }
+.desc { font-size:10px; color:#2a1a0a; letter-spacing:1px; margin-bottom:28px; }
+
+/* ── LAYOUT ── */
+.scene-wrap { display:flex; gap:32px; align-items:flex-start; margin-left:60px; }
+.field-area { position:relative; flex-shrink:0; }
+.field { width:520px; height:340px; background:#0b0e08; border:1px solid #1a1808; position:relative; overflow:visible; }
+.field-label { position:absolute; top:6px; left:10px; font-size:8px; color:#1a1808; letter-spacing:2px; text-transform:uppercase; pointer-events:none; }
+.arc-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+
+/* ── FACTORY CORE (outside field, left side) ── */
+.factory-core {
+  position:absolute;
+  left:-68px; top:150px;
+  width:40px; height:40px;
+  z-index:10;
+}
+.factory-body {
+  width:40px; height:40px;
+  background:linear-gradient(135deg, rgba(245,158,11,.12) 0%, rgba(6,11,20,.95) 100%);
+  border:2px solid #F59E0B;
+  box-shadow:0 0 14px rgba(245,158,11,.35), inset 0 0 8px rgba(245,158,11,.08);
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.factory-icon { font-size:16px; animation:factory-spin 4s linear infinite; display:block; line-height:1; }
+@keyframes factory-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.factory-indicator { position:absolute; top:4px; right:4px; width:4px; height:4px; border-radius:50%; background:#F59E0B; box-shadow:0 0 3px rgba(245,158,11,.8); animation:blink .8s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.1} }
+.factory-ring { position:absolute; width:56px; height:56px; border-radius:50%; border:1px solid rgba(245,158,11,.2); top:50%; left:50%; transform:translate(-50%,-50%); animation:factory-ring-idle 2s ease-in-out infinite; }
+@keyframes factory-ring-idle { 0%,100%{opacity:.2;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.4;transform:translate(-50%,-50%) scale(1.18)} }
+.factory-label { position:absolute; top:46px; left:50%; transform:translateX(-50%); font-size:7px; color:rgba(245,158,11,.45); letter-spacing:1px; white-space:nowrap; }
+
+/* Factory activation bar (below factory, shows cycle duration) */
+.factory-proc-wrap { position:absolute; top:56px; left:50%; transform:translateX(-50%); width:56px; opacity:0; transition:opacity .1s; }
+.factory-proc-label { font-size:7px; color:#F59E0B; letter-spacing:1px; text-align:center; margin-bottom:3px; white-space:nowrap; }
+.factory-proc-bg { width:100%; height:4px; background:#1a1208; border:1px solid #F59E0B; }
+.factory-proc-fill { height:100%; width:0%; background:#F59E0B; box-shadow:0 0 5px rgba(245,158,11,.7); }
+
+@keyframes factory-burst { 0%{box-shadow:0 0 14px rgba(245,158,11,.35)} 20%{box-shadow:0 0 40px rgba(245,158,11,.9),0 0 80px rgba(245,158,11,.4)} 100%{box-shadow:0 0 14px rgba(245,158,11,.35)} }
+
+/* ── RANGE CIRCLE ── */
+.range-circle { position:absolute; border-radius:50%; border:1px dashed rgba(245,158,11,.2); pointer-events:none; transform:translate(-50%,-50%); display:none; }
+
+/* ── NODES ── */
+.node { position:absolute; width:36px; height:36px; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); }
+.node-body { position:absolute; width:34px; height:34px; border-radius:var(--radius,6px); background:var(--bg); border:2px solid var(--col); box-shadow:0 0 6px var(--glow); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:var(--col); text-shadow:0 0 5px var(--glow); }
+.node-ring { position:absolute; width:38px; height:38px; border-radius:50%; border:1px solid var(--col); opacity:.12; animation:node-idle 2.4s ease-in-out infinite; animation-delay:var(--delay,0s); }
+@keyframes node-idle { 0%,100%{opacity:.12;transform:scale(1)} 50%{opacity:.24;transform:scale(1.1)} }
+
+/* Priority badge */
+.node-priority { position:absolute; top:-16px; left:50%; transform:translateX(-50%); font-size:7px; letter-spacing:1px; padding:1px 4px; border:1px solid; white-space:nowrap; pointer-events:none; z-index:5; }
+.priority-boss  { color:#EF4444; border-color:#EF4444; text-shadow:0 0 4px rgba(239,68,68,.6); box-shadow:0 0 4px rgba(239,68,68,.2); }
+.priority-elite { color:#F59E0B; border-color:#F59E0B; text-shadow:0 0 4px rgba(245,158,11,.6); }
+.priority-normal { display:none; }
+
+/* Node hit flash */
+@keyframes node-hit { 0%{filter:brightness(1)} 25%{filter:brightness(5) saturate(0)} 60%{filter:brightness(2)} 100%{filter:brightness(1)} }
+.node-body.hit { animation:node-hit .28s ease-out forwards; }
+
+/* Hit sparks */
+@keyframes hit-spark { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(var(--tx),var(--ty))} }
+.hit-spark { position:absolute; width:3px; height:3px; pointer-events:none; animation:hit-spark .4s ease-out forwards; }
+
+/* SIGKILL explosion particle */
+@keyframes sigkill-particle { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)} }
+.sigkill-particle { position:absolute; width:4px; height:4px; background:#EF4444; pointer-events:none; animation:sigkill-particle .6s ease-out forwards; }
+
+/* ── LOCK-ON RING ── */
+@keyframes lockon-in { 0%{opacity:0;transform:translate(-50%,-50%) scale(1.8)} 60%{opacity:1;transform:translate(-50%,-50%) scale(.95)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+@keyframes lockon-spin { from{transform:translate(-50%,-50%) rotate(0deg)} to{transform:translate(-50%,-50%) rotate(360deg)} }
+.lockon-ring { position:absolute; width:46px; height:46px; border:2px dashed #F59E0B; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%) scale(0); pointer-events:none; opacity:0; z-index:7; }
+.lockon-ring.awaken { border-color:#EF4444; }
+
+/* ── DRONE ── */
+.drone { position:absolute; width:8px; height:8px; background:#F59E0B; box-shadow:0 0 6px rgba(245,158,11,.8); z-index:20; pointer-events:none; clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%); }
+.drone.awaken { background:#EF4444; box-shadow:0 0 8px rgba(239,68,68,.9); }
+
+/* ── CONTROLS PANEL ── */
+.panel { width:200px; flex-shrink:0; }
+.panel-section { margin-bottom:20px; }
+.panel-title { font-size:9px; letter-spacing:2px; color:#3a2a0a; text-transform:uppercase; margin-bottom:10px; border-bottom:1px solid #1a1208; padding-bottom:6px; }
+.ctrl-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
+.ctrl-label { font-size:10px; color:#6a5a2a; letter-spacing:1px; min-width:60px; }
+.ctrl-val { font-size:10px; color:#F59E0B; min-width:36px; text-align:right; }
+.cooldown-bar-bg { width:100%; height:4px; background:#1a1208; border:1px solid #2a2010; border-radius:2px; overflow:hidden; margin-top:6px; }
+.cooldown-bar-fill { height:100%; background:#F59E0B; box-shadow:0 0 6px rgba(245,158,11,.6); width:0%; transition:width .1s linear; }
+input[type=range] { -webkit-appearance:none; width:100%; height:3px; background:#2a2010; border-radius:2px; outline:none; cursor:pointer; margin-top:4px; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:#F59E0B; box-shadow:0 0 4px rgba(245,158,11,.7); cursor:pointer; }
+.toggle-btn { background:#0e0e08; border:1px solid #2a2010; color:#6a5a2a; padding:3px 10px; font-family:'Courier New',monospace; font-size:9px; letter-spacing:1px; cursor:pointer; text-transform:uppercase; min-width:52px; text-align:center; }
+.toggle-btn.on { border-color:#F59E0B; color:#F59E0B; box-shadow:0 0 6px rgba(245,158,11,.25); }
+.toggle-btn.on.awaken-on { border-color:#EF4444; color:#EF4444; box-shadow:0 0 6px rgba(239,68,68,.25); }
+.toggle-btn:hover { background:#1a1810; }
+.fire-btn { width:100%; padding:8px; background:#160e04; border:1px solid #F59E0B; color:#F59E0B; font-family:'Courier New',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; box-shadow:0 0 8px rgba(245,158,11,.2); margin-top:4px; }
+.fire-btn:hover { background:#241404; box-shadow:0 0 14px rgba(245,158,11,.4); }
+.fire-btn:disabled { opacity:.3; cursor:default; box-shadow:none; }
+.stat-row { display:flex; justify-content:space-between; font-size:10px; margin-bottom:6px; }
+.stat-key { color:#3a2a0a; }
+.stat-val { color:#c8d0e0; }
+.stat-val.highlight { color:#F59E0B; }
+.phase-indicator { font-size:9px; color:#F59E0B; letter-spacing:2px; text-transform:uppercase; opacity:0; transition:opacity .2s; margin-top:8px; height:12px; }
+.phase-indicator.visible { opacity:1; }
+
+/* ── CONCEPT PANEL ── */
+.concept-panel { width:220px; flex-shrink:0; border-left:1px solid #1a1208; padding-left:24px; }
+.concept-title { font-size:9px; letter-spacing:3px; color:#F59E0B; text-transform:uppercase; margin-bottom:16px; padding-bottom:6px; border-bottom:1px solid #1a1208; }
+.concept-block { margin-bottom:18px; }
+.concept-block-title { font-size:8px; letter-spacing:2px; color:#4a3a0a; text-transform:uppercase; margin-bottom:8px; }
+.concept-item { display:flex; gap:8px; margin-bottom:5px; font-size:9px; line-height:1.5; color:#5a4a2a; }
+.concept-item::before { content:'·'; color:#F59E0B; flex-shrink:0; }
+.concept-item strong { color:#a08040; font-weight:normal; }
+.concept-tag { display:inline-block; font-size:8px; padding:1px 6px; border:1px solid; letter-spacing:1px; margin-bottom:4px; }
+.concept-tag.complete { border-color:#10B981; color:#10B981; }
+.concept-tag.sigkill { border-color:#EF4444; color:#EF4444; }
+</style>
+</head>
+<body>
+
+<h1>⚙ Worker Thread</h1>
+<p class="desc">factory-based auto spawn · priority queue targeting · parallel thread attack</p>
+
+<div class="scene-wrap">
+
+  <div class="field-area">
+
+    <!-- Factory Core: outside field, left side -->
+    <div class="factory-core" id="factory-core">
+      <div class="factory-ring"></div>
+      <div class="factory-body" id="factory-body">
+        <div class="factory-indicator"></div>
+        <span class="factory-icon">⚙</span>
+      </div>
+      <div class="factory-label">FACTORY</div>
+      <div class="factory-proc-wrap" id="factory-proc-wrap">
+        <div class="factory-proc-label" id="factory-proc-label">IDLE</div>
+        <div class="factory-proc-bg"><div class="factory-proc-fill" id="factory-proc-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="field" id="field">
+      <div class="field-label">mining field</div>
+      <div class="range-circle" id="range-circle"></div>
+      <svg class="arc-svg" id="arc-svg">
+        <defs>
+          <filter id="wt-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+      </svg>
+    </div>
+
+  </div><!-- /.field-area -->
+
+  <div class="panel">
+    <div class="panel-section">
+      <div class="panel-title">Cooldown</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">remaining</span>
+        <span class="ctrl-val" id="cd-text">5.0s</span>
+      </div>
+      <div class="cooldown-bar-bg"><div class="cooldown-bar-fill" id="cd-bar"></div></div>
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">total</span>
+        <span class="ctrl-val" id="cd-total-val">5s</span>
+      </div>
+      <input type="range" id="cd-slider" min="2" max="12" value="5" step="1">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Parameters</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">range</span>
+        <span class="ctrl-val" id="range-val">240px</span>
+      </div>
+      <input type="range" id="range-slider" min="80" max="480" value="240" step="10">
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">thread pool</span>
+        <span class="ctrl-val" id="pool-val">3</span>
+      </div>
+      <input type="range" id="pool-slider" min="1" max="6" value="3" step="1">
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">attack time</span>
+        <span class="ctrl-val" id="hit-val">1.0s</span>
+      </div>
+      <input type="range" id="hit-slider" min="0.5" max="4" value="1" step="0.5">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Modes</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">awaken</span>
+        <button class="toggle-btn" id="awaken-btn" onclick="toggleAwaken()">OFF</button>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">debug</span>
+        <button class="toggle-btn" id="debug-btn" onclick="toggleDebug()">OFF</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Stats</div>
+      <div class="stat-row"><span class="stat-key">total fires</span><span class="stat-val" id="stat-fires">0</span></div>
+      <div class="stat-row"><span class="stat-key">total hits</span><span class="stat-val highlight" id="stat-hits">0</span></div>
+      <div class="stat-row"><span class="stat-key">last targets</span><span class="stat-val" id="stat-last">—</span></div>
+    </div>
+
+    <button class="fire-btn" id="fire-btn" onclick="manualFire()">▶ FIRE NOW</button>
+    <div class="phase-indicator" id="phase-indicator"></div>
+  </div>
+
+  <div class="concept-panel">
+    <div class="concept-title">컨셉 노트</div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">발동</div>
+      <div class="concept-item"><strong>쿨다운 자동 발사</strong> — 백그라운드 타이머 기반</div>
+      <div class="concept-item"><strong>팩토리 코어</strong>에서 드론들이 스폰 및 사출</div>
+      <div class="concept-item">팩토리에 <strong>활성화 진행 바</strong>가 표시됨 (지속시간)</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">타겟팅</div>
+      <div class="concept-item"><strong>우선순위 큐</strong> — BOSS &gt; ELITE &gt; NORMAL</div>
+      <div class="concept-item">각 드론이 <strong>서로 다른 노드</strong>로 동시 분산</div>
+      <div class="concept-item">노드 수 &lt; 드론 수면 <strong>중복 타겟팅</strong> 허용</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">타격 연출</div>
+      <div class="concept-item">드론 이동 중 <strong>네온 잔상 트레일</strong></div>
+      <div class="concept-item">도착 시 <strong>플래시 + 스파크</strong> 타격 이펙트</div>
+      <div class="concept-item">이후 드론 <strong>팩토리로 회수</strong></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">각성 모드 <span class="concept-tag sigkill">SIGKILL</span></div>
+      <div class="concept-item">드론 수 <strong>2배 증가</strong> (Thread Pool Overclock)</div>
+      <div class="concept-item">타격 시 <strong>데이터 파편 연쇄 폭발</strong></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">유니티 구현 메모</div>
+      <div class="concept-item">드론 → <strong>오브젝트 풀</strong> + 목표 위치 이동</div>
+      <div class="concept-item">우선순위 큐 → <strong>SortedList&lt;int, Enemy&gt;</strong></div>
+      <div class="concept-item">활성화 바 → <strong>팩토리 World Space Canvas</strong></div>
+      <div class="concept-item">폭발 → <strong>ParticleSystem</strong> 버스트</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+// Field-relative coords for factory center:
+// factory-core: left=-68px, top=150px, size=40×40 → center=(-48, 170)
+const FACTORY_POS  = { x: -48, y: 170 };
+const DRONE_FLY_MS = 360;
+const SPAWN_GAP_MS = 60;
+let HIT_PAUSE_MS = 1000;
+const RECALL_MS    = 320;
+
+let COOLDOWN_MS = 5000;
+let poolSize    = 3;
+let wtRange     = 240;
+let awaken      = false;
+let debugMode   = false;
+let firing      = false;
+let totalFires  = 0;
+let totalHits   = 0;
+let cdInterval  = null;
+let cdStart     = 0;
+
+const PRIORITY = { boss: 3, elite: 2, normal: 1 };
+
+const NODES = [
+  { id:'cs',      x: 82,  y: 75,  col:'#66c8fa', bg:'rgba(8,20,40,.9)',   glow:'rgba(100,200,250,.5)', name:'C#',    r:'6px',  priority:'normal' },
+  { id:'js',      x: 195, y: 55,  col:'#fae248', bg:'rgba(30,24,4,.9)',   glow:'rgba(250,220,70,.5)',  name:'JS',    r:'6px',  priority:'elite'  },
+  { id:'ts',      x: 320, y: 80,  col:'#54a4fa', bg:'rgba(6,14,38,.9)',   glow:'rgba(80,160,250,.5)',  name:'TS',    r:'6px',  priority:'normal' },
+  { id:'sql',     x: 440, y: 60,  col:'#7ae8cc', bg:'rgba(4,22,22,.9)',   glow:'rgba(100,230,200,.5)', name:'SQL',   r:'6px',  priority:'elite'  },
+  { id:'git',     x: 110, y: 185, col:'#f88a4c', bg:'rgba(30,10,4,.9)',   glow:'rgba(248,138,76,.5)',  name:'Git',   r:'0%',   priority:'normal' },
+  { id:'ci',      x: 255, y: 170, col:'#c870f0', bg:'rgba(20,4,30,.9)',   glow:'rgba(200,110,240,.5)', name:'CI',    r:'0%',   priority:'boss'   },
+  { id:'unity',   x: 400, y: 190, col:'#f27c6e', bg:'rgba(30,6,6,.9)',    glow:'rgba(242,124,110,.5)', name:'Unity', r:'50%',  priority:'boss'   },
+  { id:'react',   x: 155, y: 295, col:'#52eaf2', bg:'rgba(4,22,26,.9)',   glow:'rgba(80,235,242,.5)',  name:'React', r:'50%',  priority:'normal' },
+  { id:'pattern', x: 300, y: 280, col:'#eebe54', bg:'rgba(26,18,4,.9)',   glow:'rgba(238,190,80,.5)',  name:'Pat.',  r:'0%',   priority:'elite'  },
+  { id:'clean',   x: 455, y: 295, col:'#9ee06c', bg:'rgba(8,22,4,.9)',    glow:'rgba(158,224,108,.5)', name:'Clean', r:'0%',   priority:'normal' },
+];
+
+// ── DOM ──────────────────────────────────────────────
+const field          = document.getElementById('field');
+const arcSvg         = document.getElementById('arc-svg');
+const rangeCircle    = document.getElementById('range-circle');
+const cdBar          = document.getElementById('cd-bar');
+const cdText         = document.getElementById('cd-text');
+const fireBtn        = document.getElementById('fire-btn');
+const phaseEl        = document.getElementById('phase-indicator');
+const factoryBody    = document.getElementById('factory-body');
+const factoryProcWrap = document.getElementById('factory-proc-wrap');
+const factoryProcFill = document.getElementById('factory-proc-fill');
+const factoryProcLabel = document.getElementById('factory-proc-label');
+
+// ── BUILD NODES ──────────────────────────────────────
+NODES.forEach((n, i) => {
+  const el = document.createElement('div');
+  el.className = 'node'; el.id = `node-${n.id}`;
+  el.style.cssText = `left:${n.x}px;top:${n.y}px;--col:${n.col};--bg:${n.bg};--glow:${n.glow};--radius:${n.r};--delay:${(i*0.24).toFixed(2)}s`;
+  el.innerHTML = `
+    <div class="node-body" id="body-${n.id}">${n.name}</div>
+    <div class="node-ring"></div>
+    <div class="node-priority priority-${n.priority}">${n.priority.toUpperCase()}</div>
+    <div class="lockon-ring" id="lockon-${n.id}"></div>
+  `;
+  field.appendChild(el);
+});
+
+// ── SLIDERS ──────────────────────────────────────────
+document.getElementById('cd-slider').addEventListener('input', e => {
+  COOLDOWN_MS = +e.target.value * 1000;
+  document.getElementById('cd-total-val').textContent = e.target.value + 's';
+});
+document.getElementById('range-slider').addEventListener('input', e => {
+  wtRange = +e.target.value;
+  document.getElementById('range-val').textContent = e.target.value + 'px';
+  if (debugMode) updateRangeCircle();
+});
+document.getElementById('pool-slider').addEventListener('input', e => {
+  poolSize = +e.target.value;
+  document.getElementById('pool-val').textContent = e.target.value;
+});
+document.getElementById('hit-slider').addEventListener('input', e => {
+  HIT_PAUSE_MS = +e.target.value * 1000;
+  document.getElementById('hit-val').textContent = (+e.target.value).toFixed(1) + 's';
+});
+
+// ── HELPERS ──────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const setPhase = txt => { phaseEl.textContent = txt; phaseEl.classList.toggle('visible', !!txt); };
+
+function updateRangeCircle() {
+  const d = wtRange * 2;
+  // Range circle positioned relative to field. Factory is at FACTORY_POS (negative x).
+  Object.assign(rangeCircle.style, {
+    display: 'block',
+    left: FACTORY_POS.x + 'px',
+    top:  FACTORY_POS.y + 'px',
+    width: d + 'px', height: d + 'px',
+  });
+}
+
+// Returns array of target nodes, length = count, priority-sorted, cycled if < count nodes
+function assignTargets(count) {
+  const inRange = NODES.filter(n =>
+    Math.hypot(n.x - FACTORY_POS.x, n.y - FACTORY_POS.y) <= wtRange
+  ).sort((a, b) => {
+    const dp = PRIORITY[b.priority] - PRIORITY[a.priority];
+    if (dp !== 0) return dp;
+    return Math.hypot(a.x - FACTORY_POS.x, a.y - FACTORY_POS.y)
+         - Math.hypot(b.x - FACTORY_POS.x, b.y - FACTORY_POS.y);
+  });
+
+  if (inRange.length === 0) return [];
+  const result = [];
+  for (let i = 0; i < count; i++) result.push(inRange[i % inRange.length]);
+  return result;
+}
+
+function startFactoryProc(durationMs) {
+  factoryProcWrap.style.opacity = '1';
+  factoryProcFill.style.transition = `width ${durationMs}ms linear`;
+  factoryProcFill.style.width = '100%';
+  factoryProcLabel.textContent = 'RUNNING';
+}
+
+function stopFactoryProc() {
+  factoryProcWrap.style.opacity = '0';
+  factoryProcFill.style.transition = 'none';
+  factoryProcFill.style.width = '0%';
+  factoryProcLabel.textContent = 'IDLE';
+}
+
+function lockOn(node, isAwaken) {
+  const ring = document.getElementById(`lockon-${node.id}`);
+  ring.className = 'lockon-ring' + (isAwaken ? ' awaken' : '');
+  ring.style.animation = '';
+  ring.style.opacity = '0';
+  ring.getBoundingClientRect();
+  ring.style.animation = 'lockon-in .24s ease-out forwards';
+  setTimeout(() => {
+    ring.style.animation = 'lockon-spin 1.2s linear infinite';
+    ring.style.opacity = '1';
+  }, 240);
+}
+
+function unlockOn(node) {
+  const ring = document.getElementById(`lockon-${node.id}`);
+  ring.style.animation = '';
+  ring.style.opacity = '0';
+  ring.style.transform = 'translate(-50%,-50%) scale(0)';
+}
+
+function spawnDrone(target, isAwaken) {
+  const drone = document.createElement('div');
+  drone.className = 'drone' + (isAwaken ? ' awaken' : '');
+  // Start at factory position (field-relative coords)
+  drone.style.left = (FACTORY_POS.x - 4) + 'px';
+  drone.style.top  = (FACTORY_POS.y - 4) + 'px';
+  field.appendChild(drone);
+
+  // Trail line in SVG
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', FACTORY_POS.x); line.setAttribute('y1', FACTORY_POS.y);
+  line.setAttribute('x2', target.x);      line.setAttribute('y2', target.y);
+  line.setAttribute('stroke', isAwaken ? '#EF4444' : '#F59E0B');
+  line.setAttribute('stroke-width', '1');
+  line.setAttribute('stroke-dasharray', '3 4');
+  line.setAttribute('opacity', '0.35');
+  line.setAttribute('filter', 'url(#wt-glow)');
+  arcSvg.appendChild(line);
+  setTimeout(() => line.remove(), DRONE_FLY_MS + 200);
+
+  // Fly to target
+  drone.getBoundingClientRect();
+  drone.style.transition = `left ${DRONE_FLY_MS}ms cubic-bezier(.4,0,.15,1), top ${DRONE_FLY_MS}ms cubic-bezier(.4,0,.15,1)`;
+  drone.style.left = (target.x - 4) + 'px';
+  drone.style.top  = (target.y - 4) + 'px';
+
+  return drone;
+}
+
+function hitNode(node, isAwaken) {
+  const body = document.getElementById(`body-${node.id}`);
+  body.classList.remove('hit');
+  body.offsetHeight;
+  body.classList.add('hit');
+  setTimeout(() => body.classList.remove('hit'), 300);
+
+  // Spark burst
+  const sparkCount = isAwaken ? 10 : 5;
+  const color = isAwaken ? '#EF4444' : '#F59E0B';
+  for (let i = 0; i < sparkCount; i++) {
+    const s = document.createElement('div');
+    s.className = 'hit-spark';
+    const angle = (i / sparkCount) * Math.PI * 2;
+    const dist  = 12 + Math.random() * 18;
+    s.style.cssText = `left:${node.x}px;top:${node.y}px;background:${color};--tx:${(Math.cos(angle)*dist).toFixed(1)}px;--ty:${(Math.sin(angle)*dist).toFixed(1)}px;`;
+    field.appendChild(s);
+    setTimeout(() => s.remove(), 420);
+  }
+
+  // SIGKILL: bigger explosion
+  if (isAwaken) {
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.className = 'sigkill-particle';
+      const angle = (i / 18) * Math.PI * 2;
+      const dist  = 20 + Math.random() * 45;
+      p.style.cssText = `left:${node.x}px;top:${node.y}px;--tx:${(Math.cos(angle)*dist).toFixed(1)}px;--ty:${(Math.sin(angle)*dist).toFixed(1)}px;`;
+      field.appendChild(p);
+      setTimeout(() => p.remove(), 650);
+    }
+  }
+}
+
+function recallDrones(drones) {
+  for (const d of drones) {
+    d.style.transition = `left ${RECALL_MS}ms ease-in, top ${RECALL_MS}ms ease-in, opacity .2s .1s`;
+    d.style.left = (FACTORY_POS.x - 4) + 'px';
+    d.style.top  = (FACTORY_POS.y - 4) + 'px';
+    d.style.opacity = '0';
+    setTimeout(() => d.remove(), RECALL_MS + 100);
+  }
+}
+
+// ── MAIN FIRE ────────────────────────────────────────
+async function fire() {
+  if (firing) return;
+  firing = true;
+  fireBtn.disabled = true;
+  totalFires++;
+  document.getElementById('stat-fires').textContent = totalFires;
+
+  const isAwaken  = awaken;
+  const count     = isAwaken ? Math.min(poolSize * 2, 12) : poolSize;
+  const targets   = assignTargets(count);
+
+  if (targets.length === 0) {
+    setPhase('NO TARGETS');
+    await sleep(600);
+    setPhase('');
+    firing = false;
+    startCooldown();
+    return;
+  }
+
+  // Calculate activation duration for factory proc bar
+  const activationMs = (count - 1) * SPAWN_GAP_MS + DRONE_FLY_MS + HIT_PAUSE_MS + RECALL_MS + 100;
+
+  // Factory burst + proc bar
+  factoryBody.style.animation = 'factory-burst .5s ease-out';
+  setTimeout(() => { factoryBody.style.animation = ''; }, 500);
+  startFactoryProc(activationMs);
+
+  // Lock on to unique targets
+  const unique = [...new Set(targets.map(n => n.id))].map(id => NODES.find(n => n.id === id));
+  unique.forEach(n => lockOn(n, isAwaken));
+
+  setPhase(`DISPATCH [${count} THREADS]`);
+  document.getElementById('stat-last').textContent = unique.map(n => n.id).join(',');
+
+  // Spawn drones staggered, each to its own target
+  const drones = [];
+  for (let i = 0; i < targets.length; i++) {
+    if (i > 0) await sleep(SPAWN_GAP_MS);
+    drones.push(spawnDrone(targets[i], isAwaken));
+  }
+
+  // Wait for all to arrive (all fly same duration from same origin)
+  await sleep(DRONE_FLY_MS + 30);
+  setPhase('ATTACKING');
+
+  // Hit all targets simultaneously
+  targets.forEach(n => hitNode(n, isAwaken));
+  totalHits += targets.length;
+  document.getElementById('stat-hits').textContent = totalHits;
+
+  await sleep(HIT_PAUSE_MS);
+
+  // Unlock and recall
+  unique.forEach(n => unlockOn(n));
+  recallDrones(drones);
+  setPhase('RECALL');
+
+  await sleep(RECALL_MS + 100);
+  stopFactoryProc();
+  setPhase('');
+  firing = false;
+  startCooldown();
+}
+
+// ── COOLDOWN ──────────────────────────────────────────
+function startCooldown() {
+  fireBtn.disabled = true;
+  cdStart = Date.now();
+  if (cdInterval) clearInterval(cdInterval);
+  cdInterval = setInterval(() => {
+    const elapsed = Date.now() - cdStart;
+    const rem = Math.max(0, COOLDOWN_MS - elapsed);
+    cdBar.style.width = ((COOLDOWN_MS - rem) / COOLDOWN_MS * 100) + '%';
+    cdText.textContent = (rem / 1000).toFixed(1) + 's';
+    if (rem <= 0) { clearInterval(cdInterval); fireBtn.disabled = false; fire(); }
+  }, 50);
+}
+
+function toggleAwaken() {
+  awaken = !awaken;
+  const btn = document.getElementById('awaken-btn');
+  btn.textContent = awaken ? 'ON' : 'OFF';
+  btn.classList.toggle('on', awaken);
+  btn.classList.toggle('awaken-on', awaken);
+}
+function toggleDebug() {
+  debugMode = !debugMode;
+  const btn = document.getElementById('debug-btn');
+  btn.textContent = debugMode ? 'ON' : 'OFF';
+  btn.classList.toggle('on', debugMode);
+  rangeCircle.style.display = debugMode ? 'block' : 'none';
+  if (debugMode) updateRangeCircle();
+}
+function manualFire() {
+  if (firing) return;
+  if (cdInterval) clearInterval(cdInterval);
+  fire();
+}
+
+startCooldown();
+</script>
+</body>
+</html>

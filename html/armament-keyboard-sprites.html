@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Armament Keyboard Sprites — 캡처 소스</title>
+<!--
+  armament-tier-socket-shape-plan T0 부속 — 장착 무기(키보드) 10종 스프라이트 캡처 소스.
+
+  파이프라인은 이 리포의 기존 관례를 그대로 따른다:
+    html 캔버스 → scripts/capture/capture-armament-keyboard.js (Puppeteer) → Assets/Resources/Sprites/Armament/
+  (선례: html/keyboard-sprite.html → capture-keyboard-sprite.js → Sprites/VFX/keyboard_sheet.png)
+
+  ★ 배열은 실제 60% (61키) 다.
+    커스텀 키보드 씬의 주력 폼팩터이고, 아티산 키캡이 실제로 박히는 자리(ESC/Enter/Space/Caps/방향키)가
+    명확해서 "소켓 = 아티산 키캡 자리"라는 owner 설계와 정확히 맞는다.
+    유닛(u) 기반으로 배치한다 — 실제 키보드와 동일하게 1u = 기본 키 폭, Backspace 2u, Enter 2.25u,
+    좌 Shift 2.25u, Space 6.25u.
+
+  ★ 소켓 = 아티산 키캡 자리.
+    요즘 커스텀 키보드에서 ESC·Enter·Space 같은 자리에 특별한 아티산 키캡을 끼우듯,
+    그 자리에 젬(아티산)을 끼운다. 소켓은 "키캡이 빠진 자리"로 그려 스위치 하우징이 드러나게 한다.
+-->
+<style>
+  body { background:#0b1218; color:#e2e8f0; font-family:'Courier New',monospace; padding:16px; }
+  h1 { font-size:14px; margin-bottom:4px; }
+  .sub { font-size:10px; color:#4a5a6a; margin-bottom:14px; line-height:1.7; }
+  #grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; max-width:1120px; }
+  .cell { background:#0e1822; border:1px solid rgba(201,162,39,.22); border-radius:6px; padding:8px; text-align:center; }
+  .cell canvas { background:transparent; display:block; margin:0 auto 6px; width:100%; max-width:500px; }
+  .nm { font-size:10px; font-weight:bold; }
+  .meta { font-size:8px; color:#4a5a6a; margin-top:2px; }
+  .star { color:#f5e859; }
+  #dump { margin-top:16px; font-size:9px; color:#5b6f80; white-space:pre-wrap; background:#0c141c;
+          border:1px solid #17222e; border-radius:6px; padding:10px; max-width:1120px; line-height:1.6; }
+</style>
+</head>
+<body>
+<h1>⌨ 장착 무기 — 키보드 10종 스프라이트 (실제 60% 배열 · 캡처 소스)</h1>
+<div class="sub">
+  출력 <strong>1536×624</strong>(논리 512×208 × S 3) · 투명 배경 · <strong>61키 60% 배열</strong> ·
+  소켓 = <strong>아티산 키캡 자리</strong>(ESC/Enter/Space/Caps/방향키) ·
+  <code>npm run capture:armament-keyboard</code>
+</div>
+
+<div id="grid"></div>
+<div id="dump"></div>
+
+<script>
+'use strict';
+/* 논리 캔버스 — 좌표계·앵커 uv·`ArmamentWeaponArtAspectRatio`(512/208) 의 기준.
+   ⚠ 이 값은 **바꾸지 않는다.** 해상도는 아래 S 로만 올린다. */
+const W = 512, H = 208;         // 캔버스 (60% 배열은 가로로 길다: 15u × 5행)
+
+/* ── weapon-art-padding-quality-plan T3 (owner 2026-09-07 확정 D2=(Q2)) ──
+   출력 배율. 실제 PNG = W·S × H·S = **1536 × 624**.
+   드로잉 코드는 논리 좌표 그대로 두고 `ctx.scale(S,S)` 한 번으로 재래스터한다.
+   왜 3인가: 무기 탭 표시 폭 1436 기준 배율이 1436/1536 = **0.935** 로 1:1 에 가장 가깝다
+   (현행 481 소스는 2.985× 업스케일 — owner "커지기만 하니까 깨진다"의 원인).
+   ×2 는 1.402× 업, ×4 는 0.701× 다운(mipmap off 라 과축소는 미세 선을 씹는다). */
+const S = 3;
+
+// ── 실제 60% 배열 (61키). [라벨, 폭(u)] · 행마다 합계 15u ──
+const ROWS = [
+  [['`',1],['1',1],['2',1],['3',1],['4',1],['5',1],['6',1],['7',1],['8',1],['9',1],['0',1],['-',1],['=',1],['⌫',2]],
+  [['⇥',1.5],['Q',1],['W',1],['E',1],['R',1],['T',1],['Y',1],['U',1],['I',1],['O',1],['P',1],['[',1],[']',1],['\\',1.5]],
+  [['⇪',1.75],['A',1],['S',1],['D',1],['F',1],['G',1],['H',1],['J',1],['K',1],['L',1],[';',1],["'",1],['⏎',2.25]],
+  [['⇧',2.25],['Z',1],['X',1],['C',1],['V',1],['B',1],['N',1],['M',1],[',',1],['.',1],['/',1],['⇧',2.75]],
+  [['ctrl',1.25],['win',1.25],['alt',1.25],['',6.25],['alt',1.25],['fn',1.25],['≡',1.25],['ctrl',1.25]],
+];
+// ESC 는 60% 에서 ` 자리와 공유되지만, 아티산 관례상 좌상단을 ESC 로 표기한다.
+ROWS[0][0][0] = 'esc';
+
+// 키 좌표 계산 — 실제 키보드처럼 u 단위 누적
+/* ── weapon-art-padding-quality-plan T3 — **하우징이 캔버스를 채우도록 재구성** ──
+   옛 값(UNIT 30 · PADX 14 · PADY 14)에서는 하우징(+그림자)이 512×208 안에서 **479.6 × 199.6**
+   만 차지하고 여백이 **좌 0 / 우 32.4 · 상 0 / 하 8.4** 로 한쪽에 쏠려 있었다(폭의 93.67%).
+   지금까지는 Sprite Mode **Multiple** 의 자동 슬라이스가 그 여백을 잘라 내 문제가 안 보였지만,
+   좌표계를 바로잡으려 **Single** 로 바꾸면 그 여백이 그대로 화면에 나온다:
+     · 미조치      → 오른쪽에만 ~90px 빈칸(비대칭)
+     · 센터링만    → 한쪽 총여백이 48 → 92.9~93.4px 로 **2배**가 되어 owner 확정값(48)과 어긋나고
+                     키보드 절대폭이 1484 → 1345(−9.4%)로 **D-2 의 "크게" 방향을 되감는다** ⇒ 채택 불가
+   ⇒ 하우징이 캔버스를 **정확히 채우게** 만든다. 그림자 오프셋 (4,8) 포함:
+       가로: 15·UNIT + 2·PADX − GAP + 4 = 512,  PADX = (14/30)·UNIT  ⇒ UNIT ≈ 32.03 · PADX ≈ 14.95
+       세로: 5·UNIT + 2·PADY + TOPBAR − GAP + 8 = 208                ⇒ PADY ≈ 13.12
+   ⚠ TOPBAR 16 은 **고정**이라 키가 6.8% 커지는 만큼 베젤 대 키 비율이 미세하게 바뀐다 —
+     방향은 "크게"와 같은 편이지만 **owner 육안 확인 대상**이다(플랜 §D).
+   ⚠ 이 변경으로 **앵커 uv 가 전부 바뀐다** — 파일 4곳 짝 보정은 **T4** 몫이다(T3 범위 밖). */
+const UNIT = 32.03, GAP = 2.4, PADX = 14.95, PADY = 13.12, TOPBAR = 16;
+
+/* 각인 폰트 스케일 — UNIT 이 커진 만큼 글자도 키운다. 안 그러면 키만 커지고 각인은 그대로라
+   "글자가 작아 보이는" 다른 그림이 된다(비교본 §D 가 스케일 가정으로 그렸다). */
+const FS = UNIT / 30;
+function keyLayout(){
+  const out = [];
+  ROWS.forEach((row, r) => {
+    let x = PADX;
+    row.forEach(([label, u], c) => {
+      const w = u * UNIT - GAP;
+      out.push({ r, c, label, u, x, y: PADY + TOPBAR + r * UNIT, w, h: UNIT - GAP });
+      x += u * UNIT;
+    });
+  });
+  return out;
+}
+const KEYS = keyLayout();
+function keyAt(r, c){ return KEYS.find(k => k.r === r && k.c === c); }
+
+// ── 아티산 키캡 자리 = 소켓. 실제로 사람들이 아티산을 끼우는 자리들. ──
+// [row, col] — ESC(0,0) / Enter(2,12) / Space(4,3) / Caps(2,0) / 우Shift(3,11)
+const SOCKET_SPOTS = {
+  esc:    [0,0],
+  enter:  [2,12],
+  space:  [4,3],
+  caps:   [2,0],
+  rshift: [3,11],
+};
+
+const KEYBOARDS = [
+  { tier:1,  id:'kb_membrane', name:'멤브레인',     body:'#3a4048', accent:'#6b7480', cap:'#4a525c', txt:'#9aa4b0', led:null,
+    sockets:[{spot:'esc',shape:'circle'},{spot:'enter',shape:'circle'}] },
+  { tier:2,  id:'kb_retro',    name:'옛날 키보드',  body:'#4a453a', accent:'#8a8270', cap:'#c9c0a8', txt:'#4a453a', led:null, chunky:true,
+    sockets:[{spot:'esc',shape:'square'},{spot:'enter',shape:'square'}] },
+  { tier:3,  id:'kb_red',      name:'적축',         body:'#22262c', accent:'#e0524a', cap:'#2e343c', txt:'#c8ccd2', led:null, sw:'#e0524a',
+    sockets:[{spot:'esc',shape:'triangle'},{spot:'enter',shape:'triangle'},{spot:'space',shape:'circle'}] },
+  { tier:4,  id:'kb_brown',    name:'갈축',         body:'#242026', accent:'#b07a4a', cap:'#332c30', txt:'#cdc3bb', led:null, sw:'#b07a4a',
+    sockets:[{spot:'esc',shape:'pentagon'},{spot:'enter',shape:'pentagon'},{spot:'space',shape:'circle'}] },
+  { tier:5,  id:'kb_blue',     name:'청축',         body:'#1e242e', accent:'#4aa8e0', cap:'#28303c', txt:'#cfe2ee', led:'#4aa8e0', sw:'#4aa8e0',
+    sockets:[{spot:'esc',shape:'hexagon'},{spot:'caps',shape:'hexagon'},{spot:'enter',shape:'circle'},{spot:'space',shape:'triangle'}] },
+  { tier:6,  id:'kb_silent',   name:'무소음',       body:'#20242a', accent:'#7f8a96', cap:'#2a2f36', txt:'#b9c2cb', led:null, soft:true,
+    sockets:[{spot:'esc',shape:'square'},{spot:'caps',shape:'square'},{spot:'enter',shape:'circle'},{spot:'space',shape:'pentagon'}] },
+  { tier:7,  id:'kb_spider',   name:'독거미',       body:'#17171c', accent:'#d63b3b', cap:'#22222a', txt:'#e0b8b8', led:'#d63b3b', sw:'#d63b3b',
+    sockets:[{spot:'esc',shape:'pentagon'},{spot:'caps',shape:'pentagon'},{spot:'enter',shape:'circle'},{spot:'space',shape:'hexagon'}] },
+  { tier:8,  id:'kb_optical',  name:'레이저(광축)', body:'#141c24', accent:'#38bdf8', cap:'#1c2630', txt:'#cbe8f8', led:'#38bdf8', sw:'#38bdf8', glow:true,
+    sockets:[{spot:'esc',shape:'triangle'},{spot:'caps',shape:'triangle'},{spot:'enter',shape:'circle'},{spot:'rshift',shape:'square'},{spot:'space',shape:'star'}] },
+  { tier:9,  id:'kb_custom',   name:'커스텀 빌드',  body:'#2b2118', accent:'#c9a227', cap:'#e8ddc8', txt:'#3a2d20', led:'#f5e859', glow:true, wood:true,
+    sockets:[{spot:'esc',shape:'hexagon'},{spot:'caps',shape:'hexagon'},{spot:'enter',shape:'circle'},{spot:'rshift',shape:'pentagon'},{spot:'space',shape:'star'}] },
+  { tier:10, id:'kb_hacker',   name:'해커 키보드',  body:'#0f1014', accent:'#b98cff', cap:'#191b22', txt:'#d8c8ff', led:'rainbow', glow:true,
+    sockets:[{spot:'esc',shape:'circle'},{spot:'caps',shape:'circle'},{spot:'enter',shape:'triangle'},{spot:'rshift',shape:'hexagon'},{spot:'space',shape:'star'}] },
+];
+
+// ── 그리기 헬퍼 ──
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+function shapePath(ctx,cx,cy,rad,shape){
+  ctx.beginPath();
+  if (shape==='circle'){ ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.closePath(); return; }
+  const poly = {
+    square:   [[-1,-1],[1,-1],[1,1],[-1,1]],
+    triangle: [[0,-1],[1,0.86],[-1,0.86]],
+    pentagon: [[0,-1],[0.95,-0.31],[0.59,0.81],[-0.59,0.81],[-0.95,-0.31]],
+    hexagon:  [[-0.5,-0.87],[0.5,-0.87],[1,0],[0.5,0.87],[-0.5,0.87],[-1,0]],
+    star:     [[0,-1],[0.22,-0.31],[0.95,-0.31],[0.36,0.12],[0.59,0.81],[0,0.38],[-0.59,0.81],[-0.36,0.12],[-0.95,-0.31],[-0.22,-0.31]],
+  }[shape];
+  poly.forEach((p,i)=>{ const x=cx+p[0]*rad, y=cy+p[1]*rad; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.closePath();
+}
+function hexA(hex,a){
+  if (hex==='rainbow') hex='#b98cff';
+  const n=parseInt(hex.slice(1),16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  const cl=v=>Math.max(0,Math.min(255,v+amt));
+  return `rgb(${cl((n>>16)&255)},${cl((n>>8)&255)},${cl(n&255)})`;
+}
+
+function drawKeyboard(ctx, kb){
+  ctx.clearRect(0,0,W,H);
+  const bw = 15*UNIT + PADX*2 - GAP, bh = 5*UNIT + PADY*2 + TOPBAR - GAP;
+
+  // 케이스 그림자
+  ctx.fillStyle='rgba(0,0,0,.5)';
+  roundRect(ctx, 4, 8, bw, bh, kb.soft?12:8); ctx.fill();
+
+  // 케이스(하우징)
+  const grad = ctx.createLinearGradient(0,0,0,bh);
+  grad.addColorStop(0, shade(kb.body, 14));
+  grad.addColorStop(1, shade(kb.body,-20));
+  ctx.fillStyle = grad;
+  roundRect(ctx, 0, 0, bw, bh, kb.soft?12:8); ctx.fill();
+  ctx.strokeStyle = hexA(kb.accent,.5); ctx.lineWidth=1.6;
+  roundRect(ctx, 0, 0, bw, bh, kb.soft?12:8); ctx.stroke();
+
+  // 우드 그레인(T9)
+  if (kb.wood){
+    ctx.save(); ctx.globalAlpha=.14; ctx.strokeStyle='#000'; ctx.lineWidth=1;
+    for(let i=0;i<9;i++){ const y=6+i*(bh/9);
+      ctx.beginPath(); ctx.moveTo(2,y); ctx.bezierCurveTo(bw*0.35,y-3,bw*0.65,y+3,bw-2,y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // 상단 베젤 + 인디케이터 LED
+  ctx.fillStyle='rgba(255,255,255,.05)';
+  roundRect(ctx, 6, 5, bw-12, TOPBAR-6, 3); ctx.fill();
+  if (kb.led){
+    for(let i=0;i<3;i++){
+      const lx = bw-16-i*10, ly = 5+(TOPBAR-6)/2;
+      ctx.fillStyle = kb.led==='rainbow' ? ['#ff5b5b','#63e6a3','#5ac8ff'][i] : hexA(kb.led,.92);
+      ctx.beginPath(); ctx.arc(lx,ly,2.1,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  // 소켓 자리 인덱스
+  const socketByKey = {};
+  kb.sockets.forEach(s => { const [r,c] = SOCKET_SPOTS[s.spot]; socketByKey[r+','+c] = s.shape; });
+
+  // ── 키캡 ──
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  KEYS.forEach(k => {
+    const isSocket = socketByKey[k.r+','+k.c];
+    const rad = kb.chunky ? 2 : 3.5;
+
+    if (isSocket){
+      // ★ 아티산 키캡이 빠진 자리 — 스위치 하우징이 드러난다.
+      // owner 피드백(2026-08-18) — 여기서 소켓 모양(원/사각/삼각 등)까지 베이크하면 런타임이
+      // DrawArmamentOnArtSocket에서 같은 자리에 또 다른 소켓 모양을 그려 이중으로 겹쳐 보인다.
+      // 원본 스프라이트는 "소켓이 있다"는 하우징 자리만 표시하고, 실제 모양은 런타임 오버레이
+      // 하나에만 맡긴다.
+      ctx.fillStyle = 'rgba(0,0,0,.80)';
+      roundRect(ctx, k.x, k.y, k.w, k.h, rad); ctx.fill();
+      // 스위치 하우징 링
+      ctx.strokeStyle = hexA(kb.sw || kb.accent, .55); ctx.lineWidth=1;
+      roundRect(ctx, k.x+2.5, k.y+2.5, k.w-5, k.h-5, 2); ctx.stroke();
+    } else {
+      // 일반 키캡 — 옆면(스컬프처) + 상면
+      ctx.fillStyle = shade(kb.cap,-20);
+      roundRect(ctx, k.x, k.y+1.6, k.w, k.h-1, rad); ctx.fill();
+      ctx.fillStyle = kb.cap;
+      roundRect(ctx, k.x, k.y, k.w, k.h-2, rad); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=.8;
+      roundRect(ctx, k.x+.8, k.y+.8, k.w-1.6, k.h-3.4, rad-1); ctx.stroke();
+
+      // 백라이트 누출
+      if (kb.led){
+        ctx.fillStyle = kb.led==='rainbow'
+          ? ['rgba(255,91,91,.20)','rgba(99,230,163,.20)','rgba(90,200,255,.20)'][(k.r+k.c)%3]
+          : hexA(kb.led,.16);
+        roundRect(ctx, k.x, k.y+k.h-4.2, k.w, 2.6, 1.2); ctx.fill();
+      }
+
+      // 각인
+      if (k.label){
+        ctx.fillStyle = kb.txt;
+        const long = k.label.length > 2;
+        ctx.font = `${((long ? 7 : 9) * FS).toFixed(2)}px "Courier New", monospace`;
+        ctx.fillText(k.label, k.x + k.w/2, k.y + k.h/2 - 1);
+      }
+    }
+  });
+
+  // 글로우
+  if (kb.glow){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    const gg = ctx.createRadialGradient(bw/2,bh/2,14,bw/2,bh/2,bw*0.5);
+    gg.addColorStop(0, hexA(kb.accent,.13)); gg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gg; ctx.fillRect(0,0,W,H); ctx.restore();
+  }
+}
+
+// ── 렌더 + 앵커 내보내기 ──
+const anchors = {};
+const grid = document.getElementById('grid');
+KEYBOARDS.forEach(kb => {
+  const cell = document.createElement('div');
+  cell.className='cell';
+  const cv = document.createElement('canvas');
+  /* T3 — **백킹 스토어**를 W·S × H·S(1536 × 624)로. `toDataURL` 은 이 크기로 나가고,
+     화면 표시 크기는 `.cell canvas { width:100%; max-width:500px }`(:30)가 이미 잡으므로
+     인라인 style 을 따로 주지 않는다. 드로잉은 논리 좌표 그대로이고 ctx.scale(S,S) 이 재래스터를 맡는다. */
+  cv.width=W*S; cv.height=H*S; cv.id=kb.id;
+  cell.appendChild(cv);
+  const starTxt = kb.sockets.some(s=>s.shape==='star') ? ' <span class="star">★</span>' : '';
+  const spots = kb.sockets.map(s=>s.spot).join('/');
+  cell.insertAdjacentHTML('beforeend',
+    `<div class="nm">T${kb.tier} ${kb.name}${starTxt}</div>` +
+    `<div class="meta">${kb.id} · 아티산 자리: ${spots}</div>`);
+  grid.appendChild(cell);
+
+  const _ctx = cv.getContext('2d');
+  _ctx.scale(S, S);                 // T3 — 이후 드로잉은 전부 논리 좌표(512×208)로 쓴다
+  drawKeyboard(_ctx, kb);
+
+  // 소켓 앵커 — 정규화 uv(0~1). 실제 키 rect 중심에서 뽑는다.
+  anchors[kb.id] = kb.sockets.map(s => {
+    const [r,c] = SOCKET_SPOTS[s.spot];
+    const k = keyAt(r,c);
+    return {
+      shape: s.shape, spot: s.spot,
+      u:+((k.x + k.w/2)/W).toFixed(4),
+      v:+((k.y + k.h/2)/H).toFixed(4),
+      // 키 rect 자체(정규화) — 히트 영역·하이라이트 범위용. 젬 크기는 여기서 뽑지 않는다.
+      // (실물 아티산도 스페이스바 위에서 가로로 늘어나지 않는다 → 젬은 아래 r 기준 정사각)
+      kw:+(k.w/W).toFixed(4), kh:+(k.h/H).toFixed(4),
+      r:+((Math.min(k.w,k.h)*0.30)/W).toFixed(4),
+    };
+  });
+});
+
+document.getElementById('dump').textContent =
+  `60% 배열 ${KEYS.length}키 · 캔버스 ${W}×${H}\n` +
+  '소켓 앵커(정규화 uv + 키 크기) — 캡처 스크립트/런타임이 그대로 읽는다\n\n' +
+  JSON.stringify(anchors, null, 1);
+window.__ARMAMENT_ANCHORS__ = anchors;
+window.__ARMAMENT_LIST__ = KEYBOARDS.map(k => ({ id:k.id, tier:k.tier, name:k.name, sockets:k.sockets.length }));
+window.__KEY_COUNT__ = KEYS.length;
+</script>
+</body>
+</html>

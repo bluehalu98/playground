@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Skill Tree Placer — Click to Commit</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #12122a;
+  color: #eee;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Toolbar ── */
+#toolbar {
+  background: #16213e;
+  padding: 7px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #0f3460;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+#toolbar h1 { font-size: 13px; color: #7ec8e3; margin-right: 4px; }
+.sep { width: 1px; height: 20px; background: #0f3460; margin: 0 2px; }
+.btn {
+  padding: 5px 12px;
+  border: 1px solid #2a4a7f;
+  background: #1a3a6a;
+  color: #cde;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.btn:hover { background: #264a8a; }
+.btn.green  { border-color: #27ae60; background: #1a5e35; color: #7dffb3; }
+.btn.green:hover  { background: #27ae60; color: #fff; }
+.btn.red    { border-color: #c0392b; background: #5e1a1a; color: #ffaaaa; }
+.btn.red:hover    { background: #c0392b; color: #fff; }
+.btn.yellow { border-color: #c8a217; background: #4a3a00; color: #ffe07d; }
+.btn.yellow:hover { background: #c8a217; color: #000; }
+#zoom-info, #coord-info { color: #778; font-size: 11px; min-width: 55px; }
+.spacer { flex: 1; }
+
+#brush-indicator {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  border: 1px solid;
+}
+#brush-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ── Main layout ── */
+#main { display: flex; flex: 1; overflow: hidden; }
+#canvas-wrap { flex: 1; position: relative; overflow: hidden; cursor: crosshair; }
+canvas { display: block; }
+
+/* ── Side panel ── */
+#panel {
+  width: 320px;
+  background: #16213e;
+  border-left: 1px solid #0f3460;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* tabs */
+#tabs {
+  display: flex;
+  border-bottom: 1px solid #0f3460;
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  font-size: 11px;
+  color: #556;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab.active { color: #7ec8e3; border-bottom-color: #7ec8e3; }
+.tab:hover:not(.active) { color: #aaa; }
+
+#tab-props, #tab-palette, #tab-stairs { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+#tab-props.visible, #tab-palette.visible, #tab-stairs.visible { display: flex; }
+
+/* 구역 칠하기 / 계단 확인 */
+#zone-tools { display: none; align-items: center; gap: 4px; }
+.zone-btn { padding: 3px 8px; font-size: 10px; }
+#stairs-body { flex: 1; overflow-y: auto; padding: 10px 12px; font-size: 11px; }
+.stairs-help { font-size: 10px; color: #9ab; line-height: 1.6; background: #0d1f3c; border: 1px solid #1a3a6a; border-radius: 4px; padding: 6px 8px; margin-bottom: 10px; }
+.stairs-warn { color: #ff6b6b; font-size: 11px; line-height: 1.5; margin-bottom: 3px; }
+.stairs-note { color: #d8b45a; font-size: 11px; line-height: 1.5; margin-bottom: 3px; }
+.stairs-ok { color: #7dffb3; font-size: 11px; margin-bottom: 6px; }
+.stairs-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
+.stairs-table th { color: #556; text-align: left; font-weight: normal; border-bottom: 1px solid #1a2a4a; padding: 2px 3px; }
+.stairs-table td { padding: 2px 3px; border-bottom: 1px solid #141e36; color: #bcc; }
+.stairs-table tr.bad td { color: #ff8a8a; }
+details.retired > summary { font-size: 10px; color: #667; cursor: pointer; margin-bottom: 6px; }
+#stairs-body::-webkit-scrollbar { width: 4px; }
+#stairs-body::-webkit-scrollbar-thumb { background: #1a3a6a; border-radius: 2px; }
+
+/* props panel */
+#panel-header {
+  padding: 8px 14px;
+  border-bottom: 1px solid #0f3460;
+  font-size: 11px;
+  color: #778;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+#panel-header span { color: #aaa; font-weight: bold; font-size: 12px; }
+#panel-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
+
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 10px; color: #778; margin-bottom: 3px; letter-spacing: .5px; text-transform: uppercase; }
+.field input, .field select {
+  width: 100%;
+  background: #0d1f3c;
+  border: 1px solid #1a3a6a;
+  color: #dde;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.field input:focus, .field select:focus { outline: none; border-color: #3a7dff; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.panel-empty { color: #556; font-size: 12px; line-height: 1.8; padding: 10px 0; }
+.action-row { display: flex; gap: 8px; margin-top: 14px; }
+.action-row .btn { flex: 1; text-align: center; }
+
+/* legend */
+#legend { border-top: 1px solid #0f3460; padding: 10px 14px; flex-shrink: 0; }
+#legend h3 { font-size: 10px; color: #556; letter-spacing: .5px; margin-bottom: 6px; text-transform: uppercase; }
+.leg { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 10px; color: #889; }
+.leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* palette panel */
+#palette-body { flex: 1; overflow-y: auto; padding: 10px 12px; }
+.tier-section { margin-bottom: 14px; }
+.tier-label {
+  font-size: 10px;
+  color: #556;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1a2a4a;
+}
+.tier-sub { font-size: 10px; color: #445; margin: 6px 0 4px; }
+.target-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.target-chip {
+  padding: 4px 9px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1.5px solid;
+  opacity: 0.75;
+  transition: opacity .15s, transform .1s;
+  font-family: monospace;
+}
+.target-chip:hover { opacity: 1; transform: scale(1.05); }
+.target-chip.selected { opacity: 1; transform: scale(1.08); box-shadow: 0 0 8px currentColor; }
+
+.palette-hint { font-size: 10px; color: #445; margin-top: 10px; line-height: 1.6; }
+
+/* scrollbar */
+#panel-body::-webkit-scrollbar,
+#palette-body::-webkit-scrollbar { width: 4px; }
+#panel-body::-webkit-scrollbar-track,
+#palette-body::-webkit-scrollbar-track { background: transparent; }
+#panel-body::-webkit-scrollbar-thumb,
+#palette-body::-webkit-scrollbar-thumb { background: #1a3a6a; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>🎮 Skill Tree Placer</h1>
+  <div class="sep"></div>
+  <button class="btn" onclick="zoomIn()">＋</button>
+  <button class="btn" onclick="zoomOut()">－</button>
+  <button class="btn" onclick="resetView()">⌂</button>
+  <span id="zoom-info">100%</span>
+  <div class="sep"></div>
+  <span id="coord-info">(—, —)</span>
+  <div class="sep"></div>
+  <div id="brush-indicator">
+    <div id="brush-dot"></div>
+    <span id="brush-label">—</span>
+    <button class="btn" style="padding:2px 7px;font-size:10px" onclick="clearBrush()">✕</button>
+  </div>
+  <div class="spacer"></div>
+  <span id="node-count" style="color:#778;font-size:11px;">노드 0개</span>
+  <div class="sep"></div>
+  <button class="btn" id="btn-connect" onclick="toggleConnectMode()">🔗 연결 모드</button>
+  <button class="btn" id="btn-zone" onclick="toggleZoneMode()">🗺 구역 칠하기</button>
+  <span id="zone-tools">
+    <button class="btn zone-btn" id="zone-b1" onclick="setZoneBrush(1)">맵1</button>
+    <button class="btn zone-btn" id="zone-b2" onclick="setZoneBrush(2)">맵2</button>
+    <button class="btn zone-btn" id="zone-b3" onclick="setZoneBrush(3)">맵3</button>
+    <button class="btn zone-btn" id="zone-b4" onclick="setZoneBrush(4)">맵4</button>
+    <button class="btn zone-btn" id="zone-b0" onclick="setZoneBrush(0)">지우개</button>
+  </span>
+  <button class="btn" onclick="importZones()">구역 불러오기</button>
+  <button class="btn" onclick="exportZones()">구역 내보내기</button>
+  <div class="sep"></div>
+  <button class="btn yellow" onclick="importJSON()">📂 불러오기</button>
+  <button class="btn green"  onclick="exportJSON()">💾 JSON 내보내기</button>
+  <button class="btn red"    onclick="clearAll()">🗑 초기화</button>
+</div>
+
+<div id="main">
+  <div id="canvas-wrap">
+    <canvas id="grid"></canvas>
+  </div>
+
+  <div id="panel">
+    <div id="tabs">
+      <div class="tab active" id="tab-btn-props"    onclick="switchTab('props')">노드 속성</div>
+      <div class="tab"        id="tab-btn-palette"  onclick="switchTab('palette')">타깃 팔레트</div>
+      <div class="tab"        id="tab-btn-stairs"   onclick="switchTab('stairs')">계단 확인</div>
+    </div>
+
+    <!-- 노드 속성 탭 -->
+    <div id="tab-props" class="visible">
+      <div id="panel-header">
+        <span id="panel-title">노드 선택 안 됨</span>
+        <span id="panel-coord" style="color:#556;font-size:10px;"></span>
+      </div>
+      <div id="panel-body">
+        <p class="panel-empty" id="panel-empty">
+          그리드 셀을 클릭해 노드를 추가하세요.<br><br>
+          <b style="color:#aaa">좌클릭</b> — 노드 생성 / 선택<br>
+          <b style="color:#aaa">우클릭</b> — 노드 삭제<br>
+          <b style="color:#aaa">스크롤</b> — 줌<br>
+          <b style="color:#aaa">중클릭 드래그</b> — 패닝<br>
+          <b style="color:#aaa">Space+드래그</b> — 패닝<br>
+          <b style="color:#aaa">Del</b> — 선택 노드 삭제
+        </p>
+        <div id="panel-fields" style="display:none">
+          <div class="field">
+            <label>displayName</label>
+            <input type="text" id="f-name" oninput="setField('displayName',this.value)">
+          </div>
+          <div class="field">
+            <label>effectType</label>
+            <select id="f-type" onchange="setField('effectType',this.value);refreshPanel()"></select>
+          </div>
+          <div class="field">
+            <label>effectTarget</label>
+            <input type="text" id="f-target" oninput="setField('effectTarget',this.value)">
+          </div>
+          <div class="field">
+            <label>branch</label>
+            <select id="f-branch" onchange="setField('branch',this.value)">
+              <option value="">(미지정)</option>
+              <option value="Resource">Resource</option>
+              <option value="Combat">Combat</option>
+              <option value="Automation">Automation</option>
+              <option value="Economy">Economy</option>
+              <option value="Core">Core</option>
+            </select>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label>effectValue</label>
+              <input type="number" id="f-value" step="0.1" oninput="setField('effectValue',parseFloat(this.value)||0)">
+            </div>
+            <div class="field">
+              <label>maxLevel</label>
+              <input type="number" id="f-maxlv" min="1" oninput="setField('maxLevel',parseInt(this.value)||1)">
+            </div>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label>costGold</label>
+              <input type="number" id="f-gold" min="0" oninput="setField('costGold',parseInt(this.value)||0)">
+            </div>
+            <div class="field">
+              <label>costInsight</label>
+              <input type="number" id="f-insight" min="0" oninput="setField('costInsight',parseInt(this.value)||0)">
+            </div>
+          </div>
+          <div class="field">
+            <label>baseLabel</label>
+            <input type="text" id="f-label" maxlength="8" oninput="setField('baseLabel',this.value);redraw()">
+          </div>
+          <div class="field">
+            <label>baseColor</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="f-color-pick" style="width:36px;height:28px;padding:1px;cursor:pointer;border-radius:3px;flex-shrink:0;background:#0d1f3c;border:1px solid #1a3a6a"
+                oninput="setField('baseColor',this.value);document.getElementById('f-color-txt').value=this.value;redraw()">
+              <input type="text" id="f-color-txt"
+                oninput="setField('baseColor',this.value);tryColorPick(this.value);redraw()">
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="btn red" onclick="deleteSelected()">삭제</button>
+            <button class="btn"     onclick="duplicateSelected()">인접 복제</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="legend">
+        <h3>색상 범례</h3>
+        <div class="leg"><div class="leg-dot" style="background:#e74c3c"></div>전투 (전체)</div>
+        <div class="leg"><div class="leg-dot" style="background:#e67e22"></div>클릭 전용</div>
+        <div class="leg"><div class="leg-dot" style="background:#f1c40f"></div>무기 해금 / 각성 ★</div>
+        <div class="leg"><div class="leg-dot" style="background:#00bcd4"></div>Method Chaining</div>
+        <div class="leg"><div class="leg-dot" style="background:#3498db"></div>Transaction</div>
+        <div class="leg"><div class="leg-dot" style="background:#2ecc71"></div>Worker Thread</div>
+        <div class="leg"><div class="leg-dot" style="background:#9b59b6"></div>Virtual DOM</div>
+        <div class="leg"><div class="leg-dot" style="background:#27ae60"></div>스폰</div>
+        <div class="leg"><div class="leg-dot" style="background:#f39c12"></div>경제</div>
+        <div class="leg"><div class="leg-dot" style="background:#1abc9c"></div>런 / Insight</div>
+        <div class="leg"><div class="leg-dot" style="background:#fbb03b"></div>맵2 게이트</div>
+        <div class="leg"><div class="leg-dot" style="background:#bf9cfe"></div>맵3 게이트</div>
+        <div class="leg"><div class="leg-dot" style="background:#c9824f"></div>맵4 게이트</div>
+      </div>
+    </div>
+
+    <!-- 타깃 팔레트 탭 -->
+    <div id="tab-palette">
+      <div id="palette-body">
+
+        <div class="tier-section">
+          <div class="tier-label" style="color:#fbb03b">맵 게이트 (MapUnlock · maxLevel 1 · cost 0)</div>
+          <div class="target-grid" id="pg-gate"></div>
+        </div>
+
+        <div class="tier-section">
+          <div class="tier-label" style="color:#57d1b8">T1 — 맵1 로컬 브랜치</div>
+          <div class="target-grid" id="pg-c1"></div>
+        </div>
+        <div class="tier-section">
+          <div class="tier-label" style="color:#fbb03b">T2 — 맵2 스테이징 서버</div>
+          <div class="target-grid" id="pg-c2"></div>
+        </div>
+        <div class="tier-section">
+          <div class="tier-label" style="color:#bf9cfe">T3 — 맵3 프로덕션 클러스터</div>
+          <div class="target-grid" id="pg-c3"></div>
+        </div>
+        <div class="tier-section">
+          <div class="tier-label" style="color:#c9824f">T4 — 맵4 레거시 모놀리스</div>
+          <div class="target-grid" id="pg-c4"></div>
+        </div>
+
+        <details class="retired tier-section">
+          <summary>옛 자원(은퇴) — 옛 트리 편집용</summary>
+
+          <div class="tier-sub">1티어 — 기초 언어 / 도구</div>
+          <div class="target-grid" id="pg-lang1"></div>
+          <div class="target-grid" id="pg-tool1" style="margin-top:5px"></div>
+
+          <div class="tier-sub" style="margin-top:8px">2티어 — 언어 / 인프라 기초</div>
+          <div class="target-grid" id="pg-lang2"></div>
+          <div class="target-grid" id="pg-infra2" style="margin-top:5px"></div>
+
+          <div class="tier-sub" style="margin-top:8px">3티어 — 최신 언어 / DevOps / 전문</div>
+          <div class="target-grid" id="pg-lang3"></div>
+          <div class="target-grid" id="pg-devops" style="margin-top:5px"></div>
+          <div class="target-grid" id="pg-expert" style="margin-top:5px"></div>
+        </details>
+
+        <div style="margin-top:12px;border-top:1px solid #1a2a4a;padding-top:10px;">
+          <div style="font-size:10px;color:#556;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">배치 타입</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+            <button id="mode-unlock" class="btn" style="font-size:10px;border-color:#27ae60;background:#1a5e35;color:#7dffb3" onclick="setBrushMode('unlock')">🔓 Unlock</button>
+            <button id="mode-weight" class="btn" style="font-size:10px;" onclick="setBrushMode('weight')">📊 SpawnWeight</button>
+            <button id="mode-gold"   class="btn" style="font-size:10px;" onclick="setBrushMode('gold')">💰 GoldBonus</button>
+            <button id="mode-interval" class="btn" style="font-size:10px;" onclick="setBrushMode('interval')">⚡ Interval</button>
+          </div>
+          <div id="mode-hint" style="font-size:10px;color:#2ecc71;margin-top:6px;">현재: ResourceUnlock — 타깃 해금 노드 배치</div>
+        </div>
+
+        <p class="palette-hint" style="margin-top:8px">
+          타깃 칩 선택 → 그리드 클릭으로 배치.<br>
+          선택 취소: 상단 ✕ 또는 ESC<br>
+          게이트 브러시는 배치 타입과 무관하게 MapUnlock 노드를 놓습니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- 계단 확인 탭 -->
+    <div id="tab-stairs">
+      <div id="stairs-body">
+        <div class="stairs-help">① 불러오기로 repo 루트 skill_tree_nodes_draft.json 열기 ② 구역 칠하기로 맵 1~4 큰 줄기 칠하기 ③ 맵 게이트 놓기 ④ 구역 내보내기 + JSON 내보내기 → 파일 두 개를 채팅에 알려주기</div>
+        <div id="stairs-out"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// Study Targets (palette data)
+// ═══════════════════════════════════════════════════════════
+// 맵/티어 색 — 맵 k 구역 = 티어 k 자원 해금 (안 C)
+const TIER_COLORS = { 1:'#57d1b8', 2:'#fbb03b', 3:'#bf9cfe', 4:'#c9824f' };
+const MAP_NAMES = { 1:'맵1 로컬 브랜치', 2:'맵2 스테이징 서버', 3:'맵3 프로덕션 클러스터', 4:'맵4 레거시 모놀리스' };
+const MAP_GATE_COLORS = { Map2:'#fbb03b', Map3:'#bf9cfe', Map4:'#c9824f' };
+const GATE_TARGET_MAP = { Map2:2, Map3:3, Map4:4 };
+
+const TARGETS = {
+  'pg-gate': [
+    { label:'Map2', color:'#fbb03b', name:'맵2 게이트', gate:'Map2', short:'MAP2' },
+    { label:'Map3', color:'#bf9cfe', name:'맵3 게이트', gate:'Map3', short:'MAP3' },
+    { label:'Map4', color:'#c9824f', name:'맵4 게이트', gate:'Map4', short:'MAP4' },
+  ],
+  // 안 C 자원 구성 — label 이 effectTarget
+  'pg-c1': [
+    { label:'Git',    color:'#57d1b8', name:'Git' },
+    { label:'C#',     color:'#57d1b8', name:'C#' },
+    { label:'JS',     color:'#57d1b8', name:'JavaScript' },
+    { label:'Python', color:'#57d1b8', name:'Python' },
+  ],
+  'pg-c2': [
+    { label:'CI',     color:'#fbb03b', name:'CI' },
+    { label:'React',  color:'#fbb03b', name:'React' },
+    { label:'Unity',  color:'#fbb03b', name:'Unity' },
+    { label:'Docker', color:'#fbb03b', name:'Docker' },
+  ],
+  'pg-c3': [
+    { label:'Pattern',       color:'#bf9cfe', name:'Pattern' },
+    { label:'Clean',         color:'#bf9cfe', name:'Clean' },
+    { label:'Kubernetes',    color:'#bf9cfe', name:'쿠버네티스', short:'K8s' },
+    { label:'Microservices', color:'#bf9cfe', name:'마이크로서비스', short:'MSA' },
+  ],
+  'pg-c4': [
+    { label:'Mainframe', color:'#c9824f', name:'메인프레임', short:'MF' },
+    { label:'COBOL',     color:'#c9824f', name:'COBOL 배치' },
+    { label:'GodClass',  color:'#c9824f', name:'갓 클래스', short:'God' },
+    { label:'Spaghetti', color:'#c9824f', name:'스파게티 코드', short:'Spag' },
+  ],
+  // ── 옛 자원(은퇴) — 옛 트리 렌더/편집용 ──
+  'pg-lang1': [
+    { label:'C',      color:'#A8B9CC', name:'C 언어' },
+    { label:'Java',   color:'#ED8B00', name:'Java' },
+    { label:'C++',    color:'#00599C', name:'C++' },
+    { label:'C#',     color:'#9B4F96', name:'C#' },
+    { label:'Python', color:'#3776AB', name:'Python' },
+    { label:'JS',     color:'#F7DF1E', name:'JavaScript' },
+  ],
+  'pg-tool1': [
+    { label:'Git', color:'#F05032', name:'Git' },
+    { label:'SQL', color:'#E38C00', name:'SQL' },
+  ],
+  'pg-lang2': [
+    { label:'TS',    color:'#3178C6', name:'TypeScript' },
+    { label:'PHP',   color:'#777BB4', name:'PHP' },
+    { label:'Node',  color:'#339933', name:'Node.js' },
+    { label:'React', color:'#61DAFB', name:'React' },
+  ],
+  'pg-infra2': [
+    { label:'Linux', color:'#E95420', name:'Linux' },
+    { label:'Shell', color:'#4EAA25', name:'Shell/Bash' },
+    { label:'REST',  color:'#6C757D', name:'REST API' },
+  ],
+  'pg-lang3': [
+    { label:'Rust',  color:'#CE422B', name:'Rust' },
+    { label:'Go',    color:'#00ACD7', name:'Go' },
+    { label:'Ruby',  color:'#CC342D', name:'Ruby' },
+  ],
+  'pg-devops': [
+    { label:'Docker', color:'#2496ED', name:'Docker' },
+    { label:'CI/CD',  color:'#9B59B6', name:'CI/CD' },
+    { label:'K8s',    color:'#326CE5', name:'Kubernetes' },
+  ],
+  'pg-expert': [
+    { label:'Unity', color:'#AAAAAA', name:'Unity' },
+    { label:'Cloud', color:'#FF9900', name:'Cloud (AWS/GCP)' },
+  ],
+};
+
+// 자원 티어: 안 C 표가 우선, 없으면 옛 팔레트 티어(옛), 그래도 없으면 ?
+const NEW_TIER_GRIDS = { 'pg-c1':1, 'pg-c2':2, 'pg-c3':3, 'pg-c4':4 };
+const OLD_TIER_GRIDS = { 'pg-lang1':1, 'pg-tool1':1, 'pg-lang2':2, 'pg-infra2':2, 'pg-lang3':3, 'pg-devops':3, 'pg-expert':3 };
+const RES_TIER = {}, OLD_RES_TIER = {};
+Object.entries(NEW_TIER_GRIDS).forEach(([g, t]) => TARGETS[g].forEach(x => RES_TIER[x.label] = t));
+Object.entries(OLD_TIER_GRIDS).forEach(([g, t]) => TARGETS[g].forEach(x => OLD_RES_TIER[x.label] = t));
+OLD_RES_TIER['CI'] = OLD_RES_TIER['CI'] || OLD_RES_TIER['CI/CD'];
+function resourceTier(label) {
+  if (RES_TIER[label]) return { tier: RES_TIER[label], old: false };
+  if (OLD_RES_TIER[label]) return { tier: OLD_RES_TIER[label], old: true };
+  return { tier: null, old: false };
+}
+
+let activeBrush = null; // { label, color, name }
+let brushMode = 'unlock'; // 'unlock' | 'weight'
+
+function buildPalette() {
+  Object.entries(TARGETS).forEach(([gridId, targets]) => {
+    const el = document.getElementById(gridId);
+    if (!el) return;
+    targets.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'target-chip';
+      chip.id = `chip-${gridId}-${t.label}`;
+      chip.textContent = t.label;
+      chip.style.color = t.color;
+      chip.style.borderColor = t.color;
+      chip.style.background = hexA(t.color, 0.12);
+      chip.title = t.name;
+      chip.onclick = () => selectBrush(t, chip);
+      el.appendChild(chip);
+    });
+  });
+}
+
+function selectBrush(target, chip) {
+  // Deselect previous
+  document.querySelectorAll('.target-chip.selected').forEach(c => c.classList.remove('selected'));
+  if (activeBrush && activeBrush === target) { // 동일 객체 비교 — 신/옛 팔레트에 같은 label(C# 등)이 있음
+    activeBrush = null;
+    hideBrushIndicator();
+    return;
+  }
+  activeBrush = target;
+  chip.classList.add('selected');
+  showBrushIndicator(target);
+}
+
+function clearBrush() {
+  activeBrush = null;
+  document.querySelectorAll('.target-chip.selected').forEach(c => c.classList.remove('selected'));
+  hideBrushIndicator();
+}
+
+const MODE_META = {
+  unlock:   { id:'mode-unlock',   bg:'#1a5e35', bc:'#27ae60', col:'#7dffb3', hintCol:'#2ecc71', hint:'현재: ResourceUnlock — 타깃 해금 노드 배치' },
+  weight:   { id:'mode-weight',   bg:'#1a3a50', bc:'#3178c6', col:'#7ec8e3', hintCol:'#3498db', hint:'현재: SpawnWeight — 출현 빈도 강화 노드 배치' },
+  gold:     { id:'mode-gold',     bg:'#3a2a00', bc:'#c8a217', col:'#ffe07d', hintCol:'#f39c12', hint:'현재: ResourceGoldBonus — 타깃 골드 획득량 강화 노드 배치' },
+  interval: { id:'mode-interval', bg:'#1a3520', bc:'#1abc9c', col:'#7dffd4', hintCol:'#1abc9c', hint:'현재: ResourceInterval — 타깃 리스폰 속도 강화 노드 배치' },
+};
+
+function setBrushMode(mode) {
+  brushMode = mode;
+  Object.entries(MODE_META).forEach(([k, m]) => {
+    const btn = document.getElementById(m.id);
+    const active = k === mode;
+    btn.style.background   = active ? m.bg  : '#1a3a6a';
+    btn.style.borderColor  = active ? m.bc  : '#2a4a7f';
+    btn.style.color        = active ? m.col : '#cde';
+  });
+  const mm = MODE_META[mode];
+  document.getElementById('mode-hint').style.color = mm.hintCol;
+  document.getElementById('mode-hint').textContent = mm.hint;
+  if (activeBrush) showBrushIndicator(activeBrush);
+}
+
+function showBrushIndicator(t) {
+  const ind = document.getElementById('brush-indicator');
+  ind.style.display = 'flex';
+  ind.style.borderColor = t.color;
+  ind.style.color = t.color;
+  ind.style.background = hexA(t.color, 0.1);
+  document.getElementById('brush-dot').style.background = t.color;
+  document.getElementById('brush-label').textContent = t.name;
+}
+function hideBrushIndicator() {
+  document.getElementById('brush-indicator').style.display = 'none';
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-props').classList.toggle('visible', tab === 'props');
+  document.getElementById('tab-palette').classList.toggle('visible', tab === 'palette');
+  document.getElementById('tab-btn-props').classList.toggle('active', tab === 'props');
+  document.getElementById('tab-btn-palette').classList.toggle('active', tab === 'palette');
+  document.getElementById('tab-stairs').classList.toggle('visible', tab === 'stairs');
+  document.getElementById('tab-btn-stairs').classList.toggle('active', tab === 'stairs');
+  if (tab === 'stairs') updateStairs();
+}
+
+// ═══════════════════════════════════════════════════════════
+// EffectType data
+// ═══════════════════════════════════════════════════════════
+const EFFECT_TYPES = [
+  {v:'GlobalDamage',g:'global'},{v:'GlobalCritChance',g:'global'},{v:'GlobalCritMultiplier',g:'global'},
+  {v:'ClickPower',g:'click'},{v:'ClickCritChance',g:'click'},{v:'ClickCritMultiplier',g:'click'},{v:'ClickRange',g:'click'},
+  {v:'WeaponUnlock',g:'weapon'},{v:'WeaponAwaken',g:'weapon'},
+  {v:'ChainDamage',g:'chain'},{v:'ChainDepth',g:'chain'},{v:'ChainRange',g:'chain'},{v:'ChainCooldown',g:'chain'},{v:'ChainInitialTargets',g:'chain'},
+  {v:'TxTickDamage',g:'tx'},{v:'TxDuration',g:'tx'},{v:'TxRadius',g:'tx'},{v:'TxCooldown',g:'tx'},{v:'TxMaxTargets',g:'tx'},
+  {v:'WorkerCount',g:'worker'},{v:'WorkerDamage',g:'worker'},{v:'WorkerSpeed',g:'worker'},{v:'WorkerLifetime',g:'worker'},{v:'WorkerBonusYield',g:'worker'},
+  {v:'VdomPatchDamage',g:'vdom'},{v:'VdomDiffCount',g:'vdom'},{v:'VdomScanInterval',g:'vdom'},{v:'VdomPatchRadius',g:'vdom'},{v:'VdomDiffDamageScale',g:'vdom'},
+  {v:'ResourceUnlock',g:'spawn'},{v:'SpawnWeight',g:'spawn'},{v:'ResourceGoldBonus',g:'spawn'},{v:'ResourceInterval',g:'spawn'},{v:'GlobalSpawnCount',g:'spawn'},{v:'InitialSpawnCount',g:'spawn'},{v:'SpawnInterval',g:'spawn'},
+  {v:'StudyEfficiency',g:'economy'},{v:'PassiveGoldPerSec',g:'economy'},{v:'PassiveEfficiency',g:'economy'},
+  {v:'StudyTime',g:'run'},
+  {v:'InsightDropChance',g:'insight'},{v:'InsightDropAmount',g:'insight'},
+  {v:'MapUnlock',g:'map'},
+];
+
+const GROUP_META = {
+  global:  { label:'전투 (전체)',      color:'#e74c3c' },
+  click:   { label:'클릭 전용',        color:'#e67e22' },
+  weapon:  { label:'무기 공통',        color:'#f1c40f' },
+  chain:   { label:'Method Chaining', color:'#00bcd4' },
+  tx:      { label:'Transaction',     color:'#3498db' },
+  worker:  { label:'Worker Thread',   color:'#2ecc71' },
+  vdom:    { label:'Virtual DOM',     color:'#9b59b6' },
+  spawn:   { label:'스폰',            color:'#27ae60' },
+  economy: { label:'경제',            color:'#f39c12' },
+  run:     { label:'런',              color:'#1abc9c' },
+  insight: { label:'Insight',         color:'#e91e63' },
+  map:     { label:'맵',              color:'#fbb03b' },
+};
+
+function isGateNode(n) { return n.effectType === 'MapUnlock'; }
+function nodeColor(n) {
+  if (isGateNode(n)) return MAP_GATE_COLORS[n.effectTarget] || GROUP_META.map.color;
+  return etColor(n.effectType) || n.baseColor || '#556677';
+}
+
+function etColor(effectType) {
+  const et = EFFECT_TYPES.find(e => e.v === effectType);
+  return et ? GROUP_META[et.g].color : '#556677';
+}
+
+(function buildSelect() {
+  const sel = document.getElementById('f-type');
+  sel.innerHTML = '<option value="">— 선택 —</option>';
+  const grouped = {};
+  EFFECT_TYPES.forEach(et => (grouped[et.g] = grouped[et.g] || []).push(et));
+  Object.entries(GROUP_META).forEach(([gk, gm]) => {
+    if (!grouped[gk]) return;
+    const og = document.createElement('optgroup');
+    og.label = gm.label;
+    grouped[gk].forEach(et => {
+      const o = document.createElement('option');
+      o.value = et.v; o.textContent = et.v;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+let nodes = {}, selKey = null;
+
+// ── 명시 간선(Connections) ──
+let edges = new Set();              // "idA|idB" (정렬된 키)
+let idSeq = 0;                      // 안정 id 카운터 (좌표와 분리 — 이동해도 id 불변)
+let connectMode = false, connectFromId = null;
+function freshId() { return 'n' + (idSeq++); }
+function edgeKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+function nodeById() { const m = {}; for (const n of Object.values(nodes)) if (n.id) m[n.id] = n; return m; }
+function removeEdgesFor(id) { for (const k of [...edges]) { const p = k.split('|'); if (p[0] === id || p[1] === id) edges.delete(k); } }
+
+// ── 맵 구역(Zones) — skill_tree_nodes.json 과 별도 파일로 저장 ──
+let zones = {};                     // "x,y" → 1..4 (빈 셀 포함)
+let zoneMode = false, zoneBrush = 1;
+let zonePainting = false, zonePaintValue = 0;
+let zoom = 1.0, panX = 0, panY = 0;
+let panning = false, spaceDown = false;
+let px0 = 0, py0 = 0, ppx = 0, ppy = 0;
+let hoverCell = null;
+
+// Drag state
+let dragCandidate = false; // mousedown on node, not yet confirmed as drag
+let dragging = false;
+let dragKey = null;
+let dragStartPX = 0, dragStartPY = 0; // pixel coords at drag start
+let dragGX = 0, dragGY = 0;           // current ghost grid position
+const DRAG_THRESHOLD = 6;             // px before drag activates
+
+const canvas = document.getElementById('grid');
+const ctx = canvas.getContext('2d');
+
+const GRID_MIN = -30, GRID_MAX = 30;
+const BASE_CELL = 46;
+
+function initFixedNodes() {
+  const fixed = [
+    { x:0,  y:0,  effectType:'',            displayName:'Core',            effectTarget:'',              baseLabel:'CORE',  baseColor:'#c0c0d0', costInsight:0 },
+    { x:5,  y:0,  effectType:'WeaponUnlock', displayName:'Method Chaining', effectTarget:'MethodChaining', baseLabel:'MC',    baseColor:'#00bcd4', costInsight:1 },
+    { x:-5, y:0,  effectType:'WeaponUnlock', displayName:'Transaction',     effectTarget:'Transaction',    baseLabel:'TX',    baseColor:'#3498db', costInsight:1 },
+    { x:0,  y:10, effectType:'WeaponUnlock', displayName:'Worker Thread',   effectTarget:'WorkerThread',   baseLabel:'WT',    baseColor:'#2ecc71', costInsight:1 },
+    { x:0,  y:-10,effectType:'WeaponUnlock', displayName:'Virtual DOM',     effectTarget:'VirtualDOM',     baseLabel:'VDOM',  baseColor:'#9b59b6', costInsight:1 },
+    { x:15, y:0,  effectType:'WeaponAwaken', displayName:'Branch Chaining', effectTarget:'MethodChaining', baseLabel:'MC★',   baseColor:'#00bcd4', costInsight:2 },
+    { x:-15,y:0,  effectType:'WeaponAwaken', displayName:'Rollback',        effectTarget:'Transaction',    baseLabel:'TX★',   baseColor:'#3498db', costInsight:2 },
+    { x:0,  y:15, effectType:'WeaponAwaken', displayName:'Thread Pool',     effectTarget:'WorkerThread',   baseLabel:'WT★',   baseColor:'#2ecc71', costInsight:2 },
+    { x:0,  y:-15,effectType:'WeaponAwaken', displayName:'Hydration',       effectTarget:'VirtualDOM',     baseLabel:'VDOM★', baseColor:'#9b59b6', costInsight:2 },
+  ];
+  fixed.forEach(f => {
+    const branch = f.x === 0 && f.y === 0 ? 'Core' : 'Automation';
+    nodes[`${f.x},${f.y}`] = { id:freshId(), gridX:f.x, gridY:f.y, displayName:f.displayName, effectType:f.effectType, effectTarget:f.effectTarget, effectValue:0, maxLevel:1, costGold:0, costInsight:f.costInsight, baseLabel:f.baseLabel, baseColor:f.baseColor, branch };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Coords
+// ═══════════════════════════════════════════════════════════
+function toScreen(gx, gy) {
+  const cs = BASE_CELL * zoom;
+  return { sx: canvas.width/2 + panX + gx*cs, sy: canvas.height/2 + panY - gy*cs };
+}
+function toGrid(sx, sy) {
+  const cs = BASE_CELL * zoom;
+  return { gx: Math.round((sx - canvas.width/2 - panX)/cs), gy: Math.round(-(sy - canvas.height/2 - panY)/cs) };
+}
+function inBounds(gx, gy) { return gx>=GRID_MIN && gx<=GRID_MAX && gy>=GRID_MIN && gy<=GRID_MAX; }
+
+// ═══════════════════════════════════════════════════════════
+// Render
+// ═══════════════════════════════════════════════════════════
+function redraw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const cs = BASE_CELL * zoom;
+  ctx.fillStyle = '#0e0e22'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Grid
+  ctx.strokeStyle = '#1a1a38'; ctx.lineWidth = 0.5;
+  for (let gx=GRID_MIN; gx<=GRID_MAX; gx++)
+    for (let gy=GRID_MIN; gy<=GRID_MAX; gy++) {
+      const {sx,sy} = toScreen(gx,gy);
+      ctx.strokeRect(sx-cs/2, sy-cs/2, cs, cs);
+    }
+
+  // Zones (반투명, 노드 아래)
+  Object.entries(zones).forEach(([zk, zv]) => {
+    const p = zk.split(','); const zc = TIER_COLORS[zv]; if (!zc) return;
+    const {sx,sy} = toScreen(+p[0], +p[1]);
+    ctx.fillStyle = hexA(zc, 0.16);
+    ctx.fillRect(sx-cs/2, sy-cs/2, cs, cs);
+  });
+
+  // Axes
+  const o = toScreen(0,0);
+  const eL = toScreen(GRID_MIN,0), eR = toScreen(GRID_MAX,0);
+  const eU = toScreen(0,GRID_MAX), eD = toScreen(0,GRID_MIN);
+  ctx.strokeStyle = '#24244a'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(eL.sx-cs/2, o.sy); ctx.lineTo(eR.sx+cs/2, o.sy);
+  ctx.moveTo(o.sx, eU.sy-cs/2); ctx.lineTo(o.sx, eD.sy+cs/2);
+  ctx.stroke();
+
+  // Connections (명시 간선) — 비정렬쌍은 ㄱ자(엘보)로 그려 게임 렌더와 맞춤
+  const byId = nodeById();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  edges.forEach(k => {
+    const p = k.split('|'); const na = byId[p[0]], nb = byId[p[1]];
+    if (!na || !nb) return;
+    const s1 = toScreen(na.gridX, na.gridY), s2 = toScreen(nb.gridX, nb.gridY);
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(180,200,255,0.38)';
+    ctx.lineWidth = Math.max(1, 1.5*zoom);
+    if (Math.abs(s1.sx-s2.sx) < 2 || Math.abs(s1.sy-s2.sy) < 2) {
+      ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy);
+    } else {
+      ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s1.sx, s2.sy); ctx.lineTo(s2.sx, s2.sy);
+    }
+    ctx.stroke();
+  });
+  // 연결 모드: 선택된 시작 노드 강조
+  if (connectMode && connectFromId && byId[connectFromId]) {
+    const n = byId[connectFromId]; const {sx,sy} = toScreen(n.gridX,n.gridY); const cs2 = BASE_CELL*zoom;
+    ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 2;
+    ctx.strokeRect(sx-cs2*0.42, sy-cs2*0.42, cs2*0.84, cs2*0.84);
+  }
+
+  // Hover
+  if (zoneMode && hoverCell && inBounds(hoverCell.gx,hoverCell.gy)) {
+    const {sx,sy} = toScreen(hoverCell.gx,hoverCell.gy);
+    ctx.strokeStyle = zoneBrush ? TIER_COLORS[zoneBrush] : '#ff6b6b'; ctx.lineWidth = 2;
+    ctx.strokeRect(sx-cs/2+1, sy-cs/2+1, cs-2, cs-2);
+  } else
+  if (hoverCell && inBounds(hoverCell.gx,hoverCell.gy) && !nodes[`${hoverCell.gx},${hoverCell.gy}`]) {
+    const {sx,sy} = toScreen(hoverCell.gx,hoverCell.gy);
+    const r = cs*0.38;
+    const col = activeBrush ? activeBrush.color : 'rgba(255,255,255,0.04)';
+    ctx.fillStyle = activeBrush ? hexA(col, 0.15) : col;
+    if (activeBrush) {
+      ctx.strokeStyle = hexA(col, 0.5); ctx.lineWidth = 1.5;
+      rrect(ctx,sx-r,sy-r,r*2,r*2,4*zoom); ctx.fill(); ctx.stroke();
+    } else {
+      rrect(ctx,sx-r,sy-r,r*2,r*2,4*zoom); ctx.fill();
+    }
+  }
+
+  // Draw nodes (skip original while dragging)
+  Object.values(nodes).forEach(n => {
+    if (dragging && `${n.gridX},${n.gridY}`===dragKey) return;
+    drawNode(n);
+  });
+
+  // Ghost node while dragging
+  if (dragging && dragKey && nodes[dragKey]) {
+    const targetK=`${dragGX},${dragGY}`;
+    const canDrop = inBounds(dragGX,dragGY) && (!nodes[targetK] || targetK===dragKey);
+    drawNodeGhost({...nodes[dragKey], gridX:dragGX, gridY:dragGY}, canDrop);
+  }
+}
+
+function drawNode(n) {
+  const {sx,sy} = toScreen(n.gridX,n.gridY);
+  const cs = BASE_CELL*zoom, r = cs*0.40;
+  const key = `${n.gridX},${n.gridY}`;
+  const sel = key===selKey;
+  const isCore   = n.gridX===0 && n.gridY===0;
+  const isWeapon = n.effectType==='WeaponUnlock' || n.effectType==='WeaponAwaken' || isGateNode(n);
+  const col = isCore ? '#c0c0d0' : nodeColor(n);
+
+  if (sel) { ctx.shadowColor=col; ctx.shadowBlur=14*zoom; }
+
+  ctx.fillStyle = hexA(col, isCore?0.15:0.2);
+  if (isWeapon||isCore) diamond(ctx,sx,sy,r); else rrect(ctx,sx-r,sy-r,r*2,r*2,5*zoom);
+  ctx.fill();
+
+  ctx.strokeStyle=col; ctx.lineWidth=sel?2.5*zoom:1.5*zoom;
+  if (isWeapon||isCore) diamond(ctx,sx,sy,r); else rrect(ctx,sx-r,sy-r,r*2,r*2,5*zoom);
+  ctx.stroke();
+  ctx.shadowBlur=0;
+
+  if (zoom>0.35) {
+    const lbl = (n.baseLabel||n.effectType||'?').slice(0,7);
+    const fs = Math.max(7, Math.min(12, cs*0.20));
+    ctx.font=`bold ${fs}px monospace`; ctx.fillStyle=col;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(lbl,sx,sy);
+  }
+  if (isWeapon && zoom>0.45) {
+    const fs=Math.max(6,cs*0.14);
+    ctx.font=`${fs}px sans-serif`; ctx.fillStyle='#f1c40f';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillStyle = isGateNode(n) ? col : '#f1c40f';
+    ctx.fillText(isGateNode(n) ? 'GATE' : (n.effectType==='WeaponAwaken'?'★★':'★'), sx, sy+r*0.3);
+  }
+}
+
+function drawNodeGhost(n, canDrop) {
+  const {sx,sy}=toScreen(n.gridX,n.gridY);
+  const cs=BASE_CELL*zoom, r=cs*0.40;
+  const isWeapon=n.effectType==='WeaponUnlock'||n.effectType==='WeaponAwaken'||isGateNode(n);
+  const isCore=n.gridX===0&&n.gridY===0;
+  const col=canDrop ? nodeColor(n) : '#e74c3c';
+
+  ctx.globalAlpha=0.55;
+  ctx.fillStyle=hexA(col,0.25);
+  if (isWeapon||isCore) diamond(ctx,sx,sy,r); else rrect(ctx,sx-r,sy-r,r*2,r*2,5*zoom);
+  ctx.fill();
+
+  ctx.strokeStyle=col; ctx.lineWidth=2*zoom;
+  ctx.setLineDash([5*zoom,3*zoom]);
+  if (isWeapon||isCore) diamond(ctx,sx,sy,r); else rrect(ctx,sx-r,sy-r,r*2,r*2,5*zoom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (zoom>0.35) {
+    const lbl=(n.baseLabel||n.effectType||'?').slice(0,7);
+    const fs=Math.max(7,Math.min(12,cs*0.20));
+    ctx.font=`bold ${fs}px monospace`; ctx.fillStyle=col;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(lbl,sx,sy);
+  }
+  ctx.globalAlpha=1;
+}
+
+function diamond(ctx,cx,cy,r) {
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r,cy); ctx.lineTo(cx,cy+r); ctx.lineTo(cx-r,cy);
+  ctx.closePath();
+}
+function rrect(ctx,x,y,w,h,rad) {
+  ctx.beginPath();
+  ctx.moveTo(x+rad,y); ctx.lineTo(x+w-rad,y); ctx.arcTo(x+w,y,x+w,y+rad,rad);
+  ctx.lineTo(x+w,y+h-rad); ctx.arcTo(x+w,y+h,x+w-rad,y+h,rad);
+  ctx.lineTo(x+rad,y+h); ctx.arcTo(x,y+h,x,y+h-rad,rad);
+  ctx.lineTo(x,y+rad); ctx.arcTo(x,y,x+rad,y,rad);
+  ctx.closePath();
+}
+function hexA(hex,a) {
+  const r=parseInt(hex.slice(1,3),16)||80, g=parseInt(hex.slice(3,5),16)||80, b=parseInt(hex.slice(5,7),16)||80;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Panel
+// ═══════════════════════════════════════════════════════════
+function showPanel(key) {
+  const n = nodes[key];
+  document.getElementById('panel-empty').style.display  = n ? 'none' : '';
+  document.getElementById('panel-fields').style.display = n ? '' : 'none';
+  if (!n) {
+    document.getElementById('panel-title').textContent = '노드 선택 안 됨';
+    document.getElementById('panel-coord').textContent = '';
+    return;
+  }
+  document.getElementById('panel-title').textContent = n.displayName || '(이름 없음)';
+  document.getElementById('panel-coord').textContent = `(${n.gridX}, ${n.gridY})`;
+  document.getElementById('f-name').value    = n.displayName  || '';
+  document.getElementById('f-type').value    = n.effectType   || '';
+  document.getElementById('f-target').value  = n.effectTarget || '';
+  document.getElementById('f-branch').value  = n.branch       || '';
+  document.getElementById('f-value').value   = n.effectValue  ?? 0;
+  document.getElementById('f-maxlv').value   = n.maxLevel     ?? 1;
+  document.getElementById('f-gold').value    = n.costGold     ?? 0;
+  document.getElementById('f-insight').value = n.costInsight  ?? 0;
+  document.getElementById('f-label').value   = n.baseLabel    || '';
+  const col = n.baseColor || '#888888';
+  document.getElementById('f-color-pick').value = col;
+  document.getElementById('f-color-txt').value  = col;
+}
+function refreshPanel() { if (selKey) showPanel(selKey); }
+function setField(field,val) {
+  if (!selKey||!nodes[selKey]) return;
+  nodes[selKey][field]=val;
+  if (field==='displayName') document.getElementById('panel-title').textContent=val||'(이름 없음)';
+  updateCount();
+}
+function tryColorPick(v) { if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('f-color-pick').value=v; }
+function deleteSelected() {
+  if (!selKey) return;
+  if (nodes[selKey]) removeEdgesFor(nodes[selKey].id);
+  delete nodes[selKey]; selKey=null;
+  showPanel(null); redraw(); updateCount();
+}
+function duplicateSelected() {
+  if (!selKey||!nodes[selKey]) return;
+  const n=nodes[selKey];
+  for (let dx=-1;dx<=1;dx++) for (let dy=-1;dy<=1;dy++) {
+    if (!dx&&!dy) continue;
+    const nx=n.gridX+dx, ny=n.gridY+dy;
+    if (!inBounds(nx,ny)) continue;
+    const nk=`${nx},${ny}`;
+    if (!nodes[nk]) {
+      nodes[nk]={...n,id:freshId(),gridX:nx,gridY:ny,connections:[]};
+      selKey=nk; showPanel(nk); redraw(); updateCount(); return;
+    }
+  }
+}
+function updateCount() {
+  document.getElementById('node-count').textContent=`노드 ${Object.keys(nodes).length}개`;
+  touched();
+}
+// 편집 후 공통: 계단 확인 재계산 + localStorage 저장 (짧게 디바운스)
+let touchTimer = null;
+function touched() {
+  clearTimeout(touchTimer);
+  touchTimer = setTimeout(() => { updateStairs(); saveLocal(); }, 120);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Canvas events
+// ═══════════════════════════════════════════════════════════
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (zoneMode) return; // 구역 모드: 우클릭은 구역 지우기(mousedown 에서 처리), 노드 삭제 안 함
+  const {gx,gy}=toGrid(e.offsetX,e.offsetY);
+  const k=`${gx},${gy}`;
+  if (nodes[k]) { removeEdgesFor(nodes[k].id); delete nodes[k]; if(selKey===k){selKey=null;showPanel(null);} redraw();updateCount(); }
+});
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button===1||(e.button===0&&spaceDown)) {
+    panning=true; px0=e.clientX;py0=e.clientY;ppx=panX;ppy=panY;
+    canvas.style.cursor='grabbing'; e.preventDefault(); return;
+  }
+  // 구역 칠하기: 좌클릭 드래그 = 현재 맵 칠하기(지우개면 지우기), 우클릭 드래그 = 지우기
+  if (zoneMode && (e.button===0 || e.button===2)) {
+    zonePainting=true; zonePaintValue = e.button===2 ? 0 : zoneBrush;
+    const {gx,gy}=toGrid(e.offsetX,e.offsetY);
+    paintZone(gx,gy);
+    return;
+  }
+  if (e.button===0) {
+    const {gx,gy}=toGrid(e.offsetX,e.offsetY);
+    if (!inBounds(gx,gy)) return;
+    const k=`${gx},${gy}`;
+
+    // 연결 모드: 노드 A 클릭 → B 클릭으로 간선 토글 (배치/드래그 안 함)
+    if (connectMode) {
+      if (nodes[k]) {
+        const id = nodes[k].id;
+        if (!connectFromId) { connectFromId = id; }
+        else if (connectFromId === id) { connectFromId = null; }
+        else {
+          const ek = edgeKey(connectFromId, id);
+          if (edges.has(ek)) edges.delete(ek); else edges.add(ek);
+          connectFromId = null;
+          touched();
+        }
+        redraw();
+      }
+      return;
+    }
+
+    if (nodes[k]) {
+      // Start drag candidate — wait for move to confirm drag vs click
+      dragCandidate=true; dragKey=k;
+      dragStartPX=e.clientX; dragStartPY=e.clientY;
+      dragGX=gx; dragGY=gy;
+      return;
+    }
+
+    // Place node
+    if (activeBrush && activeBrush.gate) {
+      // 맵 게이트: 배치 타입(brushMode)과 무관
+      const mapNo = GATE_TARGET_MAP[activeBrush.gate];
+      nodes[k]={
+        id:freshId(), gridX:gx, gridY:gy,
+        displayName:`${MAP_NAMES[mapNo]} 게이트`,
+        effectType:'MapUnlock',
+        effectTarget:activeBrush.gate,
+        effectValue:1,
+        maxLevel:1,
+        costGold:0,
+        costInsight:0,
+        baseLabel:activeBrush.short,
+        baseColor:activeBrush.color,
+        branch:'Core',
+        connections:[],
+      };
+    } else if (activeBrush) {
+      const modeMap = {
+        unlock:   { displayName:`${activeBrush.name} 해금`,          effectType:'ResourceUnlock',   effectValue:1,   maxLevel:1, costGold:200 },
+        weight:   { displayName:`${activeBrush.name} 출현 빈도 +`,   effectType:'SpawnWeight',      effectValue:1,   maxLevel:3, costGold:100 },
+        gold:     { displayName:`${activeBrush.name} 골드 획득 +`,   effectType:'ResourceGoldBonus',effectValue:0.1, maxLevel:5, costGold:80  },
+        interval: { displayName:`${activeBrush.name} 리스폰 속도 +`, effectType:'ResourceInterval', effectValue:0.1, maxLevel:5, costGold:80  },
+      };
+      const preset = modeMap[brushMode] || modeMap.unlock;
+      nodes[k]={
+        id:freshId(), gridX:gx, gridY:gy,
+        displayName: preset.displayName,
+        effectType:  preset.effectType,
+        effectTarget:activeBrush.label,
+        effectValue: preset.effectValue,
+        maxLevel:    preset.maxLevel,
+        costGold:    preset.costGold,
+        costInsight:0,
+        baseLabel:activeBrush.short || activeBrush.label,
+        baseColor:activeBrush.color,
+        branch:'Resource',
+        connections:[],
+      };
+    } else {
+      // Free mode: blank node
+      nodes[k]={
+        id:freshId(), gridX:gx, gridY:gy,
+        displayName:'', effectType:'', effectTarget:'',
+        effectValue:0, maxLevel:1, costGold:100, costInsight:0,
+        baseLabel:'', baseColor:'#778899',
+        branch:'',
+        connections:[],
+      };
+    }
+    selKey=k; showPanel(selKey); switchTab('props'); redraw(); updateCount();
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (panning) { panX=ppx+(e.clientX-px0); panY=ppy+(e.clientY-py0); redraw(); return; }
+  if (zonePainting) {
+    const {gx,gy}=toGrid(e.offsetX,e.offsetY);
+    hoverCell={gx,gy};
+    document.getElementById('coord-info').textContent=`(${gx}, ${gy})`;
+    paintZone(gx,gy);
+    return;
+  }
+
+  // Drag threshold check
+  if (dragCandidate && !dragging) {
+    const dx=e.clientX-dragStartPX, dy=e.clientY-dragStartPY;
+    if (Math.sqrt(dx*dx+dy*dy) > DRAG_THRESHOLD) {
+      dragging=true;
+      canvas.style.cursor='grabbing';
+    }
+  }
+
+  if (dragging) {
+    const {gx,gy}=toGrid(e.offsetX,e.offsetY);
+    dragGX=gx; dragGY=gy;
+    document.getElementById('coord-info').textContent=`(${gx}, ${gy})`;
+    redraw();
+    return;
+  }
+
+  const {gx,gy}=toGrid(e.offsetX,e.offsetY);
+  hoverCell={gx,gy};
+  document.getElementById('coord-info').textContent=`(${gx}, ${gy})`;
+  redraw();
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (panning) { panning=false; canvas.style.cursor=spaceDown?'grab':'crosshair'; return; }
+  if (zonePainting) { zonePainting=false; return; }
+
+  if (dragging) {
+    const targetK=`${dragGX},${dragGY}`;
+    const canDrop = inBounds(dragGX,dragGY) && (!nodes[targetK] || targetK===dragKey);
+    if (canDrop && targetK!==dragKey) {
+      // 이동: id 는 유지(좌표와 분리된 안정 id) — 간선이 끊기지 않음
+      nodes[targetK]={...nodes[dragKey], gridX:dragGX, gridY:dragGY};
+      delete nodes[dragKey];
+      selKey=targetK;
+    } else {
+      selKey=dragKey; // cancel — stay in place
+    }
+    dragging=false; dragCandidate=false; dragKey=null;
+    canvas.style.cursor='crosshair';
+    showPanel(selKey); switchTab('props'); redraw(); updateCount();
+    return;
+  }
+
+  if (dragCandidate) {
+    // Was just a click — select the node
+    selKey=dragKey;
+    dragCandidate=false; dragKey=null;
+    showPanel(selKey); switchTab('props'); redraw();
+  }
+});
+canvas.addEventListener('mouseleave', ()=>{
+  hoverCell=null; zonePainting=false;
+  // If dragging and leaving canvas, keep drag state but stop showing ghost outside bounds
+  if (!dragging) redraw();
+  else redraw();
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f=e.deltaY<0?1.12:0.89;
+  const nz=Math.max(0.25,Math.min(3.5,zoom*f));
+  const mx=e.offsetX-canvas.width/2, my=e.offsetY-canvas.height/2;
+  panX=(panX-mx)*(nz/zoom)+mx; panY=(panY-my)*(nz/zoom)+my;
+  zoom=nz;
+  document.getElementById('zoom-info').textContent=`${Math.round(zoom*100)}%`;
+  redraw();
+},{passive:false});
+
+document.addEventListener('keydown', e=>{
+  if (e.code==='Space'&&document.activeElement===document.body){e.preventDefault();spaceDown=true;canvas.style.cursor='grab';}
+  if (e.code==='Escape') clearBrush();
+  if ((e.code==='Delete'||e.code==='Backspace')&&document.activeElement===document.body) deleteSelected();
+});
+document.addEventListener('keyup', e=>{
+  if (e.code==='Space'){spaceDown=false;canvas.style.cursor=panning?'grabbing':'crosshair';}
+});
+
+// ═══════════════════════════════════════════════════════════
+// Toolbar
+// ═══════════════════════════════════════════════════════════
+function zoomIn()  { zoom=Math.min(3.5,zoom*1.2); document.getElementById('zoom-info').textContent=`${Math.round(zoom*100)}%`; redraw(); }
+function zoomOut() { zoom=Math.max(0.25,zoom/1.2); document.getElementById('zoom-info').textContent=`${Math.round(zoom*100)}%`; redraw(); }
+function resetView() { zoom=1;panX=0;panY=0; document.getElementById('zoom-info').textContent='100%'; redraw(); }
+
+function toggleZoneMode() {
+  zoneMode=!zoneMode; zonePainting=false;
+  if (zoneMode && connectMode) toggleConnectMode();
+  const b=document.getElementById('btn-zone');
+  b.style.background=zoneMode?'#1a5e35':''; b.style.color=zoneMode?'#7dffb3':''; b.style.borderColor=zoneMode?'#27ae60':'';
+  document.getElementById('zone-tools').style.display=zoneMode?'flex':'none';
+  document.getElementById('coord-info').textContent=zoneMode?'구역 모드: 좌드래그 칠하기 / 우드래그 지우기':'';
+  setZoneBrush(zoneBrush);
+}
+function setZoneBrush(v) {
+  zoneBrush=v;
+  for (let i=0;i<=4;i++) {
+    const b=document.getElementById('zone-b'+i); const c=i?TIER_COLORS[i]:'#ff6b6b'; const on=i===v;
+    b.style.borderColor=c; b.style.color=on?'#000':c; b.style.background=on?c:hexA(c,0.12);
+  }
+  redraw();
+}
+function paintZone(gx,gy) {
+  if (!inBounds(gx,gy)) return;
+  const k=`${gx},${gy}`;
+  if ((zones[k]||0)===zonePaintValue) { redraw(); return; }
+  if (zonePaintValue) zones[k]=zonePaintValue; else delete zones[k];
+  redraw(); touched();
+}
+function exportZones() {
+  const json=JSON.stringify({ version:1, zones });
+  const blob=new Blob([json],{type:'application/json'});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'skill_tree_zones.json'});
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function parseZones(obj) {
+  const src=obj && typeof obj==='object' && obj.zones && typeof obj.zones==='object' ? obj.zones : null;
+  if (!src) throw new Error('zones 객체가 없습니다');
+  const out={};
+  Object.entries(src).forEach(([k,v])=>{
+    const m=/^(-?\d+),(-?\d+)$/.exec(k); const z=+v;
+    if (m && z>=1 && z<=4 && inBounds(+m[1],+m[2])) out[`${+m[1]},${+m[2]}`]=z;
+  });
+  return out;
+}
+function importZones() {
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try { zones=parseZones(JSON.parse(ev.target.result)); redraw(); touched(); }
+      catch(err){ alert('구역 JSON 오류: '+err.message); }
+    }; r.readAsText(f);
+  }; inp.click();
+}
+
+function toggleConnectMode() {
+  connectMode=!connectMode; connectFromId=null;
+  if (connectMode && zoneMode) toggleZoneMode();
+  const b=document.getElementById('btn-connect');
+  if(b){ b.style.background=connectMode?'#1a5e35':''; b.style.color=connectMode?'#7dffb3':''; b.style.borderColor=connectMode?'#27ae60':''; }
+  canvas.style.cursor=connectMode?'pointer':'crosshair';
+  document.getElementById('coord-info').textContent=connectMode?'연결 모드: 노드 A→B 클릭으로 간선 토글 (다시 누르면 해제)':'';
+  redraw();
+}
+
+function clearAll() {
+  if (!confirm('전체 노드를 초기화합니다. 계속할까요?')) return;
+  nodes={};selKey=null;edges=new Set();idSeq=0;connectFromId=null;initFixedNodes();showPanel(null);redraw();updateCount();
+}
+function collectValidationIssues(arr) {
+  const duplicateIds=[];
+  const danglingConnections=[];
+  const duplicateGridKeys=[];
+  const seenIds=new Set();
+  const seenGridKeys=new Set();
+  const idSet=new Set();
+
+  arr.forEach(n=>{
+    const id=(n.id||'').trim();
+    const gridKey=`${n.gridX},${n.gridY}`;
+    if (seenGridKeys.has(gridKey) && !duplicateGridKeys.includes(gridKey)) duplicateGridKeys.push(gridKey);
+    else seenGridKeys.add(gridKey);
+
+    if (!id) return;
+    if (seenIds.has(id) && !duplicateIds.includes(id)) duplicateIds.push(id);
+    else seenIds.add(id);
+    idSet.add(id);
+  });
+
+  arr.forEach(n=>{
+    const fromId=(n.id||'').trim();
+    if (!fromId || !Array.isArray(n.connections)) return;
+    n.connections.forEach(targetId=>{
+      const trimmed=(targetId||'').trim();
+      if (!trimmed || idSet.has(trimmed)) return;
+      danglingConnections.push({ fromId, targetId: trimmed });
+    });
+  });
+
+  return { duplicateIds, danglingConnections, duplicateGridKeys };
+}
+function formatValidationIssues(issues) {
+  const lines=[];
+  if (issues.duplicateIds.length) lines.push(`- duplicate ids: ${issues.duplicateIds.join(', ')}`);
+  if (issues.duplicateGridKeys.length) lines.push(`- duplicate grid cells: ${issues.duplicateGridKeys.join(', ')}`);
+  if (issues.danglingConnections.length) {
+    const preview=issues.danglingConnections
+      .slice(0, 8)
+      .map(issue=>`${issue.fromId} -> ${issue.targetId}`)
+      .join(', ');
+    const suffix=issues.danglingConnections.length > 8 ? ` ... +${issues.danglingConnections.length - 8}` : '';
+    lines.push(`- dangling connections: ${preview}${suffix}`);
+  }
+  return lines.join('\n');
+}
+function buildExportData() {
+  const arr=Object.values(nodes);
+  arr.forEach(n=>{ if(!n.id) n.id=freshId(); });
+  // 무방향 간선 → 노드별 connections
+  const conn={};
+  arr.forEach(n=>conn[n.id]=[]);
+  edges.forEach(k=>{ const p=k.split('|'); if(conn[p[0]]&&conn[p[1]]){ conn[p[0]].push(p[1]); conn[p[1]].push(p[0]); } });
+  const data=arr.map(n=>({
+    id:n.id, gridX:n.gridX, gridY:n.gridY,
+    displayName:n.displayName, effectType:n.effectType, effectTarget:n.effectTarget,
+    effectValue:n.effectValue, maxLevel:n.maxLevel, costGold:n.costGold, costInsight:n.costInsight,
+    baseLabel:n.baseLabel, baseColor:n.baseColor,
+    branch:n.branch||'',
+    connections:conn[n.id]||[]
+  }));
+  return data;
+}
+function exportJSON() {
+  const data=buildExportData();
+  const issues=collectValidationIssues(data);
+  if (issues.duplicateIds.length || issues.duplicateGridKeys.length || issues.danglingConnections.length) {
+    alert('JSON export blocked due to skill-tree data issues.\n\n' + formatValidationIssues(issues));
+    return;
+  }
+  // connections 는 한 줄(compact)로 — 게임 로더가 라인 기반 파서이기 때문
+  let json=JSON.stringify(data,null,2)
+    .replace(/"connections": \[([^\]]*)\]/g,(m,inner)=>'"connections": ['+inner.split(',').map(s=>s.trim()).filter(s=>s.length).join(', ')+']');
+  const blob=new Blob([json],{type:'application/json'});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'skill_tree_nodes.json'});
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON() {
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try {
+        const parsed=JSON.parse(ev.target.result);
+        const issues=loadTreeArray(parsed);
+        if (issues) {
+          alert('JSON import blocked due to skill-tree data issues.\n\n' + formatValidationIssues(issues));
+          return;
+        }
+        showPanel(null);redraw();updateCount();
+      } catch(err){alert('JSON 오류: '+err.message);}
+    }; r.readAsText(f);
+  }; inp.click();
+}
+// 트리 배열 적재 (불러오기 / localStorage 복원 공용). 검증 실패 시 issues 반환, 성공 시 null
+function loadTreeArray(parsed) {
+  if (!Array.isArray(parsed)) throw new Error('노드 배열이 아닙니다');
+  const issues=collectValidationIssues(parsed);
+  if (issues.duplicateIds.length || issues.duplicateGridKeys.length || issues.danglingConnections.length) return issues;
+  nodes={};selKey=null;edges=new Set();idSeq=0;connectFromId=null;
+  parsed.forEach(n=>{nodes[`${n.gridX},${n.gridY}`]=n;});
+  const arr=Object.values(nodes);
+  // id 정규화: 없으면 좌표기반 부여(레거시), n<seq> 형식이면 idSeq 를 그 위로 올림
+  arr.forEach(n=>{ if(!n.id) n.id=`node_${n.gridX}_${n.gridY}`; const m=/^n(\d+)$/.exec(n.id); if(m) idSeq=Math.max(idSeq, (+m[1])+1); });
+  // connections → edges 복원
+  arr.forEach(n=>{ if(Array.isArray(n.connections)) n.connections.forEach(o=>{ if(o) edges.add(edgeKey(n.id,o)); }); });
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// localStorage — 새로고침해도 작업 유지 (실패해도 무시)
+// ═══════════════════════════════════════════════════════════
+const LS_KEY = 'ctc.skillTreePlacer.v1';
+function saveLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ tree: buildExportData(), zones })); } catch (_) {}
+}
+function loadLocal() {
+  try {
+    const raw=localStorage.getItem(LS_KEY); if (!raw) return false;
+    const saved=JSON.parse(raw);
+    if (saved.zones) zones=parseZones(saved);
+    if (Array.isArray(saved.tree) && saved.tree.length && !loadTreeArray(saved.tree)) return true;
+  } catch (_) {}
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 계단 확인 — 코어에서 hop 거리(명시 간선) · 티어 순서 · 구역 · 게이트 우회
+// ═══════════════════════════════════════════════════════════
+function computeStairs() {
+  const byId=nodeById();
+  const adj={};
+  Object.values(nodes).forEach(n=>{ if(n.id) adj[n.id]=[]; });
+  edges.forEach(k=>{ const p=k.split('|'); if(adj[p[0]]&&adj[p[1]]){ adj[p[0]].push(p[1]); adj[p[1]].push(p[0]); } });
+  const core=nodes['0,0'] || Object.values(nodes).find(n=>n.branch==='Core');
+  const zoneAt=n=>zones[`${n.gridX},${n.gridY}`]||0;
+  const bfs=(blocked)=>{
+    const d={}; if (!core || blocked.has(core.id)) return d;
+    d[core.id]=0; const q=[core.id];
+    for (let i=0;i<q.length;i++) for (const nb of adj[q[i]]) {
+      if (d[nb]!==undefined || blocked.has(nb)) continue;
+      d[nb]=d[q[i]]+1; q.push(nb);
+    }
+    return d;
+  };
+  const dist=bfs(new Set());
+  const hop=n=>dist[n.id]===undefined ? Infinity : dist[n.id];
+
+  const items=[], warns=[], notes=[];
+  const gatesByMap={2:[],3:[],4:[]};
+  Object.values(nodes).forEach(n=>{
+    if (isGateNode(n)) {
+      const m=GATE_TARGET_MAP[n.effectTarget];
+      if (!m) { warns.push(`게이트 (${n.gridX},${n.gridY}) effectTarget "${n.effectTarget}" 는 Map2/Map3/Map4 가 아님`); return; }
+      gatesByMap[m].push(n);
+      items.push({ n, kind:'게이트', name:`맵${m} 게이트`, level:m, tierText:`맵${m}`, hop:hop(n), zone:zoneAt(n) });
+    } else if (n.effectType==='ResourceUnlock') {
+      const rt=resourceTier(n.effectTarget);
+      items.push({ n, kind:'해금', name:n.effectTarget||'(빈 타깃)', level:rt.tier, tierText:rt.tier?`T${rt.tier}${rt.old?'(옛)':''}`:'?', hop:hop(n), zone:zoneAt(n) });
+    }
+  });
+  const where=n=>`(${n.gridX},${n.gridY})`;
+  const bad=new Set();
+
+  if (!core) warns.push('코어 노드(0,0)가 없음 — hop 계산 불가');
+  // 게이트 누락 / 중복
+  [2,3,4].forEach(m=>{
+    if (!gatesByMap[m].length) warns.push(`맵${m} 게이트 없음`);
+    else if (gatesByMap[m].length>1) warns.push(`맵${m} 게이트가 ${gatesByMap[m].length}개 — 하나만 두세요 ${gatesByMap[m].map(where).join(' ')}`);
+  });
+  items.forEach(it=>{
+    // 도달 불가
+    if (it.hop===Infinity) { warns.push(`${it.name} ${where(it.n)} — 코어에서 간선으로 도달 불가`); bad.add(it); }
+    if (it.level===null) notes.push(`${it.name} ${where(it.n)} — 티어 모름(?)`);
+    // 해금의 구역 ≠ 티어 맵
+    if (it.kind==='해금' && it.level) {
+      if (!it.zone) notes.push(`T${it.level} ${it.name} ${where(it.n)} — 구역 미칠함`);
+      else if (it.zone!==it.level) { warns.push(`T${it.level} ${it.name} ${where(it.n)} 이 맵${it.zone} 구역에 있음 (맵${it.level} 이어야 함)`); bad.add(it); }
+    }
+  });
+  // 순서 역전: 레벨 k 항목이 더 낮은 레벨의 가장 깊은 항목보다 얕으면 경고
+  items.forEach(it=>{
+    if (!it.level || it.level<2 || it.hop===Infinity) return;
+    let deepest=null;
+    items.forEach(o=>{ if (o.level && o.level<it.level && o.hop!==Infinity && (!deepest || o.hop>deepest.hop)) deepest=o; });
+    const lbl=x=>x.kind==='게이트' ? x.name : `${x.tierText} ${x.name}`;
+    if (deepest && it.hop<deepest.hop) {
+      warns.push(`순서 역전: ${lbl(it)} ${where(it.n)} hop ${it.hop} < ${lbl(deepest)} ${where(deepest.n)} hop ${deepest.hop}`);
+      bad.add(it);
+    }
+  });
+  // 게이트 위치: 구역 k 안 또는 경계(상하좌우 인접 셀이 구역 k)
+  [2,3,4].forEach(m=>{
+    gatesByMap[m].forEach(g=>{
+      const onZone=zoneAt(g)===m || [[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>zones[`${g.gridX+dx},${g.gridY+dy}`]===m);
+      if (!onZone) { warns.push(`맵${m} 게이트 ${where(g)} 가 맵${m} 구역 안/경계에 없음`); bad.add(items.find(i=>i.n===g)); }
+    });
+  });
+  // 우회: 맵 k 게이트를 막고 코어에서 BFS → 구역 k 노드(다른 맵 게이트 노드 자체는 경계용이라 제외)에 닿으면 우회
+  [2,3,4].forEach(m=>{
+    const zoneCells=Object.values(zones).filter(v=>v===m).length;
+    if (!zoneCells) { notes.push(`맵${m} 구역 미칠함`); return; }
+    if (!gatesByMap[m].length) return;
+    const d=bfs(new Set(gatesByMap[m].map(g=>g.id)));
+    const leaks=Object.values(nodes)
+      .filter(n=>zoneAt(n)===m && !isGateNode(n) && d[n.id]!==undefined)
+      .sort((a,b)=>d[a.id]-d[b.id]);
+    if (leaks.length) warns.push(`우회: 맵${m} 게이트 없이 맵${m} 구역 노드 ${leaks.length}개 도달 — 예 ${leaks.slice(0,4).map(n=>`${where(n)} hop ${d[n.id]}`).join(', ')}`);
+  });
+
+  items.sort((a,b)=>((a.level||9)-(b.level||9)) || (a.hop-b.hop) || (a.kind===b.kind?0:(a.kind==='게이트'?-1:1)));
+  return { items, warns, notes, bad };
+}
+function escHtml(s) { return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function updateStairs() {
+  const out=document.getElementById('stairs-out'); if (!out) return;
+  const r=computeStairs();
+  document.getElementById('tab-btn-stairs').textContent = r.warns.length ? `계단 확인 (⚠${r.warns.length})` : '계단 확인';
+  if (!document.getElementById('tab-stairs').classList.contains('visible')) return;
+  let h='';
+  if (!r.warns.length) h+='<div class="stairs-ok">경고 없음</div>';
+  r.warns.forEach(w=>h+=`<div class="stairs-warn">⚠ ${escHtml(w)}</div>`);
+  r.notes.forEach(w=>h+=`<div class="stairs-note">· ${escHtml(w)}</div>`);
+  h+='<table class="stairs-table"><tr><th>종류</th><th>이름</th><th>티어</th><th>hop</th><th>구역</th><th>좌표</th></tr>';
+  r.items.forEach(it=>{
+    const zc=it.zone?TIER_COLORS[it.zone]:'#556';
+    const tc=it.level?TIER_COLORS[it.level]:'#889';
+    h+=`<tr class="${r.bad.has(it)?'bad':''}"><td>${it.kind}</td><td>${escHtml(it.name)}</td>`+
+       `<td style="color:${tc}">${escHtml(it.tierText)}</td><td>${it.hop===Infinity?'∞':it.hop}</td>`+
+       `<td style="color:${zc}">${it.zone?'맵'+it.zone:'—'}</td><td>${it.n.gridX},${it.n.gridY}</td></tr>`;
+  });
+  h+='</table>';
+  out.innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════
+function resize() {
+  const w=document.getElementById('canvas-wrap');
+  canvas.width=w.clientWidth; canvas.height=w.clientHeight; redraw();
+}
+window.addEventListener('resize',resize);
+buildPalette();
+if (!loadLocal()) { nodes={}; edges=new Set(); idSeq=0; initFixedNodes(); }
+setZoneBrush(zoneBrush);
+resize();
+updateCount();
+</script>
+</body>
+</html>

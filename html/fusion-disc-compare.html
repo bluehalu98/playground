@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>합성 디스크 — 기계 장치 방향 3안 (P5 v2)</title>
+<style>
+:root{--bg:#0b1016;--panel:#111823;--line:#1e2937;--txt:#e6ecf3;--dim:#8b95a3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:24px 28px 60px}
+h1{font-size:19px;margin:0 0 6px}
+h2{font-size:14px;margin:24px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;max-width:1060px;margin:6px 0 12px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.card{background:#0a0f15;border:1px solid var(--line);border-radius:12px;padding:14px}
+.cap{font-size:12px;color:var(--dim);text-align:center;margin-top:8px;max-width:240px;line-height:1.6}
+.cap b{color:#57d1b8}
+.d220{width:220px;height:220px}
+.d440{width:440px;height:440px}
+svg{display:block;width:100%;height:100%}
+.pick{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+.pick button{background:#16202c;border:1px solid var(--line);color:var(--txt);border-radius:8px;
+  padding:6px 12px;font-size:12px;font-family:inherit;cursor:pointer}
+.pick button.on{border-color:#57d1b8;color:#57d1b8}
+</style>
+</head>
+<body>
+
+<h1>합성 디스크 — <b class="hi">기계 장치</b> 방향 3안</h1>
+<p class="note">
+  owner 2026-09-05: <i>"기계 장치같은 느낌이 안드냐"</i> — 초판(P5 v1)은 <b class="hi">눈금 링 + 발광 원반</b>이라
+  기계보다 <b class="hi">마법진</b>에 가까웠다. 이 게임의 아트 세계관은 <b class="hi">PC 부품</b>이므로
+  (장비 아트 = 실물 GPU·SSD·파워) 디스크도 <b class="hi">기어·볼트·판</b> 어휘로 가는 게 맞다.<br>
+  색은 런타임 틴트 전제(회색으로 굽는다)라 여기서는 <b class="hi">실제 화면 색</b>(idle 금색 <code>#C9A227</code>)을 곱해 보여준다.
+  왼쪽 큰 것이 <b class="hi">실제 화면 크기(약 220px)</b>이고 오른쪽이 2배 확대다.
+</p>
+
+<div class="pick" id="pickTint"></div>
+
+<h2>비교</h2>
+<div class="row" id="row"></div>
+
+<script>
+const G = (v) => { const c = Math.round(v * 255); return [c, c, c]; };
+let TINT = '#C9A227';   // idle 금색 토큰(kChestNodeTint) — 실제 화면 색
+
+function fill(gray, alpha = 1) {
+  const n = parseInt(TINT.slice(1), 16);
+  const [R, Gc, B] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const [g] = G(gray);
+  const k = g / 255;
+  return `rgba(${Math.round(R * k)},${Math.round(Gc * k)},${Math.round(B * k)},${alpha})`;
+}
+
+// ── 부품 헬퍼 ──────────────────────────────────────────────────────
+// 사다리꼴 기어 이빨 — 바깥이 넓고 안쪽이 좁다(진짜 기어와 반대로 하면 톱니로 안 읽힌다).
+function gearTeeth(count, rOuter, rInner, widthDeg, gray) {
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const a0 = (i * 360) / count - widthDeg / 2;
+    const a1 = (i * 360) / count + widthDeg / 2;
+    const p = (r, deg) => {
+      const rad = (deg - 90) * Math.PI / 180;
+      return `${(50 + Math.cos(rad) * r).toFixed(2)} ${(50 + Math.sin(rad) * r).toFixed(2)}`;
+    };
+    const nar = widthDeg * 0.62;
+    out += `<path d="M${p(rInner, a0)} L${p(rOuter, (a0 + a1) / 2 - nar / 2)}
+             L${p(rOuter, (a0 + a1) / 2 + nar / 2)} L${p(rInner, a1)} Z" fill="${fill(gray)}"/>`;
+  }
+  return out;
+}
+// 볼트 머리 — 원 + 일자 홈. 기계 느낌의 핵심 신호다.
+function bolt(cx, cy, r, gray) {
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill(gray)}"/>
+          <circle cx="${cx - r * 0.18}" cy="${cy - r * 0.18}" r="${r * 0.72}" fill="${fill(gray + 0.18)}"/>
+          <rect x="${cx - r * 0.55}" y="${cy - r * 0.13}" width="${r * 1.1}" height="${r * 0.26}"
+                rx="${r * 0.1}" fill="${fill(gray - 0.2)}" transform="rotate(28 ${cx} ${cy})"/>`;
+}
+function boltsAround(count, radius, r, gray, offsetDeg = 0) {
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const a = ((i * 360) / count + offsetDeg - 90) * Math.PI / 180;
+    out += bolt(50 + Math.cos(a) * radius, 50 + Math.sin(a) * radius, r, gray);
+  }
+  return out;
+}
+const ring = (r, w, gray, alpha = 1) =>
+  `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${fill(gray, alpha)}" stroke-width="${w}"/>`;
+const disc = (r, gray, dx = 0, dy = 0) =>
+  `<circle cx="${50 + dx}" cy="${50 + dy}" r="${r}" fill="${fill(gray)}"/>`;
+
+// ── 4안 ───────────────────────────────────────────────────────────
+const VARIANTS = [
+  {
+    key: 'v1', name: 'v1 — 현행(구운 눈금 링)',
+    note: '지금 배선한 것. 눈금 + 발광 원반 = <b>마법진</b>에 가깝다.',
+    svg: () => {
+      let out = disc(46, 0.55) + disc(40, 0.68, -0.9, -0.7) + disc(33, 0.8, -1.8, -1.4);
+      for (let i = 0; i < 28; i++) {
+        out += `<rect x="48.9" y="4" width="2.2" height="12" fill="${fill(1)}"
+                 transform="rotate(${(i * 360) / 28} 50 50)"/>`;
+      }
+      return out;
+    },
+  },
+  {
+    key: 'M1', name: 'M1 — 기어 + 볼트 ★',
+    note: '바깥 <b>기어 이빨 20개</b> · 안쪽 <b>고정 볼트 6개</b> · 중앙 육각 허브. 톱니가 실루엣을 만들어 작은 크기에서도 기계로 읽힌다.',
+    svg: () => gearTeeth(20, 49, 40, 12, 0.72)
+      + ring(40, 3.2, 0.9) + disc(38, 0.45)
+      + ring(30, 1.2, 0.62)
+      + boltsAround(6, 34, 2.6, 0.85)
+      + disc(13, 0.6) + `<path d="M50 39 L59 44.5 L59 55.5 L50 61 L41 55.5 L41 44.5 Z" fill="${fill(0.95)}"/>`,
+  },
+  {
+    key: 'M1b', name: 'M1b — 맞물린 톱니 ★★',
+    note: '쿠키네모 2026-09-05: <b>"합성칸에 톱니바퀴를 덮어서 중첩되는 톱니바퀴 형식"</b>. 중앙 큰 톱니 + '
+      + '재료 슬롯 3칸(<b>-90°·30°·150°</b> · 반지름 0.62R = 코드 상수 그대로)이 각각 <b>작은 톱니</b>가 되어 맞물린다. '
+      + '마름모 홈은 작은 톱니 안에 남는다.',
+    svg: () => {
+      // 큰 톱니 — 슬롯 톱니가 얹히므로 M1 보다 이빨을 줄이고(16) 몸통을 좁힌다.
+      let out = gearTeeth(16, 40, 32, 13, 0.62)
+        + ring(32, 2.4, 0.85) + disc(31, 0.42)
+        + boltsAround(3, 12, 2.2, 0.8, 60)
+        + disc(9, 0.55) + `<path d="M50 43 L56 46.5 L56 53.5 L50 57 L44 53.5 L44 46.5 Z" fill="${fill(0.95)}"/>`;
+
+      // 작은 톱니 3개 — 코드의 `FusionSlotAngles`(-90·30·150) · `DiscSlotRadiusRatio`(0.62) 와 같은 배치.
+      const R = 30.5;
+      const rTeeth = 15;
+      const rBody = 11;
+      for (const deg of [-90, 30, 150]) {
+        const rad = deg * Math.PI / 180;
+        const cx = 50 + Math.cos(rad) * R;
+        const cy = 50 + Math.sin(rad) * R;
+        const g = gearTeeth(9, rTeeth, rBody, 20, 0.78)
+          + `<circle cx="50" cy="50" r="${rBody}" fill="${fill(0.5)}"/>`
+          + `<circle cx="50" cy="50" r="${rBody}" fill="none" stroke="${fill(0.9)}" stroke-width="1.6"/>`
+          + `<path d="M50 ${50 - rBody * 0.62} L${50 + rBody * 0.62} 50 L50 ${50 + rBody * 0.62} L${50 - rBody * 0.62} 50 Z"
+               fill="${fill(0.34)}" stroke="${fill(0.95)}" stroke-width="1.1"/>`;
+        out += `<g transform="translate(${(cx - 50).toFixed(2)} ${(cy - 50).toFixed(2)}) rotate(${(deg + 12).toFixed(1)} 50 50)">${g}</g>`;
+      }
+      return out;
+    },
+  },
+  {
+    key: 'M2', name: 'M2 — 계기판 베젤',
+    note: '두꺼운 <b>베젤 링</b> + 눈금(긴 4 · 짧은 20) + <b>모서리 나사 4개</b> + 안쪽 함몰 판. 계측기 느낌.',
+    svg: () => {
+      let out = ring(47, 5, 0.78) + ring(43, 1.4, 0.5) + disc(41, 0.4);
+      for (let i = 0; i < 24; i++) {
+        const major = i % 6 === 0;
+        out += `<rect x="${major ? 48.6 : 49.2}" y="${major ? 7 : 8.5}" width="${major ? 2.8 : 1.6}"
+                 height="${major ? 8 : 4.5}" fill="${fill(major ? 1 : 0.7)}"
+                 transform="rotate(${(i * 360) / 24} 50 50)"/>`;
+      }
+      out += boltsAround(4, 45.5, 3, 0.9, 45);
+      out += disc(26, 0.52, -1, -0.8) + ring(26, 1, 0.8);
+      return out;
+    },
+  },
+  {
+    key: 'M3', name: 'M3 — 터빈 블레이드',
+    note: '기울어진 <b>블레이드 12장</b> + 중앙 허브 + 볼트. 회전이 붙으면 가장 살아나지만 정지 컷에서는 덜 읽힌다.',
+    svg: () => {
+      let out = disc(48, 0.42) + ring(48, 2.2, 0.75);
+      for (let i = 0; i < 12; i++) {
+        out += `<path d="M50 12 Q 62 26 56 44 L50 40 Q 54 26 50 12 Z" fill="${fill(0.85)}"
+                 transform="rotate(${(i * 360) / 12} 50 50)"/>`;
+      }
+      out += disc(15, 0.6) + ring(15, 1.6, 0.95) + bolt(50, 50, 5, 0.9);
+      return out;
+    },
+  },
+];
+
+const wrap = (inner) => `<svg viewBox="0 0 100 100">${inner}</svg>`;
+
+function render() {
+  document.getElementById('row').innerHTML = VARIANTS.map(v => `
+    <div class="card">
+      <div class="d220">${wrap(v.svg())}</div>
+      <div class="cap"><b>${v.name}</b><br>${v.note}</div>
+    </div>`).join('')
+    + `<div class="card"><div class="d440">${wrap(VARIANTS[1].svg())}</div>
+       <div class="cap">M1 2배 확대</div></div>`;
+}
+
+const TINTS = [['idle 금색 #C9A227', '#C9A227'], ['Epic 보라', '#a855f7'], ['Rare 파랑', '#3b82f6'], ['중립 청록', '#57d1b8']];
+document.getElementById('pickTint').innerHTML = TINTS
+  .map(([n, hex]) => `<button data-hex="${hex}" class="${hex === TINT ? 'on' : ''}">${n}</button>`).join('');
+document.querySelectorAll('#pickTint button').forEach(b => b.onclick = () => {
+  TINT = b.dataset.hex;
+  document.querySelectorAll('#pickTint button').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Transaction — Skill Prototype</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #060b14;
+  color: #c8d0e0;
+  font-family: 'Courier New', monospace;
+  padding: 32px;
+  user-select: none;
+}
+h1 { font-size:13px; letter-spacing:3px; color:#A78BFA; text-transform:uppercase; margin-bottom:4px; }
+.desc { font-size:10px; color:#2a3a5a; letter-spacing:1px; margin-bottom:28px; }
+
+/* ── LAYOUT ── */
+.scene-wrap { display:flex; gap:32px; align-items:flex-start; margin-left:20px; }
+.field {
+  width:520px; height:340px;
+  background:#0b1218;
+  border:1px solid #1a3a5a;
+  position:relative; overflow:visible; flex-shrink:0;
+}
+.field-label { position:absolute; top:6px; left:10px; font-size:8px; color:#1a3a5a; letter-spacing:2px; text-transform:uppercase; pointer-events:none; }
+
+/* SVG layer */
+.arc-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+
+/* ── NODES ── */
+.node { position:absolute; width:36px; height:36px; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); }
+.node-body {
+  position:absolute; width:34px; height:34px;
+  border-radius:var(--radius,6px);
+  background:var(--bg); border:2px solid var(--col);
+  box-shadow:0 0 6px var(--glow);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:bold; color:var(--col);
+  text-shadow:0 0 5px var(--glow);
+}
+.node-ring { position:absolute; width:38px; height:38px; border-radius:50%; border:1px solid var(--col); opacity:0.12; animation:node-idle 2.4s ease-in-out infinite; animation-delay:var(--delay,0s); }
+@keyframes node-idle { 0%,100%{opacity:.12;transform:scale(1)}50%{opacity:.24;transform:scale(1.1)} }
+
+/* ── TX ANCHOR ── */
+.tx-anchor { position:absolute; left:260px; top:170px; width:20px; height:20px; transform:translate(-50%,-50%); pointer-events:none; z-index:5; }
+.tx-anchor-core { width:8px; height:8px; border-radius:50%; background:#A78BFA; box-shadow:0 0 6px rgba(167,139,250,.6); position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
+.tx-anchor-ring { position:absolute; inset:0; border-radius:50%; border:1px solid #A78BFA; opacity:.3; animation:node-idle 2s ease-in-out infinite; }
+
+/* ── RANGE CIRCLE ── */
+.range-circle { position:absolute; border-radius:50%; border:1px dashed rgba(167,139,250,.2); pointer-events:none; transform:translate(-50%,-50%); display:none; }
+
+/* ── GRID RING (L-bracket targeting) ── */
+.grid-ring { position:absolute; transform:translate(-50%,-50%); pointer-events:none; z-index:6; opacity:0; }
+.grid-ring .corner { position:absolute; width:10px; height:10px; border-color:#A78BFA; border-style:solid; box-shadow:0 0 4px rgba(167,139,250,.5); }
+.grid-ring .corner.tl { top:0; left:0; border-width:2px 0 0 2px; }
+.grid-ring .corner.tr { top:0; right:0; border-width:2px 2px 0 0; }
+.grid-ring .corner.bl { bottom:0; left:0; border-width:0 0 2px 2px; }
+.grid-ring .corner.br { bottom:0; right:0; border-width:0 2px 2px 0; }
+.grid-ring .center-cross::before,
+.grid-ring .center-cross::after { content:''; position:absolute; background:rgba(167,139,250,.3); }
+.grid-ring .center-cross::before { width:14px; height:1px; top:50%; left:50%; transform:translate(-50%,-50%); }
+.grid-ring .center-cross::after  { width:1px; height:14px; top:50%; left:50%; transform:translate(-50%,-50%); }
+@keyframes grid-ring-in { 0%{opacity:0;transform:translate(-50%,-50%) scale(1.7) rotate(18deg)} 60%{opacity:1;transform:translate(-50%,-50%) scale(.96) rotate(-2deg)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0deg)} }
+@keyframes grid-ring-spin { from{transform:translate(-50%,-50%) rotate(0deg)} to{transform:translate(-50%,-50%) rotate(360deg)} }
+
+/* ── PROCESSING TEXT ── */
+.proc-text { position:absolute; font-size:7px; letter-spacing:1px; color:#A78BFA; top:-18px; left:50%; transform:translateX(-50%); pointer-events:none; opacity:0; white-space:nowrap; z-index:10; text-shadow:0 0 4px rgba(167,139,250,.5); transition:opacity .15s; }
+
+/* ── TICK GLITCH ── */
+@keyframes tx-glitch {
+  0%   { filter:brightness(1); transform:translate(0,0) skewX(0deg); box-shadow:0 0 6px var(--glow); }
+  12%  { filter:brightness(4) saturate(0) hue-rotate(150deg); transform:translate(-2px,0) skewX(-3deg); box-shadow:3px 0 0 #FF6B6B, -1px 0 0 #A78BFA, 0 0 14px #FF6B6B; }
+  25%  { filter:brightness(2) saturate(0); transform:translate(2px,0) skewX(2deg); }
+  45%  { filter:brightness(1.5); transform:translate(-1px,0); }
+  100% { filter:brightness(1); transform:translate(0,0) skewX(0deg); box-shadow:0 0 6px var(--glow); }
+}
+.node-body.glitching { animation:tx-glitch .32s ease-out forwards; }
+
+/* ── SCAN SWEEP ── */
+.scan-sweep { position:absolute; top:0; width:70px; height:100%; background:linear-gradient(to right, transparent, rgba(167,139,250,.3) 50%, transparent); pointer-events:none; z-index:8; }
+@keyframes sweep-anim { from{left:-70px} to{left:590px} }
+
+/* ── DATA FLOW (CSS in SVG) ── */
+@keyframes data-flow-fwd { from{stroke-dashoffset:20} to{stroke-dashoffset:0} }
+@keyframes data-flow-rev { from{stroke-dashoffset:0}  to{stroke-dashoffset:20} }
+
+/* ── COMMIT TEXT ── */
+@keyframes commit-popup { 0%{opacity:0;transform:translateX(-50%) translateY(5px)} 25%{opacity:1;transform:translateX(-50%) translateY(0)} 70%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(-10px)} }
+.commit-text { position:absolute; font-size:8px; letter-spacing:1px; color:#34D399; text-shadow:0 0 6px #34D399; top:-20px; left:50%; pointer-events:none; white-space:nowrap; z-index:10; animation:commit-popup 1.1s ease-out forwards; }
+
+/* ── WARNING GRID ── */
+.warning-grid {
+  position:absolute; inset:0; pointer-events:none; z-index:20; opacity:0;
+  background-image:
+    repeating-linear-gradient(0deg,   rgba(255,107,107,.15) 0,rgba(255,107,107,.15) 1px, transparent 1px, transparent 22px),
+    repeating-linear-gradient(90deg, rgba(255,107,107,.15) 0,rgba(255,107,107,.15) 1px, transparent 1px, transparent 22px);
+}
+@keyframes warn-flash { 0%,100%{opacity:0} 20%,60%{opacity:1} 40%,80%{opacity:.3} }
+
+/* ── CRITICAL ERROR OVERLAY ── */
+.error-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; pointer-events:none; z-index:50; }
+.error-line    { font-size:22px; letter-spacing:5px; color:#FF6B6B; text-shadow:0 0 20px rgba(255,107,107,.9), 0 0 40px rgba(255,107,107,.4); text-transform:uppercase; opacity:0; }
+.rollback-line { font-size:12px; letter-spacing:8px; color:#FBB03B; text-shadow:0 0 14px rgba(251,176,59,.8); text-transform:uppercase; opacity:0; }
+@keyframes error-slam {
+  0%   { opacity:0; transform:scale(1.7) skewX(-4deg); filter:blur(4px); }
+  15%  { opacity:1; transform:scale(1) skewX(1deg); filter:blur(0); }
+  60%  { opacity:1; transform:scale(1); }
+  72%  { transform:scale(1.03) skewX(-3deg) translateX(-3px); filter:brightness(3) saturate(0); }
+  84%  { transform:scale(.97) skewX(4deg) translateX(3px); opacity:.5; letter-spacing:10px; }
+  100% { opacity:0; transform:scale(1.1); letter-spacing:16px; filter:blur(5px); }
+}
+
+/* ── ROLLBACK PIXELS ── */
+@keyframes pixel-explode { 0%{opacity:1;transform:translate(0,0) scale(1) rotate(0deg)} 100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(.2) rotate(var(--rot))} }
+.rb-pixel { position:absolute; pointer-events:none; animation:pixel-explode .65s ease-out forwards; }
+
+/* ── DIGITAL NOISE RESIDUE ── */
+@keyframes noise-static {
+  0%{background-position:0 0}10%{background-position:3px 5px}20%{background-position:-4px -3px}
+  30%{background-position:5px -4px}40%{background-position:-2px 6px}50%{background-position:4px -5px}
+  60%{background-position:-5px 2px}70%{background-position:3px 4px}80%{background-position:-3px -2px}
+  90%{background-position:2px 5px}100%{background-position:0 0}
+}
+.noise-residue {
+  position:absolute; border-radius:4px; pointer-events:none; transition:opacity 1.4s ease-out;
+  background-image:
+    repeating-linear-gradient(0deg,   transparent,transparent 1px,rgba(167,139,250,.25) 1px,rgba(167,139,250,.25) 2px),
+    repeating-linear-gradient(90deg, transparent,transparent 1px,rgba(167,139,250,.25) 1px,rgba(167,139,250,.25) 2px);
+  background-size:3px 3px;
+  animation:noise-static .05s steps(1) infinite;
+}
+
+/* ── CONTROLS ── */
+.panel { width:200px; flex-shrink:0; }
+.panel-section { margin-bottom:20px; }
+.panel-title { font-size:9px; letter-spacing:2px; color:#2a4a6a; text-transform:uppercase; margin-bottom:10px; border-bottom:1px solid #0e1a28; padding-bottom:6px; }
+.ctrl-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px; }
+.ctrl-label { font-size:10px; color:#4a7a9a; letter-spacing:1px; min-width:60px; }
+.ctrl-val { font-size:10px; color:#A78BFA; min-width:36px; text-align:right; }
+.cooldown-bar-bg { width:100%; height:4px; background:#0e1a28; border:1px solid #1a3a5a; border-radius:2px; overflow:hidden; margin-top:6px; }
+.cooldown-bar-fill { height:100%; background:#A78BFA; box-shadow:0 0 6px rgba(167,139,250,.6); width:0%; transition:width .1s linear; }
+input[type=range] { -webkit-appearance:none; width:100%; height:3px; background:#1a3a5a; border-radius:2px; outline:none; cursor:pointer; margin-top:4px; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:#A78BFA; box-shadow:0 0 4px rgba(167,139,250,.7); cursor:pointer; }
+.toggle-btn { background:#0e1a28; border:1px solid #1a3a5a; color:#4a7a9a; padding:3px 10px; font-family:'Courier New',monospace; font-size:9px; letter-spacing:1px; cursor:pointer; text-transform:uppercase; min-width:52px; text-align:center; }
+.toggle-btn.on { border-color:#A78BFA; color:#A78BFA; box-shadow:0 0 6px rgba(167,139,250,.25); }
+.toggle-btn:hover { background:#1a2a3a; }
+.fire-btn { width:100%; padding:8px; background:#160f2a; border:1px solid #A78BFA; color:#A78BFA; font-family:'Courier New',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; box-shadow:0 0 8px rgba(167,139,250,.2); margin-top:4px; }
+.fire-btn:hover { background:#1e1440; box-shadow:0 0 14px rgba(167,139,250,.4); }
+.fire-btn:disabled { opacity:.3; cursor:default; box-shadow:none; }
+.stat-row { display:flex; justify-content:space-between; font-size:10px; margin-bottom:6px; }
+.stat-key { color:#2a4a6a; }
+.stat-val { color:#c8d0e0; }
+.stat-val.highlight { color:#A78BFA; }
+.phase-indicator { font-size:9px; color:#A78BFA; letter-spacing:2px; text-transform:uppercase; opacity:0; transition:opacity .2s; margin-top:8px; height:12px; }
+.phase-indicator.visible { opacity:1; }
+
+/* ── CONCEPT PANEL ── */
+.concept-panel { width:220px; flex-shrink:0; border-left:1px solid #0e1a28; padding-left:24px; }
+.concept-title { font-size:9px; letter-spacing:3px; color:#A78BFA; text-transform:uppercase; margin-bottom:16px; padding-bottom:6px; border-bottom:1px solid #0e1a28; }
+.concept-block { margin-bottom:18px; }
+.concept-block-title { font-size:8px; letter-spacing:2px; color:#3a2a6a; text-transform:uppercase; margin-bottom:8px; }
+.concept-item { display:flex; gap:8px; margin-bottom:5px; font-size:9px; line-height:1.5; color:#4a4a7a; }
+.concept-item::before { content:'·'; color:#A78BFA; flex-shrink:0; }
+.concept-item strong { color:#8a80c0; font-weight:normal; }
+.concept-tag { display:inline-block; font-size:8px; padding:1px 6px; border:1px solid #2a1a5a; color:#3a2a6a; letter-spacing:1px; margin-bottom:4px; }
+.concept-tag.commit { border-color:#22c55e; color:#22c55e; box-shadow:0 0 4px rgba(34,197,94,.2); }
+.concept-tag.rollback { border-color:#ef4444; color:#ef4444; box-shadow:0 0 4px rgba(239,68,68,.2); }
+.concept-tag.awaken { border-color:#A78BFA; color:#A78BFA; box-shadow:0 0 4px rgba(167,139,250,.2); }
+</style>
+</head>
+<body>
+
+<h1>▣ Transaction</h1>
+<p class="desc">range-based group bind · mesh data link · commit or rollback explosion</p>
+
+<div class="scene-wrap">
+
+  <div class="field" id="field">
+    <div class="field-label">mining field</div>
+    <div class="range-circle" id="range-circle" style="left:260px;top:170px;"></div>
+    <div class="tx-anchor"><div class="tx-anchor-ring"></div><div class="tx-anchor-core"></div></div>
+    <div class="warning-grid" id="warning-grid"></div>
+    <div class="error-overlay" id="error-overlay">
+      <div class="error-line"    id="err-line-1">CRITICAL ERROR</div>
+      <div class="rollback-line" id="err-line-2">ROLLBACK</div>
+    </div>
+    <svg class="arc-svg" id="arc-svg">
+      <defs>
+        <filter id="tx-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="panel">
+    <div class="panel-section">
+      <div class="panel-title">Cooldown</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">remaining</span>
+        <span class="ctrl-val" id="cd-text">6.0s</span>
+      </div>
+      <div class="cooldown-bar-bg"><div class="cooldown-bar-fill" id="cd-bar"></div></div>
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">total</span>
+        <span class="ctrl-val" id="cd-total-val">6s</span>
+      </div>
+      <input type="range" id="cd-slider" min="2" max="14" value="6" step="1">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Parameters</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">range</span>
+        <span class="ctrl-val" id="range-val">200px</span>
+      </div>
+      <input type="range" id="range-slider" min="80" max="320" value="200" step="10">
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">hold time</span>
+        <span class="ctrl-val" id="hold-val">3.5s</span>
+      </div>
+      <input type="range" id="hold-slider" min="1" max="6" value="3.5" step="0.5">
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">max nodes</span>
+        <span class="ctrl-val" id="maxnodes-val">5</span>
+      </div>
+      <input type="range" id="maxnodes-slider" min="2" max="9" value="5" step="1">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Modes</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">awaken</span>
+        <button class="toggle-btn" id="awaken-btn" onclick="toggleAwaken()">OFF</button>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">debug</span>
+        <button class="toggle-btn" id="debug-btn" onclick="toggleDebug()">OFF</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Stats</div>
+      <div class="stat-row"><span class="stat-key">total fires</span><span class="stat-val" id="stat-fires">0</span></div>
+      <div class="stat-row"><span class="stat-key">total ticks</span><span class="stat-val highlight" id="stat-ticks">0</span></div>
+      <div class="stat-row"><span class="stat-key">last nodes</span><span class="stat-val" id="stat-nodes">—</span></div>
+    </div>
+
+    <button class="fire-btn" id="fire-btn" onclick="manualFire()">▶ FIRE NOW</button>
+    <div class="phase-indicator" id="phase-indicator"></div>
+  </div>
+
+  <!-- ── CONCEPT NOTES ── -->
+  <div class="concept-panel">
+    <div class="concept-title">컨셉 노트</div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">발동</div>
+      <div class="concept-item"><strong>쿨다운 자동 발사</strong></div>
+      <div class="concept-item"><strong>앵커</strong>는 필드 중앙 고정 — 여기서 사거리 방사</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">단계</div>
+      <div class="concept-item"><strong>SCAN</strong> — 스캔 스윕으로 범위 내 노드 탐지</div>
+      <div class="concept-item"><strong>LOCK</strong> — L브라켓 그리드 링이 각 노드에 스냅</div>
+      <div class="concept-item"><strong>CONNECT</strong> — 전체 노드 간 메시 라인 연결 + 데이터 흐름 연출</div>
+      <div class="concept-item"><strong>HOLD</strong> — 500ms 간격 동기화 글리치 틱 + PROCESSING 텍스트 순환</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">결과 A <span class="concept-tag commit">COMMIT</span></div>
+      <div class="concept-item">메시 라인 <strong>페이드 아웃</strong></div>
+      <div class="concept-item">그리드 링 <strong>흡수 소멸</strong> (스케일 0)</div>
+      <div class="concept-item"><strong>COMMITTED</strong> 초록 텍스트 팝업</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">결과 B <span class="concept-tag rollback">ROLLBACK</span></div>
+      <div class="concept-item"><strong>경고 그리드 플래시</strong> — 전장 빨간 오버레이</div>
+      <div class="concept-item"><strong>CRITICAL ERROR / ROLLBACK</strong> 픽셀 텍스트 슬램 — 0.2초 잔상 후 파쇄</div>
+      <div class="concept-item"><strong>픽셀 폭발</strong> — 노드마다 24개 파티클 버스트</div>
+      <div class="concept-item"><strong>디지털 노이즈</strong> 잔재가 각 노드에서 페이드아웃</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">각성 모드 <span class="concept-tag awaken">강제 롤백</span></div>
+      <div class="concept-item">결과를 항상 <strong>ROLLBACK으로 강제</strong> (커밋 확률 무시)</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">유니티 구현 메모</div>
+      <div class="concept-item">그리드 링 → <strong>UI 브라켓</strong> (RectTransform 스케일 애니메이션)</div>
+      <div class="concept-item">메시 → <strong>LineRenderer</strong> 전체 쌍 + UV 스크롤</div>
+      <div class="concept-item">글리치 틱 → <strong>Material Property Block</strong> 색수차 셰이더</div>
+      <div class="concept-item">픽셀 폭발 → <strong>ParticleSystem</strong> 버스트, 정사각 스프라이트</div>
+    </div>
+  </div><!-- /.concept-panel -->
+
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const ANCHOR    = { x: 260, y: 170 };
+const SCAN_MS   = 380;
+const LOCK_MS   = 200;
+const CONN_MS   = 420;
+const TICK_MS   = 500;
+const COMMIT_MS = 700;
+const WARN_MS   = 360;
+const RB_MS     = 900;
+
+const NODES = [
+  { id:'cs',      x: 82,  y: 75,  col:'#66c8fa', bg:'rgba(8,20,40,.9)',   glow:'rgba(100,200,250,.5)', name:'C#',    r:'6px' },
+  { id:'js',      x: 195, y: 55,  col:'#fae248', bg:'rgba(30,24,4,.9)',   glow:'rgba(250,220,70,.5)',  name:'JS',    r:'6px' },
+  { id:'ts',      x: 320, y: 80,  col:'#54a4fa', bg:'rgba(6,14,38,.9)',   glow:'rgba(80,160,250,.5)',  name:'TS',    r:'6px' },
+  { id:'sql',     x: 440, y: 60,  col:'#7ae8cc', bg:'rgba(4,22,22,.9)',   glow:'rgba(100,230,200,.5)', name:'SQL',   r:'6px' },
+  { id:'git',     x: 110, y: 185, col:'#f88a4c', bg:'rgba(30,10,4,.9)',   glow:'rgba(248,138,76,.5)',  name:'Git',   r:'0%'  },
+  { id:'ci',      x: 255, y: 170, col:'#c870f0', bg:'rgba(20,4,30,.9)',   glow:'rgba(200,110,240,.5)', name:'CI',    r:'0%'  },
+  { id:'unity',   x: 400, y: 190, col:'#f27c6e', bg:'rgba(30,6,6,.9)',    glow:'rgba(242,124,110,.5)', name:'Unity', r:'50%' },
+  { id:'react',   x: 155, y: 295, col:'#52eaf2', bg:'rgba(4,22,26,.9)',   glow:'rgba(80,235,242,.5)',  name:'React', r:'50%' },
+  { id:'pattern', x: 300, y: 280, col:'#eebe54', bg:'rgba(26,18,4,.9)',   glow:'rgba(238,190,80,.5)',  name:'Pat.',  r:'0%'  },
+  { id:'clean',   x: 455, y: 295, col:'#9ee06c', bg:'rgba(8,22,4,.9)',    glow:'rgba(158,224,108,.5)', name:'Clean', r:'0%'  },
+];
+
+// ── STATE ──────────────────────────────────────────────
+let firing      = false;
+let awaken      = false;
+let debugMode   = false;
+let txRange     = 200;
+let holdTime    = 3500;
+let maxNodes    = 5;
+let COOLDOWN_MS = 6000;
+let totalFires  = 0;
+let totalTicks  = 0;
+let cdInterval  = null;
+let cdStart     = 0;
+let activeLines     = [];
+let activeGridRings = {};
+let procTimer       = null;
+
+// ── DOM ──────────────────────────────────────────────
+const field      = document.getElementById('field');
+const arcSvg     = document.getElementById('arc-svg');
+const rangeCircle = document.getElementById('range-circle');
+const cdBar      = document.getElementById('cd-bar');
+const cdText     = document.getElementById('cd-text');
+const fireBtn    = document.getElementById('fire-btn');
+const phaseEl    = document.getElementById('phase-indicator');
+const warnGrid   = document.getElementById('warning-grid');
+const errLine1   = document.getElementById('err-line-1');
+const errLine2   = document.getElementById('err-line-2');
+
+// ── BUILD NODES ──────────────────────────────────────
+NODES.forEach((n, i) => {
+  const el = document.createElement('div');
+  el.className = 'node'; el.id = `node-${n.id}`;
+  el.style.left = n.x + 'px'; el.style.top = n.y + 'px';
+
+  const ring = document.createElement('div');
+  ring.className = 'node-ring';
+  ring.style.setProperty('--col', n.col);
+  ring.style.setProperty('--delay', (i * 0.24) + 's');
+
+  const body = document.createElement('div');
+  body.className = 'node-body';
+  ['--col','--bg','--glow','--radius'].forEach((k,j) => body.style.setProperty(k, [n.col,n.bg,n.glow,n.r][j]));
+  body.textContent = n.name;
+
+  const proc = document.createElement('div');
+  proc.className = 'proc-text'; proc.id = `proc-${n.id}`;
+
+  el.appendChild(ring); el.appendChild(body); el.appendChild(proc);
+  field.appendChild(el);
+});
+
+// ── HELPERS ──────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dist  = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+function setPhase(t) { phaseEl.textContent = t; phaseEl.classList.toggle('visible', !!t); }
+
+// ── RANGE CIRCLE ────────────────────────────────────
+function updateRangeCircle() {
+  rangeCircle.style.width  = txRange * 2 + 'px';
+  rangeCircle.style.height = txRange * 2 + 'px';
+  rangeCircle.style.display = debugMode ? 'block' : 'none';
+}
+
+// ── TARGETS ──────────────────────────────────────────
+function getTargets() {
+  return NODES
+    .filter(n => dist(ANCHOR, n) <= txRange)
+    .sort((a, b) => dist(ANCHOR, a) - dist(ANCHOR, b))
+    .slice(0, maxNodes);
+}
+
+// ── MESH LINE ────────────────────────────────────────
+function createMeshLine(a, b) {
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+  line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+  line.setAttribute('stroke', 'rgba(167,139,250,.55)');
+  line.setAttribute('stroke-width', '1');
+  line.setAttribute('stroke-dasharray', '5 5');
+  line.setAttribute('filter', 'url(#tx-glow)');
+  line.style.opacity = '0';
+  arcSvg.appendChild(line);
+  requestAnimationFrame(() => {
+    line.style.transition = 'opacity .3s ease';
+    line.style.opacity = '1';
+    line.style.animation = (Math.random() < .5 ? 'data-flow-fwd' : 'data-flow-rev') + ' .7s linear infinite';
+  });
+  activeLines.push(line);
+  return line;
+}
+
+// ── GRID RING ────────────────────────────────────────
+function addGridRing(node) {
+  const ring = document.createElement('div');
+  ring.className = 'grid-ring';
+  ring.style.cssText = `left:${node.x}px; top:${node.y}px; width:54px; height:54px;`;
+  ['tl','tr','bl','br'].forEach(c => {
+    const corner = document.createElement('div');
+    corner.className = `corner ${c}`;
+    ring.appendChild(corner);
+  });
+  const cross = document.createElement('div');
+  cross.className = 'center-cross';
+  ring.appendChild(cross);
+  field.appendChild(ring);
+  ring.style.animation = 'grid-ring-in .3s ease-out forwards';
+  setTimeout(() => { ring.style.animation = 'grid-ring-spin 4s linear infinite'; ring.style.opacity = '1'; }, 320);
+  activeGridRings[node.id] = ring;
+}
+
+function removeGridRing(node, mode = 'absorb') {
+  const ring = activeGridRings[node.id];
+  if (!ring) return;
+  ring.style.animation = 'none';
+  if (mode === 'absorb') {
+    ring.style.transition = 'opacity .5s, transform .5s';
+    ring.style.opacity = '0';
+    ring.style.transform = 'translate(-50%,-50%) scale(.2)';
+  } else {
+    ring.style.transition = 'opacity .2s, transform .2s';
+    ring.style.opacity = '0';
+    ring.style.transform = 'translate(-50%,-50%) scale(2.2) rotate(45deg)';
+  }
+  setTimeout(() => ring.remove(), 600);
+  delete activeGridRings[node.id];
+}
+
+// ── PROCESSING TEXT ──────────────────────────────────
+const PROC_MSGS = ['PROCESSING...', 'HOLD...', 'SYNC...', 'LOCKED...', 'WAIT...'];
+let procIdx = 0;
+function startProcTexts(targets) {
+  function cycle() {
+    const msg = PROC_MSGS[procIdx++ % PROC_MSGS.length];
+    targets.forEach(n => {
+      const el = document.getElementById(`proc-${n.id}`);
+      if (el) { el.textContent = msg; el.style.opacity = '.85'; }
+    });
+    procTimer = setTimeout(() => {
+      targets.forEach(n => {
+        const el = document.getElementById(`proc-${n.id}`);
+        if (el) el.style.opacity = '0';
+      });
+      procTimer = setTimeout(cycle, 180);
+    }, 620);
+  }
+  cycle();
+}
+function stopProcTexts(targets) {
+  clearTimeout(procTimer);
+  targets.forEach(n => {
+    const el = document.getElementById(`proc-${n.id}`);
+    if (el) { el.style.opacity = '0'; el.textContent = ''; }
+  });
+}
+
+// ── TICK GLITCH ──────────────────────────────────────
+function doTickGlitch(targets) {
+  totalTicks++;
+  document.getElementById('stat-ticks').textContent = totalTicks;
+  targets.forEach(n => {
+    const body = document.querySelector(`#node-${n.id} .node-body`);
+    if (!body) return;
+    body.classList.remove('glitching');
+    void body.offsetWidth;
+    body.classList.add('glitching');
+    setTimeout(() => body.classList.remove('glitching'), 380);
+  });
+}
+
+// ── SCAN SWEEP ───────────────────────────────────────
+async function doScan() {
+  const sweep = document.createElement('div');
+  sweep.className = 'scan-sweep';
+  sweep.style.left = '-70px';
+  field.appendChild(sweep);
+  sweep.style.animation = `sweep-anim ${SCAN_MS}ms linear forwards`;
+  await sleep(SCAN_MS + 60);
+  sweep.remove();
+}
+
+// ── COMMIT ───────────────────────────────────────────
+async function doCommit(targets) {
+  setPhase('COMMIT');
+  stopProcTexts(targets);
+
+  // Lines fade out (absorb inward feel)
+  activeLines.forEach(l => {
+    l.style.animation = 'none';
+    l.style.transition = `opacity ${COMMIT_MS}ms ease-in, stroke-width ${COMMIT_MS}ms`;
+    l.style.opacity = '0';
+  });
+
+  // COMMITTED popup on each node
+  targets.forEach(n => {
+    const nodeEl = document.getElementById(`node-${n.id}`);
+    if (!nodeEl) return;
+    const txt = document.createElement('div');
+    txt.className = 'commit-text';
+    txt.textContent = 'COMMITTED';
+    nodeEl.appendChild(txt);
+    setTimeout(() => txt.remove(), 1200);
+  });
+
+  // Grid rings shrink inward
+  targets.forEach(n => removeGridRing(n, 'absorb'));
+
+  await sleep(COMMIT_MS + 150);
+  activeLines.forEach(l => l.remove());
+  activeLines = [];
+}
+
+// ── ROLLBACK ─────────────────────────────────────────
+async function doRollback(targets) {
+  stopProcTexts(targets);
+  setPhase('ROLLBACK!');
+
+  // 1. Warning grid flash
+  warnGrid.style.animation = `warn-flash ${WARN_MS}ms ease-out forwards`;
+  await sleep(WARN_MS + 50);
+  warnGrid.style.animation = 'none';
+
+  // 2. CRITICAL ERROR text slam
+  errLine1.style.animation = `error-slam ${RB_MS * .85}ms ease-out forwards`;
+  errLine2.style.animation = `error-slam ${RB_MS * .85}ms ease-out .1s forwards`;
+
+  // 3. All nodes explode simultaneously
+  targets.forEach(n => {
+    removeGridRing(n, 'shatter');
+    spawnRbPixels(n.x, n.y);
+    spawnNoiseResidue(n.x, n.y);
+  });
+
+  // Lines snap
+  activeLines.forEach(l => { l.style.animation='none'; l.style.opacity='0'; });
+
+  await sleep(RB_MS);
+
+  // Cleanup
+  errLine1.style.animation = 'none'; errLine1.style.opacity = '0';
+  errLine2.style.animation = 'none'; errLine2.style.opacity = '0';
+  activeLines.forEach(l => l.remove());
+  activeLines = [];
+}
+
+// ── ROLLBACK PIXEL EXPLOSION ─────────────────────────
+function spawnRbPixels(x, y) {
+  const cols = ['#FF6B6B','#FF6B6B','#FBB03B','#A78BFA','#ffffff'];
+  for (let i = 0; i < 24; i++) {
+    const p = document.createElement('div');
+    p.className = 'rb-pixel';
+    const angle = (i / 24) * Math.PI * 2 + (Math.random() - .5) * .5;
+    const d     = 16 + Math.random() * 58;
+    const size  = 2 + Math.floor(Math.random() * 5);
+    const rot   = (Math.random() * 360).toFixed(0);
+    p.style.setProperty('--tx', (Math.cos(angle) * d).toFixed(1) + 'px');
+    p.style.setProperty('--ty', (Math.sin(angle) * d).toFixed(1) + 'px');
+    p.style.setProperty('--rot', rot + 'deg');
+    p.style.cssText += `width:${size}px;height:${size}px;left:${x}px;top:${y}px;margin-left:${-size/2}px;margin-top:${-size/2}px;background:${cols[Math.floor(Math.random()*cols.length)]};box-shadow:0 0 3px #FF6B6B;`;
+    field.appendChild(p);
+    setTimeout(() => p.remove(), 750);
+  }
+}
+
+// ── DIGITAL NOISE RESIDUE ────────────────────────────
+function spawnNoiseResidue(x, y) {
+  const el = document.createElement('div');
+  el.className = 'noise-residue';
+  const sz = 56;
+  el.style.cssText = `width:${sz}px;height:${sz}px;left:${x-sz/2}px;top:${y-sz/2}px;opacity:.75;z-index:15;`;
+  field.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; }, 150);
+  setTimeout(() => el.remove(), 1700);
+}
+
+// ── MAIN FIRE ────────────────────────────────────────
+async function fireTransaction() {
+  if (firing) return;
+  firing = true; fireBtn.disabled = true;
+  totalFires++;
+  document.getElementById('stat-fires').textContent = totalFires;
+
+  // 1. SCAN
+  setPhase('SCANNING');
+  if (debugMode) updateRangeCircle();
+  await doScan();
+
+  const targets = getTargets();
+  if (!targets.length) {
+    setPhase('NO TARGET');
+    await sleep(600);
+    setPhase(''); firing = false; startCooldown(); return;
+  }
+  document.getElementById('stat-nodes').textContent = targets.length;
+
+  // 2. LOCK — grid rings pop in
+  setPhase('LOCKING');
+  for (const n of targets) { addGridRing(n); await sleep(55); }
+  await sleep(LOCK_MS);
+
+  // 3. CONNECT — draw full mesh
+  setPhase('CONNECTING');
+  for (let i = 0; i < targets.length; i++) {
+    for (let j = i + 1; j < targets.length; j++) {
+      createMeshLine(targets[i], targets[j]);
+      await sleep(28);
+    }
+  }
+  await sleep(CONN_MS);
+
+  // 4. HOLD — tick loop
+  setPhase('HOLD');
+  startProcTexts(targets);
+  let elapsed = 0;
+  await new Promise(resolve => {
+    const iv = setInterval(() => {
+      elapsed += TICK_MS;
+      doTickGlitch(targets);
+      if (elapsed >= holdTime) { clearInterval(iv); resolve(); }
+    }, TICK_MS);
+  });
+  stopProcTexts(targets);
+
+  // 5. COMMIT or ROLLBACK
+  if (awaken) await doRollback(targets);
+  else        await doCommit(targets);
+
+  setPhase('');
+  if (debugMode) rangeCircle.style.display = 'none';
+  firing = false;
+  startCooldown();
+}
+
+// ── COOLDOWN ─────────────────────────────────────────
+function startCooldown() {
+  fireBtn.disabled = true;
+  cdStart = Date.now();
+  if (cdInterval) clearInterval(cdInterval);
+  cdInterval = setInterval(() => {
+    const elapsed = Date.now() - cdStart;
+    const pct = Math.min(elapsed / COOLDOWN_MS * 100, 100);
+    const rem = Math.max((COOLDOWN_MS - elapsed) / 1000, 0);
+    cdBar.style.width = pct + '%';
+    cdText.textContent = rem.toFixed(1) + 's';
+    if (elapsed >= COOLDOWN_MS) {
+      clearInterval(cdInterval);
+      cdBar.style.width = '100%'; cdText.textContent = 'READY';
+      fireBtn.disabled = false; fireTransaction();
+    }
+  }, 50);
+}
+
+function manualFire() {
+  if (firing) return;
+  if (cdInterval) clearInterval(cdInterval);
+  cdBar.style.width = '100%'; cdText.textContent = 'READY';
+  fireTransaction();
+}
+
+// ── CONTROLS ─────────────────────────────────────────
+document.getElementById('range-slider').addEventListener('input', e => {
+  txRange = +e.target.value;
+  document.getElementById('range-val').textContent = txRange + 'px';
+  if (debugMode) updateRangeCircle();
+});
+document.getElementById('hold-slider').addEventListener('input', e => {
+  holdTime = +e.target.value * 1000;
+  document.getElementById('hold-val').textContent = e.target.value + 's';
+});
+document.getElementById('maxnodes-slider').addEventListener('input', e => {
+  maxNodes = +e.target.value;
+  document.getElementById('maxnodes-val').textContent = maxNodes;
+});
+document.getElementById('cd-slider').addEventListener('input', e => {
+  COOLDOWN_MS = +e.target.value * 1000;
+  document.getElementById('cd-total-val').textContent = e.target.value + 's';
+});
+function toggleAwaken() {
+  awaken = !awaken;
+  const btn = document.getElementById('awaken-btn');
+  btn.textContent = awaken ? 'ON' : 'OFF';
+  btn.classList.toggle('on', awaken);
+}
+function toggleDebug() {
+  debugMode = !debugMode;
+  const btn = document.getElementById('debug-btn');
+  btn.textContent = debugMode ? 'ON' : 'OFF';
+  btn.classList.toggle('on', debugMode);
+  updateRangeCircle();
+}
+
+// ── INIT ──────────────────────────────────────────────
+updateRangeCircle();
+startCooldown();
+</script>
+</body>
+</html>

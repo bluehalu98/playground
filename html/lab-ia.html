@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>연구소 IA — 강화 시스템 정보구조 컨셉</title>
+<style>
+:root{
+  --bg:#0b1218; --panel:#111b24; --border:#c9a227;
+  --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859; --purple:#bf9cfe;
+  --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#64748b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#070c11;color:var(--text);
+  font-family:ui-monospace,"JetBrains Mono",Consolas,monospace;font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:22px;margin:0 0 6px}
+h2{font-size:17px;margin:44px 0 4px;padding-bottom:8px;border-bottom:1px solid #1b2836;color:var(--teal)}
+h3{font-size:14px;margin:0 0 2px}
+.lede{color:var(--muted);margin:0 0 8px}
+.note{background:#0d151d;border-left:3px solid var(--border);padding:10px 14px;margin:14px 0;color:#b6c2d0;font-size:13px}
+.note b{color:var(--gold)}
+.note.warn{border-left-color:var(--red)}
+.note.warn b{color:var(--red)}
+.grid{display:grid;gap:22px;margin-top:18px}
+@media(min-width:900px){.grid.two{grid-template-columns:1fr 1fr}}
+.card{background:#0a1017;border:1px solid #1b2836;border-radius:10px;overflow:hidden}
+.card>header{padding:11px 14px;border-bottom:1px solid #1b2836;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.card>header .tag{font-size:11px;color:var(--muted);white-space:nowrap}
+.card>footer{padding:10px 14px;border-top:1px solid #1b2836;font-size:12px;color:#93a4b5}
+.card>footer b{color:var(--teal)}
+.bad{color:var(--red)} .ok{color:var(--green)} .warn{color:var(--amber)}
+
+/* 16:9 스테이지 — 1cqw = 19.2px @1920 */
+.stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 38%,#12202c 0%,var(--bg) 55%,#070c11 100%);
+  container-type:inline-size;font-size:1.1cqw}
+.circuit{position:absolute;inset:0;opacity:.05;background-image:
+  repeating-linear-gradient(0deg,var(--teal) 0 1px,transparent 1px 40px),
+  repeating-linear-gradient(90deg,var(--teal) 0 1px,transparent 1px 40px)}
+
+/* 공통 크롬 */
+.lab-head{position:absolute;left:2.5%;top:3%;display:flex;align-items:baseline;gap:1.2cqw;z-index:5}
+.lab-title{font-size:2.2cqw;font-weight:800;color:#eaf3f2;letter-spacing:.04em}
+.lab-title span{color:var(--border)}
+.lab-sub{font-size:1cqw;color:var(--muted);letter-spacing:.12em}
+.lab-close{position:absolute;right:2.5%;top:3%;font-size:1.1cqw;color:var(--muted);
+  border:1px solid #2a3a4a;border-radius:4px;padding:.5cqw 1cqw;z-index:5}
+
+/* A안 사이드바 */
+.side{position:absolute;left:2.5%;top:11%;width:20%;height:83%;z-index:4;
+  background:rgba(14,24,34,.72);border:1px solid #1d2c3a;border-radius:8px;padding:1.2cqw .9cqw;
+  display:flex;flex-direction:column;gap:.35cqw}
+.grp{font-size:.92cqw;color:#4a5a6a;letter-spacing:.14em;margin:.9cqw 0 .3cqw .6cqw}
+.grp:first-child{margin-top:0}
+.item{font-size:1.15cqw;color:#b8c6d4;padding:.75cqw .9cqw;border-radius:5px;
+  border:1px solid transparent;display:flex;justify-content:space-between;align-items:center}
+.item.sub{margin-left:1.1cqw;font-size:1.05cqw;color:#8fa2b4}
+.item.on{background:linear-gradient(175deg,#1a2a38,#132030);border-color:var(--teal);color:#eaf6f3}
+.item .bdg{font-size:.85cqw;color:var(--gold)}
+.item .dot{width:.55cqw;aspect-ratio:1;border-radius:50%;background:var(--red)}
+
+/* B안 상단 탭 */
+.tabs{position:absolute;left:2.5%;top:11%;width:95%;height:6.5%;z-index:4;display:flex;gap:.5cqw}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;font-size:1.05cqw;
+  background:rgba(14,24,34,.66);border:1px solid #1d2c3a;border-radius:6px 6px 0 0;color:#9fb0c0}
+.tab.on{background:linear-gradient(175deg,#1a2a38,#132030);border-color:var(--teal);
+  border-bottom-color:transparent;color:#eaf6f3}
+.tab .n{color:var(--border);margin-right:.4cqw}
+/* 평탄 7탭 — 배지를 라벨 옆에 붙인다 */
+.tabs.flat .tab{gap:.5cqw}
+.tabs.flat .tab .bdg{font-size:.85cqw;color:var(--gold)}
+.tabs.flat .tab.on .bdg{color:var(--gold)}
+.tabs.flat.seven .tab{font-size:.98cqw}
+.tabs.flat .tab.sep{margin-left:1.6cqw;position:relative}
+.tabs.flat .tab.sep::before{content:"";position:absolute;left:-.85cqw;top:18%;height:64%;width:1px;background:#2a3a4a}
+.tabs.flat .tab .dot{width:.5cqw;aspect-ratio:1;border-radius:50%;background:var(--red)}
+.subtabs{position:absolute;left:2.5%;top:18.6%;width:95%;height:5%;z-index:4;display:flex;gap:.5cqw}
+.subtab{padding:0 1.6cqw;display:flex;align-items:center;font-size:.98cqw;color:#8fa2b4;
+  background:rgba(10,18,26,.7);border:1px solid #1a2836;border-radius:4px}
+.subtab.on{color:var(--gold);border-color:rgba(201,162,39,.5)}
+
+/* 콘텐츠 영역 */
+.content{position:absolute;z-index:3;background:rgba(9,16,23,.55);
+  border:1px solid #1a2836;border-radius:8px;overflow:hidden}
+.content.a{left:24.5%;top:11%;width:73%;height:83%}
+.content.b{left:2.5%;top:17.5%;width:95%;height:76.5%}
+.content.b.nested{top:24.2%;height:69.8%}
+.ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#3d4c5c;font-size:1.2cqw;letter-spacing:.1em}
+
+/* 스킬트리 스케치 */
+.tree{position:absolute;inset:0}
+.tree svg{width:100%;height:100%}
+.tl{stroke:#2b4a5c;stroke-width:1.2;fill:none}
+.tl.on{stroke:var(--teal);stroke-width:1.8}
+.tn{fill:#16232f;stroke:#2f4759;stroke-width:1.4}
+.tn.on{fill:#16323a;stroke:var(--teal);stroke-width:2}
+.tn.gold{fill:#2a2008;stroke:var(--border);stroke-width:2}
+
+/* 장비/무기 카드 스케치 */
+.cards{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:2%;padding:3%}
+.eq{flex:1;height:64%;border-radius:6px;border:1px solid #26384a;
+  background:linear-gradient(175deg,#16202c,#0e1620);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:.6cqw;font-size:.95cqw;color:#8fa2b4}
+.eq b{font-size:1.1cqw;color:#cfdae6}
+.eq.legend{border-color:var(--border);background:linear-gradient(175deg,#2a2008,#1a1505);color:var(--gold)}
+.kb{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) perspective(900px) rotateX(11deg);
+  width:52%;filter:drop-shadow(0 10px 26px rgba(0,0,0,.6))}
+.kbcap{position:absolute;left:0;right:0;bottom:9%;text-align:center;font-size:1.1cqw;color:#b9c6d3}
+.kbcap b{color:var(--gold)}
+
+/* 통합 개요 (랜딩) */
+.ov{position:absolute;left:2.5%;top:17.5%;width:95%;height:76.5%;z-index:3;
+  display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:1.4cqw}
+.ax{border:1px solid #1d2c3a;border-radius:8px;background:rgba(12,21,30,.66);
+  padding:1.5cqw 1.8cqw;display:flex;flex-direction:column;gap:.7cqw;position:relative}
+.ax .t{display:flex;justify-content:space-between;align-items:baseline}
+.ax .nm{font-size:1.35cqw;color:#dbe6f0;font-weight:700}
+.ax .lv{font-size:1.15cqw;color:var(--gold)}
+.ax .d{font-size:.95cqw;color:var(--muted);line-height:1.5}
+.bar{height:.65cqw;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:auto}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--cyan))}
+.bar.gold i{background:linear-gradient(90deg,#8a6f1e,var(--border))}
+.ax .foot{display:flex;justify-content:space-between;align-items:center;font-size:.9cqw;color:#7c8ea0}
+.ax .go{color:var(--teal)}
+.ax .alert{position:absolute;right:1.4cqw;top:1.4cqw;width:.6cqw;aspect-ratio:1;border-radius:50%;background:var(--red)}
+/* 상시 요약 스트립 */
+.strip{position:absolute;left:2.5%;top:11%;width:95%;height:6.5%;z-index:4;
+  display:flex;align-items:center;gap:2.6cqw;padding:0 1.6cqw;
+  background:rgba(12,21,30,.7);border:1px solid #1d2c3a;border-radius:6px}
+.strip .s{display:flex;align-items:baseline;gap:.6cqw;font-size:.95cqw;color:var(--muted)}
+.strip .s b{font-size:1.2cqw;color:#dbe6f0}
+.strip .s b.g{color:var(--gold)}
+.tabs.under{top:19.5%}
+.content.under{top:26.5%;height:67.5%}
+
+/* 메인 메뉴 딥링크 버튼 */
+.mbtn{position:relative;padding:3.4% 0 3.4% 8%;font-size:1.5cqw;border-radius:5px;
+  background:linear-gradient(175deg,#16202c,#0e1620);border:1px solid #26384a;color:#c9d6e2;
+  display:flex;align-items:center;gap:.8cqw}
+.mbtn.primary{background:linear-gradient(175deg,#2a2008,#1a1505);border-color:#7a6420;color:var(--gold);
+  box-shadow:0 0 16px rgba(201,162,39,.16)}
+.mbtn .dest{font-size:.9cqw;color:#5f7385;border:1px solid #24384a;border-radius:3px;padding:.1cqw .6cqw}
+.mbtn .dest.ind{color:#7a6a8a;border-color:#3a2f4a}
+.mbtn .dot{width:.55cqw;aspect-ratio:1;border-radius:50%;background:var(--red);margin-left:auto;margin-right:1cqw}
+
+/* 현재 구조 다이어그램 */
+.diag{display:grid;gap:10px;margin-top:14px}
+@media(min-width:760px){.diag{grid-template-columns:1fr 1fr}}
+.box{border:1px solid #1b2836;border-radius:8px;padding:12px 14px;background:#0a1017}
+.box h4{margin:0 0 8px;font-size:13px;color:var(--teal)}
+.tree-txt{font-size:12.5px;line-height:1.85;color:#a9b8c6;white-space:pre;overflow-x:auto}
+.tree-txt .r{color:var(--red)} .tree-txt .g{color:var(--green)} .tree-txt .m{color:var(--muted)}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #16222e;vertical-align:top}
+th{color:var(--teal);font-weight:600;white-space:nowrap}
+code{background:var(--panel);padding:1px 5px;border-radius:3px;color:#9fe8d5;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>연구소 IA — 강화 시스템 정보구조 컨셉</h1>
+<p class="lede">owner 지시(2026-08-02): "노드 화면 · 장비 · 장착 무기 · 소켓은 사실 <b>연구소</b>라는 강화 시스템의 하위 탭"</p>
+
+<div class="note">
+<b>이 문서의 성격</b> — 비주얼이 아니라 <b>정보 구조(IA)</b> 컨셉이다.
+배경/레이아웃을 다루는 <code>screen-backgrounds.html</code>과 목적이 다르다.
+색·크기 토큰은 동일하게 쓰되, 여기서 정할 것은 <b>"무엇이 무엇 안에 있는가"</b>와 <b>"몇 단계 깊이인가"</b>뿐이다.
+</div>
+
+<div class="note warn">
+<b>실측</b> — <code>연구소</code>/<code>Laboratory</code>/<code>ResearchLab</code>은 <b>코드·문서·html 어디에도 없다</b>(grep 0건).
+즉 <b>미문서화된 신규 구조</b>이고, 현행 구현은 하위 탭들이 <b>각각 최상위로 흩어져 있다</b>.
+</div>
+
+<!-- ===== 현재 구조 ===== -->
+<h2>0. 현재 구조 vs 의도된 구조</h2>
+
+<div class="diag">
+  <div class="box">
+    <h4>현재 (실측)</h4>
+<div class="tree-txt">메인 메뉴
+├─ <span class="r">노드 화면</span>      → GamePhase.Hub (독립 phase)
+├─ <span class="r">장비 메뉴</span>      → 장비 오버레이
+├─ <span class="r">장착 무기</span>      → 아마먼트 오버레이
+│   ├─ ① 무기 패널
+│   ├─ ② <span class="r">소켓</span> · 젬 인벤토리
+│   ├─ ③ 젬 뽑기
+│   └─ ④ 젬 합성
+├─ 런 시작
+└─ 설정
+<span class="m">※ 도전과제는 허브 HUD에서 별도 진입</span></div>
+  </div>
+  <div class="box">
+    <h4>의도 (owner)</h4>
+<div class="tree-txt">메인 메뉴
+├─ 런 시작
+├─ <span class="g">연구소</span>  ← 강화 시스템 전체
+│   ├─ 노드 화면
+│   ├─ 장비
+│   ├─ 장착 무기
+│   ├─ 소켓
+│   └─ <span class="m">… 젬 뽑기 / 젬 합성 ?</span>
+└─ 설정
+<span class="m">※ 도전과제 → 최상위 독립 (연구소 밖, 확정)</span></div>
+  </div>
+</div>
+
+<div class="note">
+<b>owner 발언에서 읽히는 신호</b> — 나열이 "노드 화면 · 장비 · <b>장착 무기</b> · <b>소켓</b>"이었다.
+소켓은 현재 <b>아마먼트의 ② 탭</b>인데 이를 <b>장착 무기와 나란히</b> 불렀다
+⇒ <b>중첩(2단)이 아니라 평탄(1단)</b>을 생각하고 있을 가능성이 높다. A안이 그 해석이다.
+</div>
+
+<!-- ===== 확정안 ===== -->
+<h2>1. 확정안 · 상단 탭 1단 평탄 <span style="color:var(--gold)">← owner 확정</span></h2>
+
+<div class="note">
+<b>owner 판단(2026-08-02)</b> — "보통 상위에 탭으로 있어야 할 것 같은데? 우리 나머지 UX가 <b>양옆으로 되어있는게 많아서</b>".<br>
+<b>이 근거가 결정적이다.</b> 이 게임의 화면들은 이미 <b>좌우 컬럼을 콘텐츠에 쓰고 있다</b> —
+젬 합성은 좌열(재고)/우열(연출), 허브는 좌우 사이드 패널, 런 HUD도 좌/우 패널이다.
+여기에 <b>내비게이션용 좌측 사이드바를 또 두면 좌측이 "이동"과 "콘텐츠" 두 역할로 경합</b>한다.
+⇒ 내비게이션은 <b>상단</b>으로 올리고 <b>좌우는 콘텐츠에 온전히 내준다.</b>
+</div>
+
+<div class="note">
+<b>owner 확정(2026-08-02) — 연구소는 신규 화면이고, 목적은 "여러 레벨업 요소를 <u>통합해서 보는 것</u>"이다.</b><br>
+이 한 줄이 구조를 바꾼다. 연구소가 <b>단순 탭 컨테이너</b>라면 각 탭은 그냥 기존 화면의 새 주소일 뿐이고
+"통합"이 생기지 않는다. ⇒ 연구소 진입 시 <b>개요(랜딩)</b>를 먼저 보여주고,
+거기서 <b>모든 강화 축의 현재 상태를 한 화면에</b> 깔아준 다음 탭으로 파고들게 한다.
+<b>개요가 곧 "통합으로 본다"의 실체</b>다.
+</div>
+
+<div class="card">
+  <header><h3>연구소 — 개요 (진입 시 기본 화면)</h3><span class="tag">통합 뷰 · 축 4종</span></header>
+  <div class="stage">
+    <div class="circuit"></div>
+    <div class="lab-head"><span class="lab-title">연구<span>소</span></span><span class="lab-sub">RESEARCH LAB</span></div>
+    <div class="lab-close">← 메인 메뉴</div>
+    <div class="tabs flat seven">
+      <div class="tab on">개요</div>
+      <div class="tab">노드 화면<span class="bdg">306</span></div>
+      <div class="tab">무기 패널<span class="bdg">Lv.6</span></div>
+      <div class="tab">소켓 · 젬<span class="bdg">3/4</span></div>
+      <div class="tab sep">장비<span class="dot"></span></div>
+      <div class="tab">젬 뽑기<span class="dot"></span></div>
+      <div class="tab">젬 합성</div>
+    </div>
+    <div class="ov">
+      <div class="ax">
+        <div class="t"><span class="nm">스킬트리</span><span class="lv">142 / 306</span></div>
+        <div class="d">커밋을 써서 노드를 해금한다. 자원·전투·자동화·경제 4계열</div>
+        <div class="bar"><i style="width:46%"></i></div>
+        <div class="foot"><span>해금 가능 노드 <b style="color:var(--gold)">7</b></span><span class="go">노드 화면 →</span></div>
+      </div>
+      <div class="ax">
+        <div class="alert"></div>
+        <div class="t"><span class="nm">장비</span><span class="lv">최고 T4</span></div>
+        <div class="d">가챠로 등급을 올린다. 슬롯 4칸, 시대별 세트</div>
+        <div class="bar gold"><i style="width:62%"></i></div>
+        <div class="foot"><span>미개봉 티켓 <b style="color:var(--gold)">3</b></span><span class="go">장비 →</span></div>
+      </div>
+      <div class="ax">
+        <div class="t"><span class="nm">장착 무기</span><span class="lv">Lv.6 / 8</span></div>
+        <div class="d">해커 키보드 · 레벨업으로 소켓이 하나씩 열린다</div>
+        <div class="bar"><i style="width:75%"></i></div>
+        <div class="foot"><span>소켓 <b style="color:var(--gold)">3 / 4</b> 해금</span><span class="go">무기 · 소켓 →</span></div>
+      </div>
+      <div class="ax">
+        <div class="alert"></div>
+        <div class="t"><span class="nm">젬</span><span class="lv">최고 Epic</span></div>
+        <div class="d">뽑기로 얻고 3개를 합성해 등급을 올린다</div>
+        <div class="bar gold"><i style="width:38%"></i></div>
+        <div class="foot"><span>합성 가능 <b style="color:var(--gold)">2</b>세트</span><span class="go">젬 합성 →</span></div>
+      </div>
+    </div>
+  </div>
+  <footer><b>여기가 "통합"의 실체</b> — 강화 축 4종의 현재 레벨·진행률·<b>지금 할 수 있는 행동</b>
+    (해금 가능 노드 7 · 미개봉 티켓 3 · 합성 가능 2세트)이 한 화면에 있다.
+    빨간 점은 <b>손대지 않은 게 있다</b>는 신호이고, 카드를 누르면 해당 탭으로 바로 간다.<br>
+    <b class="warn">확장</b> — 축이 늘어나면(프레스티지·패시브 등) 카드 그리드는 행만 늘리면 되지만,
+    <b>탭은 8개가 한계</b>다. 축과 탭이 1:1일 필요는 없다는 점이 이 구조의 여유다.</footer>
+</div>
+
+<div class="card">
+  <header><h3>연구소 — 노드 화면 탭 활성</h3><span class="tag">깊이 1 · 상단 7탭</span></header>
+  <div class="stage">
+    <div class="circuit"></div>
+    <div class="lab-head"><span class="lab-title">연구<span>소</span></span><span class="lab-sub">RESEARCH LAB</span></div>
+    <div class="lab-close">← 메인 메뉴</div>
+    <div class="tabs flat seven">
+      <div class="tab">개요</div>
+      <div class="tab on">노드 화면<span class="bdg">306</span></div>
+      <div class="tab">무기 패널<span class="bdg">Lv.6</span></div>
+      <div class="tab">소켓 · 젬<span class="bdg">3/4</span></div>
+      <div class="tab sep">장비<span class="dot"></span></div>
+      <div class="tab">젬 뽑기<span class="dot"></span></div>
+      <div class="tab">젬 합성</div>
+    </div>
+    <div class="content b">
+      <div class="tree">
+        <svg viewBox="0 0 300 170">
+          <path class="tl on" d="M150,150 V120 H100 V96"/><path class="tl on" d="M150,150 V120 H200 V96"/>
+          <path class="tl" d="M100,96 V70 H60 V48"/><path class="tl" d="M100,96 V70 H140 V48"/>
+          <path class="tl" d="M200,96 V70 H240 V48"/><path class="tl" d="M200,96 V70 H170 V48"/>
+          <path class="tl" d="M60,48 V26"/><path class="tl" d="M240,48 V26"/>
+          <circle class="tn gold" cx="150" cy="150" r="9"/>
+          <circle class="tn on" cx="100" cy="96" r="7"/><circle class="tn on" cx="200" cy="96" r="7"/>
+          <circle class="tn" cx="60" cy="48" r="6"/><circle class="tn" cx="140" cy="48" r="6"/>
+          <circle class="tn" cx="170" cy="48" r="6"/><circle class="tn" cx="240" cy="48" r="6"/>
+          <circle class="tn" cx="60" cy="26" r="5"/><circle class="tn" cx="240" cy="26" r="5"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <footer><b>깊이 1 — 어디든 클릭 1번.</b> 좌우가 전부 콘텐츠라 <b>스킬트리 뷰포트가 95%</b>로 넓다.
+    탭마다 <b>배지(노드 잔여 306 · Lv.6 · 소켓 3/4 · 미확인 빨간 점)</b>를 달아 "할 게 남았다"를 한눈에 준다.
+    1920 기준 <b>탭 1개당 약 252px</b>(95% 폭 1824 − gap 6×9.6, ÷7)라 <b>7개까지 여유가 있다</b>.</footer>
+</div>
+
+<div class="card">
+  <header><h3>연구소 — 장비 탭</h3><span class="tag">같은 구조, 탭만 전환</span></header>
+  <div class="stage">
+    <div class="circuit"></div>
+    <div class="lab-head"><span class="lab-title">연구<span>소</span></span><span class="lab-sub">RESEARCH LAB</span></div>
+    <div class="lab-close">← 메인 메뉴</div>
+    <div class="tabs flat seven">
+      <div class="tab">개요</div>
+      <div class="tab">노드 화면<span class="bdg">306</span></div>
+      <div class="tab">무기 패널<span class="bdg">Lv.6</span></div>
+      <div class="tab">소켓 · 젬<span class="bdg">3/4</span></div>
+      <div class="tab on sep">장비<span class="dot"></span></div>
+      <div class="tab">젬 뽑기<span class="dot"></span></div>
+      <div class="tab">젬 합성</div>
+    </div>
+    <div class="content b">
+      <div class="cards">
+        <div class="eq"><b>키캡 세트</b>T2</div>
+        <div class="eq legend"><b>기계식 축</b>T4 · Legendary</div>
+        <div class="eq"><b>손목 받침</b>T1</div>
+        <div class="eq"><b>모니터 암</b>T3</div>
+      </div>
+    </div>
+  </div>
+  <footer>콘텐츠가 <b>좌우 전체</b>를 쓴다 — 기존 화면들의 좌우 컬럼 레이아웃을 그대로 이식할 수 있다</footer>
+</div>
+
+<!-- ===== 딥링크 진입 ===== -->
+<h2>1-b. 메인 메뉴 → 연구소 <b style="color:var(--gold)">딥링크 진입</b></h2>
+
+<div class="note">
+<b>owner 지시(2026-08-02)</b> — "버튼이 2개, 진입하는 큰 메뉴는 한 개, 근데 그 하위 메뉴는 N개 있어서
+<b>각 버튼이 각 대표 성질을 가진 메뉴로 이동</b>하는 UX 정도는 있잖아".<br><br>
+맞는 지적이다. 연구소가 7탭인데 메인 메뉴에 <b>연구소 버튼 하나</b>만 두면,
+매 세션 반복하는 행동(런 직후 노드 해금 / 재화 쌓였을 때 뽑기)이 전부 <b>클릭 2번</b>이 된다.
+⇒ 최상위에 <b>대표 성질별 진입점</b>을 두고 각각 <b>해당 탭으로 바로 착지</b>시킨다.
+<b>화면은 하나(연구소), 문이 여러 개</b>인 구조다.
+</div>
+
+<div class="diag" style="grid-template-columns:1fr">
+  <div class="box">
+    <h4>진입 구조</h4>
+<div class="tree-txt">메인 메뉴
+├─ <span class="g">런 시작</span>                    → 런
+├─ <span class="g">연구소</span>   ─┐               → 연구소 · <b>개요</b> 탭
+├─ <span class="g">뽑기</span>     ─┤ 같은 화면      → 연구소 · <b>젬 뽑기</b> 탭
+│                 │ 다른 착지점
+├─ <span class="g">도전과제</span> ─┘ 아님 (독립)    → 도전과제 <span class="m">(최상위 · 연구소 밖)</span>
+└─ <span class="g">설정</span>
+
+<span class="m">※ 연구소에 들어간 뒤에는 상단 7탭으로 자유 이동 — 딥링크는 "첫 착지점"만 정한다</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <header><h3>메인 메뉴 — 딥링크 버튼</h3><span class="tag">대표 성질 2 + 독립 1</span></header>
+  <div class="stage">
+    <div class="circuit"></div>
+    <div style="position:absolute;left:5.5%;bottom:7%;width:33%;display:flex;flex-direction:column;gap:1.4%;z-index:5">
+      <div style="font-size:6.4cqw;font-weight:800;color:#eaf3f2;letter-spacing:.02em;line-height:1.05;white-space:nowrap">Click to<br><span style="color:var(--border)">Commit</span></div>
+      <div style="font-size:1.15cqw;color:var(--muted);letter-spacing:.18em;margin:.3em 0 5% 0">MINE&nbsp;THE&nbsp;STACK</div>
+      <div class="mbtn primary">런 시작</div>
+      <div class="mbtn">연구소<span class="dest">개요</span></div>
+      <div class="mbtn">뽑기<span class="dest">젬 뽑기</span><span class="dot"></span></div>
+      <div class="mbtn">도전과제<span class="dest ind">독립 화면</span></div>
+      <div class="mbtn">설정</div>
+    </div>
+  </div>
+  <footer><b>연구소</b>와 <b>뽑기</b>는 <b>같은 화면</b>으로 들어가고 <b>착지 탭만 다르다</b>.
+    <b>도전과제</b>는 강화가 아니라 <b>기록</b>이라 연구소 밖 독립 화면이다(owner 확정).<br>
+    <b class="ok">확정</b> — 두 번째 문은 <b>"뽑기" → 젬 뽑기 탭</b>이다(§4 O5).
+    <b>확정 성장 / 확률 성장</b> 축에서 <b>확률 그룹의 머리</b>에 꽂는다 — 노드 해금은 개요 카드의
+    "해금 가능 노드 N"이 이미 유도하지만, 뽑기는 <b>재화가 쌓여야 의미가 생기는 이벤트</b>라
+    최상위 신호(빨간 점)의 값어치가 크다.</footer>
+</div>
+
+<!-- ===== 기각안 ===== -->
+<h2>2. 기각안 (기록용)</h2>
+<p class="lede">왜 이 둘이 아닌지 남겨둔다 — 나중에 같은 논의가 반복되지 않도록.</p>
+
+<div class="grid two">
+  <div class="card">
+    <header><h3>기각 A · 좌측 사이드바</h3><span class="tag">좌측 역할 경합</span></header>
+    <div class="stage">
+      <div class="circuit"></div>
+      <div class="lab-head"><span class="lab-title">연구<span>소</span></span></div>
+      <div class="lab-close">←</div>
+      <div class="side">
+        <div class="grp">진행</div>
+        <div class="item on">노드 화면<span class="bdg">306</span></div>
+        <div class="grp">장비</div>
+        <div class="item">장비<span class="dot"></span></div>
+        <div class="grp">장착 무기</div>
+        <div class="item">무기 패널<span class="bdg">Lv.6</span></div>
+        <div class="item">소켓 · 젬<span class="bdg">3/4</span></div>
+        <div class="item">젬 뽑기<span class="dot"></span></div>
+        <div class="item">젬 합성</div>
+      </div>
+      <div class="content a"><div class="ph">콘텐츠 73%</div></div>
+    </div>
+    <footer><b class="bad">기각 사유</b> — 이 게임은 이미 <b>좌우 컬럼을 콘텐츠에 쓴다</b>(젬 합성 좌열/우열,
+      허브·런 HUD 사이드 패널). 좌측에 내비게이션을 두면 <b>"이동"과 "콘텐츠"가 같은 자리를 놓고 경합</b>한다.
+      콘텐츠 폭도 <b>73%</b>로 줄어 스킬트리가 좁아진다</footer>
+  </div>
+
+  <div class="card">
+    <header><h3>기각 B · 상단 탭 중첩(2단)</h3><span class="tag">탭 줄 2줄 · 클릭 3번</span></header>
+    <div class="stage">
+      <div class="circuit"></div>
+      <div class="lab-head"><span class="lab-title">연구<span>소</span></span></div>
+      <div class="lab-close">←</div>
+      <div class="tabs">
+        <div class="tab"><span class="n">①</span>노드 화면</div>
+        <div class="tab"><span class="n">②</span>장비</div>
+        <div class="tab on"><span class="n">③</span>장착 무기</div>
+      </div>
+      <div class="subtabs">
+        <div class="subtab on">무기 패널</div>
+        <div class="subtab">소켓 · 젬 인벤토리</div>
+        <div class="subtab">젬 뽑기</div>
+        <div class="subtab">젬 합성</div>
+      </div>
+      <div class="content b nested">
+        <img class="kb" src="../Assets/Resources/Sprites/Armament/kb_hacker.png" alt="장착 무기">
+        <div class="kbcap">해커 키보드 · <b>Lv.6</b></div>
+      </div>
+    </div>
+    <footer><b class="bad">문제</b> — 탭 줄이 <b>2줄로 쌓인다</b>. 아마먼트가 이미 4탭을 갖고 있어서
+      연구소 탭 아래에 또 탭이 생긴다. 젬 합성까지 가려면 <b>클릭 3번</b>(연구소 → 장착 무기 → 젬 합성)</footer>
+  </div>
+</div>
+
+<!-- ===== 판단 ===== -->
+<h2>3. 판단</h2>
+
+<table>
+<tr><th>기준</th><th class="ok">확정 · 상단 탭 1단</th><th>기각 A · 사이드바</th><th>기각 B · 상단 탭 2단</th></tr>
+<tr><td>깊이</td><td class="ok">1단 — 클릭 1번</td><td class="ok">1단</td><td class="bad">2단 — 젬 합성까지 클릭 3번</td></tr>
+<tr><td>좌우 공간</td><td class="ok">전부 콘텐츠</td><td class="bad">좌측이 내비와 경합</td><td class="ok">전부 콘텐츠</td></tr>
+<tr><td>콘텐츠 폭</td><td class="ok">95%</td><td class="warn">73%</td><td class="ok">95%</td></tr>
+<tr><td>기존 화면 이식</td><td class="ok">좌우 컬럼 레이아웃 그대로</td><td class="bad">좌열/우열 화면 재배치 필요</td><td class="ok">그대로</td></tr>
+<tr><td>owner 발언 정합</td><td class="ok">"상단 탭" + "소켓 나란히" 둘 다 충족</td><td>평탄은 맞으나 위치가 다름</td><td class="bad">소켓이 한 단계 숨음</td></tr>
+<tr><td>확장성</td><td class="warn">탭 8개 넘으면 재검토</td><td class="ok">스크롤로 흡수</td><td class="warn">동일</td></tr>
+</table>
+
+<div class="note">
+<b>확정 — 상단 탭 1단 평탄(7탭).</b> owner 근거가 결정적이었다:
+이 게임은 <b>좌우 컬럼을 이미 콘텐츠에 쓰고 있어서</b>(젬 합성 좌열/우열, 허브·런 HUD 사이드 패널)
+좌측 내비게이션은 자리를 놓고 경합한다. 상단으로 올리면 <b>좌우를 콘텐츠에 온전히 내주고</b>,
+기존 화면들의 레이아웃을 <b>거의 그대로 이식</b>할 수 있다.<br><br>
+평탄 1단은 owner가 "장착 무기 · <b>소켓</b>"을 나란히 부른 것과도 맞고,
+아마먼트의 기존 4탭이 <b>연구소 탭으로 승격</b>되므로 2단 중첩이 사라진다.<br><br>
+<b class="warn">유일한 한계</b> — 1920 기준 탭 1개당 약 <b>252px</b>이라 <b>7개까지가 편안하고 8개를 넘으면 재검토</b>가 필요하다.
+도전과제를 넣지 않기로 한 기본값(§4 O4)이 이 여유를 지킨다.
+</div>
+
+<!-- ===== 확정 결정 ===== -->
+<h2>4. 확정 결정 <span style="color:var(--green)">— 전건 확정, 착수 차단 없음</span></h2>
+
+<table>
+<tr><th>#</th><th>질문</th><th>확정</th></tr>
+<tr><td><b>O1</b></td><td>연구소는 신규 화면인가?</td><td class="ok"><b>신규 화면.</b> 목적은 "여러 레벨업 요소를 <b>통합해서 보는 것</b>"(owner) ⇒ 개요(랜딩) + 탭 구조. <b><code>GamePhase.Lab</code>을 추가</b>한다(<code>Hub</code> 대체 아님 — 교차 리뷰가 <code>Hub</code> 참조 지점을 전수 확인해 권고)</td></tr>
+<tr><td><b>O2</b></td><td>젬 뽑기 · 젬 합성이 연구소에 들어가는가?</td><td class="ok"><b>들어간다.</b> 젬은 소켓의 재료라 분리하면 강화 동선이 끊긴다</td></tr>
+<tr><td><b>O3</b></td><td>탭 순서</td><td class="ok"><b>개요 │ 노드 화면 · 무기 패널 · 소켓·젬 │ 장비 · 젬 뽑기 · 젬 합성</b> — <b>확정 성장 → 확률 성장</b> 축으로 묶는다</td></tr>
+<tr><td><b>O4</b></td><td>도전과제는 연구소 안인가 밖인가?</td><td class="ok"><b>밖(최상위 독립 화면).</b> 강화가 아니라 <b>기록</b>이라 성격이 다르다. 덤으로 탭이 7개로 유지된다</td></tr>
+<tr><td><b>O5</b></td><td>딥링크 두 번째 문의 착지 탭</td><td class="ok"><b>뽑기 → 젬 뽑기 탭.</b> O3의 축에서 <b>확률 그룹의 머리</b>다. 노드 해금은 개요 카드의 "해금 가능 노드 N"이 이미 유도하지만, 뽑기는 <b>재화가 쌓여야 의미가 생기는 이벤트</b>라 최상위 신호(빨간 점)의 값어치가 크다</td></tr>
+<tr><td><b>L7</b></td><td>런 진행 중에도 연구소에 들어갈 수 있어야 하는가?</td><td class="ok"><b>범위 밖.</b> 교차 리뷰에서 <b>"런 중 강화 접근"이 원래 없었음이 반증</b>됐다 — <code>OpenEquipmentMenu</code>/<code>OpenArmamentMenu</code> 호출부가 둘 다 <code>DrawMainMenu</code> 안이다. 회귀 방지가 아니라 <b>신규 기능 추가</b> 여부라 별도 플랜에서 다룬다</td></tr>
+</table>
+
+<div class="note warn">
+<b>구현 관점 경고 (플랜 작성 시 반드시 반영)</b><br>
+연구소는 <b>비주얼이 아니라 네비게이션·상태 머신 변경</b>이다. 닿는 곳:
+<code>GamePhase</code> 전이 · 오버레이 상호배타 가드 · 입력 차단 조건
+(<code>_isArmamentOpen</code> / <code>_isAchievementsOpen</code>) · 뒤로가기 동선 ·
+연출 중 탭 잠금(<code>_gemFusionActive</code>) · 세이브된 뷰 상태.
+<b>배경 플랜(<code>main-menu-run-background-visual-plan</code>)과 별도 플랜으로 가야 한다.</b>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>젬 장착 — 현재(V1) vs 무기 위 장착 + DnD(V2) 비교</title>
+<!--
+  gem-equip-on-weapon-dnd-plan T0 비교 목업.
+
+  ⚠ 이 파일은 **비교본**이다. 정본(`armament-menu.html` · `ui-prototype.html`)은 건드리지 않는다.
+     owner/요청자가 G1~G4 를 판정하고 나면, 확정된 형태만 구현 후 T4 에서 정본에 반영한다.
+
+  ⚠ 색은 `ui-prototype.html` :root 토큰만 복사해 쓴다 — **신규 색 0**(톤앤매너 하드 제약).
+
+  V2 는 **실제로 드래그가 된다.** 정적 그림으로는 조작감을 판정할 수 없기 때문이다.
+  드래그 임계치·고스트·드롭 히트 판정·거부 사유 문구까지 게임과 같은 규칙으로 재현했다.
+-->
+<style>
+:root {
+  --bg:      #0b1218;
+  --panel:   #111b24;
+  --border:  #c9a227;
+  --teal:    #57d1b8;
+  --cyan:    #52ffce;
+  --gold:    #f5e859;
+  --purple:  #bf9cfe;
+  --red:     #ff6b6b;
+  --amber:   #fbb03b;
+  --green:   #34d399;
+  --text:    #e2e8f0;
+  --muted:   #8c99ad;
+  --surface-card: #0a1017;
+  --surface-raised-a: #16202c;
+  --surface-raised-b: #0e1620;
+  --hairline: #1b2836;
+  --btn-border: #26384a;
+  --bg-deep: #070c11;
+  --text-title: #eaf3f2;
+  --text-num: #cfdae6;
+  --text-caption: #b9c6d3;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px;
+  background: var(--bg-deep); color: var(--text);
+  font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+}
+h1 { font-size: 20px; margin: 0 0 4px; color: var(--text-title); }
+.sub { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+.sub code { color: var(--teal); }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 1180px) { .compare { grid-template-columns: 1fr; } }
+
+.col > h2 {
+  font-size: 14px; margin: 0 0 10px; padding: 7px 12px; border-radius: 8px;
+  background: var(--surface-raised-b); border: 1px solid var(--hairline);
+  color: var(--text-caption); font-weight: 600;
+}
+.col.v1 > h2 { border-left: 3px solid var(--muted); }
+.col.v2 > h2 { border-left: 3px solid var(--teal); color: var(--teal); }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--hairline);
+  border-radius: 12px; padding: 16px; min-height: 620px;
+}
+.label { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
+/* ---------- V1 : 소켓 카드 그리드 ---------- */
+.socket-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.socket-card {
+  background: var(--surface-card); border: 1px solid var(--hairline);
+  border-radius: 10px; padding: 10px; height: 148px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.socket-card .badge { font-size: 10px; color: var(--muted); letter-spacing: .06em; align-self: flex-start; }
+.socket-card.filled { border-color: var(--purple); }
+.socket-card.locked { opacity: .45; }
+.socket-card .cta {
+  margin-top: auto; width: 100%; font-size: 11px; padding: 5px 0; text-align: center;
+  border-radius: 6px; border: 1px solid var(--btn-border); color: var(--text-caption);
+  background: var(--surface-raised-a); cursor: pointer;
+}
+
+/* ---------- V2 : 무기 아트 + 온-아트 소켓 ---------- */
+.weapon-stage {
+  position: relative; margin: 0 auto 14px; width: 100%; max-width: 420px; aspect-ratio: 16 / 7;
+  background: linear-gradient(180deg, var(--surface-raised-a), var(--surface-raised-b));
+  border: 1px solid var(--hairline); border-radius: 12px; overflow: visible;
+}
+.weapon-art {
+  position: absolute; inset: 12% 6%;
+  background: repeating-linear-gradient(90deg, var(--surface-raised-a) 0 7.1%, var(--surface-raised-b) 7.1% 14.2%);
+  border: 1px solid var(--btn-border); border-radius: 8px;
+}
+.weapon-art::after {
+  content: "무기 아트 (kb_*.png)"; position: absolute; left: 50%; bottom: 6px;
+  transform: translateX(-50%); font-size: 10px; color: var(--muted);
+}
+.onart-socket {
+  position: absolute; width: 46px; height: 46px; transform: translate(-50%, -50%);
+  display: grid; place-items: center; cursor: pointer;
+  transition: box-shadow .12s, transform .12s;
+}
+.onart-socket .ring {
+  width: 100%; height: 100%; border-radius: 50%;
+  border: 2px solid var(--border); background: rgba(10,16,23,.82);
+  display: grid; place-items: center;
+}
+.onart-socket[data-shape="square"] .ring { border-radius: 6px; }
+.onart-socket[data-shape="triangle"] .ring { border-radius: 6px; clip-path: polygon(50% 4%, 96% 96%, 4% 96%); }
+.onart-socket[data-shape="pentagon"] .ring { border-radius: 6px; clip-path: polygon(50% 2%, 98% 38%, 80% 96%, 20% 96%, 2% 38%); }
+.onart-socket .gem { width: 20px; height: 20px; border-radius: 50%; }
+.onart-socket .idx {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; color: var(--muted);
+}
+.onart-socket.locked { opacity: .42; cursor: not-allowed; }
+.onart-socket.drop-ok  { box-shadow: 0 0 0 3px rgba(87,209,184,.75), 0 0 16px rgba(87,209,184,.45); transform: translate(-50%,-50%) scale(1.08); }
+.onart-socket.drop-bad { box-shadow: 0 0 0 3px rgba(255,107,107,.7); }
+
+.selected-socket {
+  background: var(--surface-card); border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 14px; font-size: 12px; color: var(--text-caption); min-height: 62px;
+}
+.selected-socket b { color: var(--text-num); }
+
+/* ---------- 공통 : 인벤토리 ---------- */
+.inv-title { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+.inv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.gem-card {
+  background: var(--surface-card); border: 1px solid var(--hairline); border-radius: 8px;
+  padding: 8px 4px; text-align: center; user-select: none;
+}
+.col.v2 .gem-card { cursor: grab; }
+.col.v2 .gem-card:active { cursor: grabbing; }
+.gem-card.dragging { opacity: .32; }
+.gem-card .dot { width: 22px; height: 22px; margin: 0 auto 5px; }
+.gem-card .nm { font-size: 10px; color: var(--text-caption); }
+.gem-card .sh { font-size: 9px; color: var(--muted); }
+
+.shape-circle   { border-radius: 50%; }
+.shape-square   { border-radius: 3px; }
+.shape-triangle { clip-path: polygon(50% 2%, 98% 98%, 2% 98%); }
+.shape-pentagon { clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+
+.status {
+  margin-top: 12px; padding: 8px 12px; border-radius: 8px; font-size: 12px; min-height: 34px;
+  background: var(--surface-raised-b); border: 1px solid var(--hairline); color: var(--text-caption);
+}
+.status.ok  { border-color: var(--green); color: var(--green); }
+.status.bad { border-color: var(--red);   color: var(--red); }
+
+#ghost {
+  position: fixed; pointer-events: none; z-index: 50; display: none;
+  width: 34px; height: 34px; transform: translate(-50%, -50%);
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.65));
+}
+
+.notes { margin-top: 22px; }
+.notes h3 { font-size: 13px; color: var(--text-title); margin: 18px 0 8px; }
+.notes table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.notes th, .notes td { border: 1px solid var(--hairline); padding: 7px 9px; text-align: left; vertical-align: top; }
+.notes th { background: var(--surface-raised-b); color: var(--text-caption); }
+.notes code { color: var(--teal); }
+.gate { border-left: 3px solid var(--amber); padding-left: 10px; margin: 8px 0; }
+.gate b { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<h1>젬 장착 — 현재(V1) vs 무기 위 장착 + 드래그 앤 드롭(V2)</h1>
+<div class="sub">
+  플랜: <code>docs/plans/01-defined/phase-1/gem-equip-on-weapon-dnd-plan.md</code> T0 ·
+  요청: bluehalu(2026-08-19) · <b>오른쪽 V2 는 실제로 드래그된다</b> — 젬을 끌어 소켓에 놓아보세요.
+  <br><b style="color:var(--green)">G1~G4 판정 완료(2026-08-19, 전건 권장안) — V2 가 확정안이다.</b>
+</div>
+
+<div class="compare">
+  <!-- ================= V1 ================= -->
+  <div class="col v1">
+    <h2>현재 (V1) — 상단 소켓 카드 그리드</h2>
+    <div class="panel">
+      <div class="label">소켓 4개 — 잠금/해금 상태 + 장착 젬 (해금 밴드: L1 / L2 / L4 / L6)</div>
+      <div class="socket-grid" id="v1-sockets"></div>
+      <div class="inv-title">보유 젬 인벤토리 (소켓의 "장착" 버튼 → 아래에서 선택)</div>
+      <div class="inv-grid" id="v1-inv"></div>
+      <div class="status" id="v1-status">소켓 카드가 무기와 분리돼 있어 <b>어느 소켓이 무기의 어디인지</b> 화면에서 알 수 없다.</div>
+    </div>
+  </div>
+
+  <!-- ================= V2 ================= -->
+  <div class="col v2">
+    <h2>제안 (V2) — 무기 위 소켓 + 드래그 앤 드롭</h2>
+    <div class="panel">
+      <div class="label">무기 위 소켓을 직접 클릭하거나, 아래 젬을 <b>끌어다 놓으세요</b></div>
+      <div class="weapon-stage" id="v2-stage">
+        <div class="weapon-art"></div>
+      </div>
+      <div class="selected-socket" id="v2-detail">소켓을 클릭하면 여기에 상세가 표시됩니다 — <b>V1 소켓 카드가 들고 있던 정보(해금 밴드·장착 젬 스펙)를 버리지 않고 여기로 옮긴다.</b></div>
+      <div class="inv-title">보유 젬 인벤토리 — 드래그해서 장착 / 클릭 장착도 그대로 유지(G2=a)</div>
+      <div class="inv-grid" id="v2-inv"></div>
+      <div class="status" id="v2-status">드래그 임계치 4px — 짧게 누르면 클릭, 끌면 드래그로 갈린다.</div>
+    </div>
+  </div>
+</div>
+
+<div id="ghost"></div>
+
+<div class="notes">
+  <h3>이 목업이 재현한 규칙 (게임 코드와 같은 것)</h3>
+  <table>
+    <tr><th>규칙</th><th>게임 쪽 근거</th></tr>
+    <tr><td>장착 판정은 <b>한 함수</b>만 본다 — 하이라이트·클릭·드롭이 전부 같은 판정</td><td><code>GetGemEquipBlock()</code> · 표시와 실제가 갈라진 과거 사고(owner Play QA 2026-08-14 E2)의 처방</td></tr>
+    <tr><td>거부 사유 5종을 <b>각각 다른 문구</b>로 띄운다</td><td><code>InvalidSocket</code>/<code>SocketLocked</code>/<code>MissingGem</code>/<code>ShapeMismatch</code>/<code>AlreadySocketed</code> — <code>lab-feedback-and-card-clipping-plan</code> B1</td></tr>
+    <tr><td>모양이 맞아야 장착된다 (원↔원, 사각↔사각 …)</td><td><code>definition.SocketShapes[i] != gem.Shape</code> → <code>ShapeMismatch</code></td></tr>
+    <tr><td>같은 젬은 한 소켓에만</td><td>1젬=1슬롯 불변식 → <code>AlreadySocketed</code></td></tr>
+    <tr><td>소켓 위치는 <b>UV 좌표 데이터</b>다 (아트 크기에 비례)</td><td><code>ArmamentSocketAnchor</code> · <code>fixed-size-layout-breakage-plan</code> G1</td></tr>
+    <tr><td>드래그 임계치 미만은 클릭</td><td>IMGUI 라 수동 — 임계치가 없으면 기존 클릭 장착이 전부 드래그로 잡혀 죽는다</td></tr>
+  </table>
+
+  <h3>게이트 — owner 판정 완료 (2026-08-19)</h3>
+  <p style="color:var(--muted); font-size:12px; margin:0 0 8px;">
+    owner 지시 <i>"127도 판정 반영해서 병합"</i> = <b>G1~G4 전건 권장안 채택</b>.
+    <b>위 V2 데모가 곧 확정안이다</b> — 그래서 이 목업이 그대로 구현 기준이 된다.
+  </p>
+  <div class="gate"><b>G1</b> 무기 표현 → <b style="color:var(--green)">(a) 기존 <code>DrawArmamentWeaponArt</code> 재사용</b> <span style="color:var(--muted)">(탈락: 확대 뷰 신규 · 탭 통합)</span></div>
+  <div class="gate"><b>G2</b> 드래그가 유일한 수단인가 → <b style="color:var(--green)">(a) 클릭 장착 유지 + 드래그는 추가</b> <span style="color:var(--muted)">(탈락: 드래그 전용)</span></div>
+  <div class="gate"><b>G3</b> 모양 불일치 드롭 → <b style="color:var(--green)">(a) 드롭 받고 거부 사유 표시</b> <span style="color:var(--muted)">(탈락: 드롭 자체 차단)</span></div>
+  <div class="gate"><b>G4</b> 드래그 중 인벤토리 스크롤 → <b style="color:var(--green)">(a) 잠금</b> <span style="color:var(--muted)">(탈락: 가장자리 자동 스크롤)</span></div>
+
+  <h3>V2 가 V1 대비 잃는 것 (같이 보셔야 합니다)</h3>
+  <table>
+    <tr><th>잃는 것</th><th>대응</th></tr>
+    <tr><td>소켓 4개의 정보를 <b>한눈에</b> 비교하기 어려워진다(카드 그리드는 전부 펼쳐 보였다)</td><td>선택 소켓 상세 패널로 옮김. 그래도 "동시 비교"는 V1 이 낫다 — 트레이드오프</td></tr>
+    <tr><td>온-아트 소켓은 <b>아트 폭에 비례</b>해 작아진다 — 저해상도·좁은 창에서 드롭이 어려워질 수 있다</td><td>런타임 게이트에 "최소 창 크기에서 드롭 가능한가" 항목으로 넣음(플랜 §5)</td></tr>
+    <tr><td>해금 밴드(L1/L2/L4/L6)가 라벨 한 줄에서 사라진다</td><td>상세 패널 + 잠긴 소켓 툴팁으로 유지 — <b>화면에서 사라지면 안 된다</b>(플랜 T1 수용 기준)</td></tr>
+  </table>
+</div>
+
+<script>
+// ── 데이터 (게임의 소켓 앵커 UV 개념을 그대로 흉내낸다) ───────────────────────
+const SHAPES = ['circle', 'square', 'triangle', 'pentagon'];
+const SHAPE_KR = { circle: '원', square: '네모', triangle: '세모', pentagon: '오각' };
+const GRADE = {
+  Common:    { c: '#8c99ad', kr: '커먼' },
+  Rare:      { c: '#57d1b8', kr: '레어' },
+  Epic:      { c: '#bf9cfe', kr: '에픽' },
+  Legendary: { c: '#f5e859', kr: '레전더리' },
+  Mythic:    { c: '#ff6b6b', kr: '신화' },
+};
+
+// UV = 아트 rect 기준 상대 좌표. 게임의 ArmamentSocketAnchor 와 같은 개념.
+const SOCKETS = [
+  { i: 0, uv: [0.16, 0.34], shape: 'circle',   unlockLv: 1 },
+  { i: 1, uv: [0.38, 0.66], shape: 'square',   unlockLv: 2 },
+  { i: 2, uv: [0.62, 0.34], shape: 'triangle', unlockLv: 4 },
+  { i: 3, uv: [0.84, 0.66], shape: 'pentagon', unlockLv: 6 },
+];
+const WEAPON_LEVEL = 4; // 데모: L4 → 소켓 4번째(L6)는 잠김
+
+const GEMS = [
+  { id: 'g1', grade: 'Mythic',    shape: 'circle' },
+  { id: 'g2', grade: 'Epic',      shape: 'square' },
+  { id: 'g3', grade: 'Rare',      shape: 'triangle' },
+  { id: 'g4', grade: 'Legendary', shape: 'circle' },
+  { id: 'g5', grade: 'Common',    shape: 'pentagon' },
+  { id: 'g6', grade: 'Epic',      shape: 'circle' },
+];
+
+// socketIndex -> gemId
+const equippedV1 = { 0: 'g4' };
+const equippedV2 = { 0: 'g4' };
+
+const socketUnlocked = (s) => WEAPON_LEVEL >= s.unlockLv;
+const gemById = (id) => GEMS.find((g) => g.id === id);
+
+/**
+ * 게임의 GetGemEquipBlock 과 **같은 술어**를 재현한다.
+ * 하이라이트·클릭·드롭이 전부 이 함수 하나만 봐야 한다는 것이 이 목업의 핵심 주장이다.
+ */
+function equipBlock(state, socketIdx, gemId) {
+  const s = SOCKETS[socketIdx];
+  if (!s) return 'InvalidSocket';
+  if (!socketUnlocked(s)) return 'SocketLocked';
+  const gem = gemById(gemId);
+  if (!gem) return 'MissingGem';
+  if (s.shape !== gem.shape) return 'ShapeMismatch';
+  const occupied = Object.keys(state).find((k) => state[k] === gemId && Number(k) !== socketIdx);
+  if (occupied !== undefined) return 'AlreadySocketed';
+  return 'None';
+}
+
+const BLOCK_MSG = {
+  InvalidSocket:   '이 소켓은 존재하지 않습니다.',
+  SocketLocked:    (s) => `이 소켓은 무기 레벨 ${s.unlockLv} 에 해금됩니다.`,
+  MissingGem:      '젬을 찾을 수 없습니다.',
+  ShapeMismatch:   (s, g) => `이 소켓 모양(${SHAPE_KR[s.shape]})과 맞지 않는 젬입니다(${SHAPE_KR[g.shape]}).`,
+  AlreadySocketed: '이 젬은 이미 다른 소켓에 장착돼 있습니다.',
+};
+
+function blockMessage(code, socketIdx, gemId) {
+  const s = SOCKETS[socketIdx], g = gemById(gemId);
+  const m = BLOCK_MSG[code];
+  return typeof m === 'function' ? m(s, g) : m;
+}
+
+function setStatus(el, text, kind) {
+  el.textContent = text;
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function gemDot(gem, cls) {
+  return `<div class="dot shape-${gem.shape} ${cls || ''}" style="background:${GRADE[gem.grade].c}"></div>`;
+}
+
+// ── V1 렌더 ──────────────────────────────────────────────────────────────────
+function renderV1() {
+  document.getElementById('v1-sockets').innerHTML = SOCKETS.map((s) => {
+    const gid = equippedV1[s.i];
+    const gem = gid ? gemById(gid) : null;
+    const locked = !socketUnlocked(s);
+    return `<div class="socket-card ${gem ? 'filled' : ''} ${locked ? 'locked' : ''}">
+      <div class="badge">SOCKET ${s.i + 1}</div>
+      <div class="dot shape-${s.shape}" style="width:34px;height:34px;background:${gem ? GRADE[gem.grade].c : '#1b2836'};border:1px solid ${gem ? GRADE[gem.grade].c : 'var(--btn-border)'}"></div>
+      <div style="font-size:10px;color:var(--muted)">${SHAPE_KR[s.shape]} · L${s.unlockLv}</div>
+      <div style="font-size:10px;color:var(--text-caption)">${gem ? GRADE[gem.grade].kr : locked ? '잠김' : '비어 있음'}</div>
+      <div class="cta">${locked ? '잠김' : gem ? '해제' : '장착'}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('v1-inv').innerHTML = GEMS.map((g) => `
+    <div class="gem-card">
+      ${gemDot(g)}
+      <div class="nm" style="color:${GRADE[g.grade].c}">${GRADE[g.grade].kr}</div>
+      <div class="sh">${SHAPE_KR[g.shape]}</div>
+    </div>`).join('');
+}
+
+// ── V2 렌더 ──────────────────────────────────────────────────────────────────
+let selectedSocket = null;
+
+function renderV2() {
+  const stage = document.getElementById('v2-stage');
+  stage.querySelectorAll('.onart-socket').forEach((n) => n.remove());
+
+  SOCKETS.forEach((s) => {
+    const gid = equippedV2[s.i];
+    const gem = gid ? gemById(gid) : null;
+    const locked = !socketUnlocked(s);
+    const el = document.createElement('div');
+    el.className = 'onart-socket' + (locked ? ' locked' : '');
+    el.dataset.shape = s.shape;
+    el.dataset.idx = String(s.i);
+    // 아트 rect(inset 12% 6%) 안에서의 UV 배치 — 게임과 같은 "아트 비례" 좌표
+    el.style.left = (6 + s.uv[0] * 88) + '%';
+    el.style.top = (12 + s.uv[1] * 76) + '%';
+    el.innerHTML = `<div class="idx">${s.i + 1}</div>
+      <div class="ring" style="border-color:${gem ? GRADE[gem.grade].c : 'var(--border)'}">
+        ${gem ? `<div class="gem shape-${gem.shape}" style="background:${GRADE[gem.grade].c}"></div>` : ''}
+      </div>`;
+    el.addEventListener('click', () => selectSocket(s.i));
+    stage.appendChild(el);
+  });
+
+  document.getElementById('v2-inv').innerHTML = GEMS.map((g) => `
+    <div class="gem-card" data-gem="${g.id}" draggable="false">
+      ${gemDot(g)}
+      <div class="nm" style="color:${GRADE[g.grade].c}">${GRADE[g.grade].kr}</div>
+      <div class="sh">${SHAPE_KR[g.shape]}</div>
+    </div>`).join('');
+
+  bindDrag();
+  if (selectedSocket !== null) selectSocket(selectedSocket, true);
+}
+
+function selectSocket(idx, silent) {
+  selectedSocket = idx;
+  const s = SOCKETS[idx];
+  const gid = equippedV2[idx];
+  const gem = gid ? gemById(gid) : null;
+  document.getElementById('v2-detail').innerHTML =
+    `<b>SOCKET ${idx + 1}</b> · 모양 <b>${SHAPE_KR[s.shape]}</b> · 해금 밴드 <b>L${s.unlockLv}</b>` +
+    (socketUnlocked(s) ? '' : ' · <span style="color:var(--red)">잠김</span>') +
+    `<br>장착: <b>${gem ? GRADE[gem.grade].kr + ' / ' + SHAPE_KR[gem.shape] : '없음'}</b>` +
+    (gem ? ' — <span style="color:var(--muted)">해제하려면 소켓을 다시 클릭</span>' : '');
+  if (!silent && gem) {
+    delete equippedV2[idx];
+    setStatus(document.getElementById('v2-status'), `SOCKET ${idx + 1} 젬을 해제했습니다.`, 'ok');
+    renderV2();
+  }
+}
+
+// ── 드래그 앤 드롭 (게임에서 직접 짜야 하는 상태 기계를 그대로 흉내) ────────────
+const DRAG_THRESHOLD = 4; // px — 이것이 없으면 모든 클릭이 드래그가 된다
+let drag = null;
+
+function bindDrag() {
+  document.querySelectorAll('.col.v2 .gem-card').forEach((card) => {
+    card.addEventListener('mousedown', (e) => {
+      drag = { gemId: card.dataset.gem, x0: e.clientX, y0: e.clientY, active: false, card };
+      e.preventDefault();
+    });
+  });
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (!drag) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < DRAG_THRESHOLD) return;
+    drag.active = true;
+    drag.card.classList.add('dragging');
+    const g = gemById(drag.gemId);
+    const ghost = document.getElementById('ghost');
+    ghost.innerHTML = `<div class="shape-${g.shape}" style="width:34px;height:34px;background:${GRADE[g.grade].c}"></div>`;
+    ghost.style.display = 'block';
+  }
+  const ghost = document.getElementById('ghost');
+  ghost.style.left = e.clientX + 'px';
+  ghost.style.top = e.clientY + 'px';
+
+  // 드롭 대상 하이라이트 — 판정은 equipBlock(=게임의 GetGemEquipBlock) 하나만 본다
+  document.querySelectorAll('.onart-socket').forEach((el) => {
+    el.classList.remove('drop-ok', 'drop-bad');
+    if (!hitTest(el, e.clientX, e.clientY)) return;
+    const code = equipBlock(equippedV2, Number(el.dataset.idx), drag.gemId);
+    el.classList.add(code === 'None' ? 'drop-ok' : 'drop-bad');
+  });
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (!drag) return;
+  const wasActive = drag.active;
+  const gemId = drag.gemId;
+  drag.card.classList.remove('dragging');
+  document.getElementById('ghost').style.display = 'none';
+  document.querySelectorAll('.onart-socket').forEach((el) => el.classList.remove('drop-ok', 'drop-bad'));
+  drag = null;
+
+  if (!wasActive) { // 임계치 미만 = 클릭으로 처리(G2=a — 클릭 장착 유지)
+    const g = gemById(gemId);
+    setStatus(document.getElementById('v2-status'),
+      `클릭: ${GRADE[g.grade].kr}/${SHAPE_KR[g.shape]} 선택 — 장착할 소켓을 고르세요. (임계치 ${DRAG_THRESHOLD}px 미만이라 드래그가 아니다)`);
+    return;
+  }
+
+  const target = [...document.querySelectorAll('.onart-socket')].find((el) => hitTest(el, e.clientX, e.clientY));
+  if (!target) { // 취소 경로 ①: 대상 밖 드롭
+    setStatus(document.getElementById('v2-status'), '드롭 취소 — 소켓 밖에 놓았습니다.');
+    return;
+  }
+
+  const idx = Number(target.dataset.idx);
+  const code = equipBlock(equippedV2, idx, gemId);
+  const st = document.getElementById('v2-status');
+  if (code !== 'None') { // G3=(a) — 드롭은 받고 **거부 사유를 문구로** 알린다
+    setStatus(st, `장착 불가 (${code}) — ${blockMessage(code, idx, gemId)}`, 'bad');
+    return;
+  }
+  equippedV2[idx] = gemId;
+  const g = gemById(gemId);
+  setStatus(st, `SOCKET ${idx + 1} 에 ${GRADE[g.grade].kr}/${SHAPE_KR[g.shape]} 젬을 장착했습니다.`, 'ok');
+  selectedSocket = idx;
+  renderV2();
+});
+
+// 취소 경로 ②: ESC
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && drag) {
+    drag.card.classList.remove('dragging');
+    document.getElementById('ghost').style.display = 'none';
+    document.querySelectorAll('.onart-socket').forEach((el) => el.classList.remove('drop-ok', 'drop-bad'));
+    drag = null;
+    setStatus(document.getElementById('v2-status'), '드롭 취소 — ESC.');
+  }
+});
+
+function hitTest(el, x, y) {
+  const r = el.getBoundingClientRect();
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+renderV1();
+renderV2();
+</script>
+</body>
+</html>

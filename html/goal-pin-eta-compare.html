@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>목표 핀 · 해금 ETA — 현재 vs V2 비교본</title>
+<!--
+  goal-pin-eta-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : goal-pin-eta-plan T6 산출물. §3 마지막 수용 기준
+          "owner 육안: #skill 액션 행 2분할이 목업 어휘를 벗어나지 않는지"
+          를 판단하기 위한 **정적 비교본**이다. 실조작 없음.
+  소유  : docs/plans/01-defined/phase-1/goal-pin-eta-plan.md T6
+  정본  : html/ui-prototype.html 은 **무수정**(하드 제약 8).
+          #skill(:1153) · #lab(:3609) · #result(:3568) 어느 것도 건드리지 않았다.
+          여기는 사본이 아니라 "현재 vs V2" 비교 전용 별도 파일이다.
+  팔레트: ui-prototype.html :50-85 토큰 그대로 복사(raw 색 신설 0).
+
+  ⚠ 치수 정정 1건 (구현 중 실측, 2026-08-26)
+     플랜 T3 은 액션 버튼 폭을 "560 폭 기준 528 → 396" 이라고 적었으나,
+     실제 현행 값은 **532** 다 — LabNodePanelsView.cs 의 PanelBodyPadX 는 16 이 아니라 **14** 이고
+     actionWidth = rect.width - PanelBodyPadX * 2f = 560 - 28 = 532 이기 때문이다.
+     축소 후 값은 560 - 28 - 128(PanelPinWidth) - 8(PanelPinGap) = **396** 으로 플랜과 정확히 일치한다.
+     즉 어긋난 것은 "축소 전" 숫자 하나뿐이고 결과 폭·분할 비율은 플랜대로다.
+-->
+<style>
+:root{
+  /* ── ui-prototype.html :50-85 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --bg-deep:#070c11;
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 60px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1180px; margin:0 auto;}
+h1{font-size:20px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em; color:var(--teal);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 22px;}
+.label-xs{font-size:11px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase;}
+
+.quote{
+  border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:12px 16px; margin:0 0 22px; border-radius:0 5px 5px 0;
+  color:var(--text-caption); font-size:13px;
+}
+.quote b{color:var(--amber);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.block{margin:0 0 34px;}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+@media (max-width:900px){ .pair{grid-template-columns:1fr;} }
+.col{border:1px solid var(--hairline); border-radius:8px; background:var(--surface-card); padding:14px;}
+.col.now{border-color:var(--btn-border);}
+.col.v2{border-color:rgba(87,209,184,.42);}
+.col h3{margin:0 0 12px; font-size:12px; letter-spacing:.08em; color:var(--muted);}
+.col.v2 h3{color:var(--teal);}
+
+/* ── 노드 상세 패널(Canvas 판) 근사 — 560 폭을 1:1 픽셀로 그린다 ── */
+.panel{
+  width:560px; max-width:100%; background:var(--surface-raised-b);
+  border:1px solid var(--hairline); padding:14px; position:relative;
+}
+.panel .ptitle{color:var(--text-title); font-size:15px; font-weight:700;}
+.panel .pmeta{color:var(--muted); font-size:11px; margin-top:2px; letter-spacing:.05em;}
+.panel .pbody{color:var(--text-caption); font-size:12px; margin:10px 0 14px; line-height:1.7;}
+.actionrow{display:flex; gap:8px;}
+.btn{
+  height:24px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface-raised-a); border:1px solid var(--btn-border);
+  color:var(--text-btn); font-size:13px; font-weight:600; white-space:nowrap;
+}
+.btn.locked{ background:var(--surface-raised-b); border-color:rgba(255,107,107,.92); color:var(--gold);
+  justify-content:flex-start; padding-left:12px; font-size:11px; font-weight:500;}
+.btn.hold{position:relative; overflow:hidden;}
+.btn.hold .fill{position:absolute; left:0; top:0; bottom:0; width:60%; background:rgba(87,209,184,.30);}
+.btn.hold span{position:relative;}
+.btn.pin{ color:var(--teal); border-color:rgba(87,209,184,.45); }
+.dim{width:532px;} .dimA{width:396px;} .dimP{width:128px;}
+
+.ruler{display:flex; gap:8px; margin-top:6px; font-size:10px; color:var(--muted); letter-spacing:.04em;}
+.ruler div{text-align:center; border-top:1px dashed var(--btn-border); padding-top:3px;}
+
+/* ── 연구소 개요 카드 ── */
+.card{width:340px; max-width:100%; border:1px solid var(--hairline); border-radius:4px; padding:16px; background:var(--surface-card);}
+.card .ctitle{font-size:13px; font-weight:600; color:var(--text-num);}
+.card .cvalue{font-size:17px; color:var(--teal); margin-top:3px; font-variant-numeric:tabular-nums;}
+.card .cdesc{font-size:11px; color:var(--muted); margin-top:3px;}
+.track{height:6px; background:var(--hairline); border-radius:99px; margin-top:12px; overflow:hidden;}
+.track i{display:block; height:100%; width:46%; background:var(--teal);}
+.crow{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+.crow span{font-size:11px; color:var(--muted);}
+.crow b{color:var(--gold); font-weight:600;}
+.cbtn{font-size:11px; padding:4px 12px; border:1px solid var(--btn-border); background:var(--surface-raised-a); color:var(--text-btn);}
+.pinline{font-size:11px; color:var(--teal); margin-top:8px; font-variant-numeric:tabular-nums;}
+
+/* ── 결과 오버레이 ── */
+.result{width:420px; max-width:100%; background:var(--surface-card); border:1px solid var(--hairline); border-radius:10px; padding:20px 24px;}
+.result .rtitle{color:var(--text-title); font-size:18px; font-weight:bold;}
+.result .rline{color:var(--text-num); margin-top:8px; font-size:13px;}
+.slot{
+  margin-top:8px; font-size:13px; color:var(--muted);
+  border:1px dashed rgba(87,209,184,.42); border-radius:4px; padding:6px 10px; background:rgba(87,209,184,.05);
+}
+.slot b{color:var(--teal);}
+
+table{border-collapse:collapse; width:100%; font-size:12px; margin-top:10px;}
+th,td{border:1px solid var(--hairline); padding:7px 10px; text-align:left; vertical-align:top;}
+th{color:var(--muted); font-weight:600; background:rgba(255,255,255,.02); letter-spacing:.04em;}
+td code, p code{color:var(--cyan); font-size:11px;}
+.note{font-size:12px; color:var(--muted); margin-top:10px;}
+.note b{color:var(--text-caption);}
+.warn{border-left:3px solid var(--red); background:rgba(255,107,107,.06); padding:10px 14px; margin-top:14px; font-size:12px; color:var(--text-caption); border-radius:0 4px 4px 0;}
+.warn b{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>목표 핀 · 해금 ETA — 현재 vs V2 비교본</h1>
+  <p class="sub">
+    goal-pin-eta-plan T6 · 2026-08-26 · 정본 <code>html/ui-prototype.html</code> 무수정 ·
+    이 파일은 owner 육안 판단용 정적 비교본이다.
+  </p>
+
+  <div class="quote">
+    <b>제안 H</b> — "노드 하나를 목표로 핀 → 진행바 <code>180/420 골드 (≈3런)</code>.
+    '저축 계획이 생긴다'(gdd.md:290)를 화면으로."
+    <span class="who">docs/resources/dopamine-flow-exploration-2026-08-23.md :109-110</span>
+  </div>
+
+  <!-- ────────────────── ① #skill 노드 상세 패널 액션 행 ────────────────── -->
+  <div class="block">
+    <h2>① <code>#skill</code> — 노드 상세 패널 액션 행 2분할 <span class="label-xs">(owner 육안 대상)</span></h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재 — 액션 버튼 1개가 행을 독점 (532px)</h3>
+        <div class="panel">
+          <div class="ptitle">Cache Boost</div>
+          <div class="pmeta">RESOURCE · TIER 2 · 캐시 적중률</div>
+          <div class="pbody">다음 레벨: 캐시 적중률 +4%<br>레벨 3 / 8 · 비용 420 골드</div>
+          <div class="actionrow">
+            <div class="btn hold dim"><div class="fill"></div><span>꾸욱 눌러 강화 · 60%</span></div>
+          </div>
+          <div class="ruler"><div class="dim">532 — 액션</div></div>
+        </div>
+        <p class="note">
+          <b>잠긴 노드</b>일 때는 같은 rect 를 <code>_lockedRoot</code> 가 통째로 덮는다
+          (같은 <code>actionX/actionY/actionWidth</code>).
+        </p>
+        <div class="panel" style="margin-top:12px;">
+          <div class="actionrow">
+            <div class="btn locked dim">인접한 활성 노드가 먼저 필요합니다</div>
+          </div>
+          <div class="ruler"><div class="dim">532 — 잠김 배지</div></div>
+        </div>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 액션 396px + 간격 8px + 핀 토글 128px</h3>
+        <div class="panel">
+          <div class="ptitle">Cache Boost</div>
+          <div class="pmeta">RESOURCE · TIER 2 · 캐시 적중률</div>
+          <div class="pbody">다음 레벨: 캐시 적중률 +4%<br>레벨 3 / 8 · 비용 420 골드</div>
+          <div class="actionrow">
+            <div class="btn hold dimA"><div class="fill"></div><span>꾸욱 눌러 강화 · 60%</span></div>
+            <div class="btn pin dimP">목표로 핀</div>
+          </div>
+          <div class="ruler">
+            <div class="dimA">396 — 액션</div><div style="width:8px;">·</div><div class="dimP">128 — 핀</div>
+          </div>
+        </div>
+        <p class="note">
+          <b>잠긴 노드에서도 핀은 눌린다</b> — 핀 버튼은 <code>canActivate</code> 분기 밖이라
+          항상 활성이다. 못 사는 노드를 목표로 삼는 것이 이 기능의 목적이기 때문.
+        </p>
+        <div class="panel" style="margin-top:12px;">
+          <div class="actionrow">
+            <div class="btn locked dimA">인접한 활성 노드가 먼저 필요합니다</div>
+            <div class="btn pin dimP">핀 해제</div>
+          </div>
+          <div class="ruler">
+            <div class="dimA">396 — 잠김 배지</div><div style="width:8px;">·</div><div class="dimP">128 — 핀(활성)</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <table>
+      <tr><th>항목</th><th>현재</th><th>V2</th><th>근거</th></tr>
+      <tr><td>액션 버튼 폭</td><td>532</td><td>396</td><td><code>rect.width − PanelBodyPadX×2 − 128 − 8</code></td></tr>
+      <tr><td>핀 토글 폭</td><td>—</td><td>128</td><td><code>PanelPinWidth</code> 신설</td></tr>
+      <tr><td>두 버튼 간격</td><td>—</td><td>8</td><td><code>PanelPinGap</code> 신설</td></tr>
+      <tr><td>행 높이</td><td>24</td><td>24 (무변경)</td><td><code>PanelActionHeight</code> 재사용</td></tr>
+      <tr><td>홀드 채움</td><td>버튼 폭 × progress</td><td>동일 (산식 무변경)</td><td><code>SyncHoldFill</code> 이 버튼 rect 폭을 직접 읽는다</td></tr>
+      <tr><td>잠김 배지 폭</td><td>532</td><td>396 (자동 추종)</td><td><code>_lockedRoot</code> 가 같은 <code>actionWidth</code> 사용</td></tr>
+      <tr><td>신규 색</td><td>—</td><td>0</td><td>기존 <code>UiTheme</code> 버튼 어휘 그대로</td></tr>
+      <tr><td>신규 SFX</td><td>—</td><td>0</td><td>기존 <code>SfxUiButton</code></td></tr>
+    </table>
+
+    <div class="warn">
+      <b>판단 요청</b> — 이 2분할이 목업 어휘를 벗어나는지가 owner 육안 항목이다.
+      벗어난다고 보면 대안은 (a) 핀을 패널 <em>헤더</em>(닫기 버튼 왼쪽)로 옮겨 액션 행을 532 로 되돌리기,
+      (b) 핀 폭을 128 → 96 으로 줄여 액션을 428 로 회복하기 두 가지다.
+      둘 다 <code>PanelPinWidth</code> 상수 1개 또는 배치 1줄 수정으로 끝난다.
+    </div>
+  </div>
+
+  <!-- ────────────────── ② #lab 개요 스킬트리 카드 ────────────────── -->
+  <div class="block">
+    <h2>② <code>#lab</code> — 개요 탭 스킬트리 카드 1줄 추가</h2>
+    <div class="pair">
+      <div class="col now">
+        <h3>현재 — "지금 할 수 있는 행동" 아래가 비어 있다</h3>
+        <div class="card">
+          <div class="ctitle">스킬트리</div>
+          <div class="cvalue">142 / 306</div>
+          <div class="cdesc">노드를 해금해 성장 경로를 확장하세요.</div>
+          <div class="track"><i></i></div>
+          <div class="crow"><span>지금 할 수 있는 행동 &nbsp;<b>7</b></span><span class="cbtn">탭 열기</span></div>
+        </div>
+      </div>
+      <div class="col v2">
+        <h3>V2 — 핀이 있을 때만 <code>목표: …</code> 한 줄</h3>
+        <div class="card">
+          <div class="ctitle">스킬트리</div>
+          <div class="cvalue">142 / 306</div>
+          <div class="cdesc">노드를 해금해 성장 경로를 확장하세요.</div>
+          <div class="track"><i></i></div>
+          <div class="crow"><span>지금 할 수 있는 행동 &nbsp;<b>7</b></span><span class="cbtn">탭 열기</span></div>
+          <div class="pinline">목표: Cache Boost — 180/420 골드 (≈3런)</div>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <tr><th>상태</th><th>표시 문자열</th></tr>
+      <tr><td>핀 없음 / id 불일치 / 비가시 노드</td><td><em>(빈 문자열 — 줄이 사라진다. <code>SetActive</code> 토글이 아니라 텍스트만 비운다)</em></td></tr>
+      <tr><td>부족분 있음 · 표본 있음</td><td><code>목표: Cache Boost — 180/420 골드 (≈3런)</code></td></tr>
+      <tr><td>부족분 0</td><td><code>목표: Cache Boost — 구매 가능</code></td></tr>
+      <tr><td>평균 획득 0 (추정 불가)</td><td><code>목표: 각성 코어 — 0/3 아키텍트 토큰 (런 수 미상)</code></td></tr>
+      <tr><td>ArchToken 비용 노드</td><td>필요 런 수가 가장 큰 재화가 기준 → 자동으로 <b>아키텍트 토큰</b> 기준</td></tr>
+    </table>
+    <p class="note">
+      색은 진행 필과 같은 기존 토큰 <code>MenuCursorColor</code>(목업 <code>--teal</code>) — <b>신규 색 0</b>.
+      위치는 <code>CardActionsY + 26</code>, 폭은 <code>width − CardActionsRightInset</code> 로 "탭 열기" 버튼을 피한다.
+    </p>
+  </div>
+
+  <!-- ────────────────── ③ #result Pin 줄 (P2 슬롯) ────────────────── -->
+  <div class="block">
+    <h2>③ <code>#result</code> — 결과 오버레이 <code>Pin</code> 줄 <span class="label-xs">(이번 범위 제외 — P2 슬롯)</span></h2>
+    <div class="pair">
+      <div class="col now">
+        <h3>현재 = 이번 구현 후에도 동일 (변경 0)</h3>
+        <div class="result">
+          <div class="rtitle">런 결과</div>
+          <div class="rline">획득 골드: +1,240</div>
+          <div class="rline">획득 커밋: +18 · B코인: +4 · 아키텍트: +2</div>
+          <div class="rline">정산 후 지갑: …</div>
+          <div class="rline">처리한 리소스 수: 86</div>
+        </div>
+      </div>
+      <div class="col v2">
+        <h3>P2 착수 후 (참고 — 이 플랜이 만들지 않는다)</h3>
+        <div class="result">
+          <div class="rtitle">런 결과</div>
+          <div class="rline">획득 골드: +1,240</div>
+          <div class="rline">획득 커밋: +18 · B코인: +4 · 아키텍트: +2</div>
+          <div class="rline">정산 후 지갑: …</div>
+          <div class="rline">처리한 리소스 수: 86</div>
+          <div class="slot"><b>Pin 슬롯</b> — 목표: Cache Boost — 180/420 골드 (≈3런)</div>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      <b>이번 플랜이 남긴 것은 슬롯 예약 주석 하나뿐이다</b>(<code>MainMenuOverlayViews.cs</code> <code>ResultOverlayView.Sync()</code>).
+      공급자 <code>GetGoalPinLine()</code> 은 이미 구현돼 있어 P2 가 <code>_pinText</code> 를 만들면
+      <code>CanvasUi.SetText(_pinText, _c.GetGoalPinLine());</code> 한 줄로 두 표시 지점이 같은 문자열을 공유한다.
+      런 HUD 에는 <b>넣지 않는다</b>(하드 제약 3 — 런 HUD 겹침 3건 미해결).
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

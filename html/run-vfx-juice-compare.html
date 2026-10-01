@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>런 타격감 — 현재 vs 강화안</title>
+<!--
+  run-vfx-juice-compare.html
+  ──────────────────────────────────────────────────────────────────
+  용도  : docs/plans/03-qa-pending/phase-1/run-vfx-juice-plan.md 의 비교 목업.
+          「현재」 vs 「강화안」 라이브 2패널. **두 패널은 같은 시뮬레이션 하나를 공유**한다
+          (같은 노드·같은 커서·같은 처치) — 다른 것은 피드백 렌더러뿐이라 공정한 A/B 다.
+  정본  : html/ui-prototype.html 은 무수정. 토큰(:62-104)·폰트 3단만 복사했다(신규 색 0).
+  에셋  : fx_spark · fx_dust · fx_crack · fx_ring · fx_glow 는 html/fx-primitives.html 의
+          SVG 정본을 **그대로** 옮겨 런타임에 굽는다(리포 PNG 는 그 SVG 를 캡처한 것이고,
+          이 워크트리에서는 git LFS 포인터라 직접 참조하지 않는다). impact_dust_sheet(4f)는
+          원본 드로잉 코드가 없어 fx_dust 로 대신한다.
+  입력  : 패널 위에 마우스를 올리면 커서가 AOE 중심이 되고 **틱 간격(기본 1.0초 · 하한 0.2초 —
+          `TickIntervalSeconds`/`MinimumTickIntervalSeconds`, MvpGameController.cs:39-40)** 마다 자동 틱(클릭 불필요).
+          「현재」에도 게임과 같이 **비치명 타격마다 키보드 해머**(낙하 0.07s → 임팩트 링 + 노드 흔들림)가 떨어진다
+          (Run.cs:923 `SpawnKeyboardHammer` · :2244 `OnKbHammerImpact`). 처치 타격에는 안 떨어진다(가드 `node.IsDying`).
+          2초간 입력이 없으면 자동 데모 경로로 돈다.
+  축척  : 게임 보드 뷰포트 1190px → 패널 약 560px(0.47×). 글자·구슬은 가독성 때문에 0.72× 로
+          그린다 — **두 패널에 같은 축척**이라 비교는 유효하다.
+  v2    : 2026-09-28 — 「강화안」의 T1·T2·T3 이 **스프라이트 시트 프레임**을 재생한다. 드로잉 정본은
+          html/run-juice-fx-common.js 하나(생성기 html/run-juice-fx-sprites.html 과 공유 · 동기화 필수) ⇒
+          여기서 보는 프레임 = 생성기가 내보내는 PNG. 노드 색은 맵 티어 팔레트(T1 teal · T2 purple · T3 amber · T4 red)다.
+          「현재」 패널은 v1 그대로(해머 · 선형 링 · 노드 흔들림 · 막타 무반응).
+  ⚠ 히트스톱(T5)은 강화안 렌더러의 연출 시계만 멈춘다. 시뮬레이션(틱·처치·보상)은 계속 돈다 —
+    플랜 하드 제약 H3 의 시연이다. 두 패널의 처치 수가 항상 같다는 게 그 증거.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+@font-face { font-family:'BlackHanSansRuntime'; src:url('../Assets/Resources/Fonts/BlackHanSans-Regular.ttf') format('truetype'); font-display:swap; }
+@font-face { font-family:'JuaRuntime'; src:url('../Assets/Resources/Fonts/Jua-Regular.ttf') format('truetype'); font-display:swap; }
+@font-face { font-family:'PretendardRuntime'; src:url('../Assets/Resources/Fonts/Pretendard-Regular.otf') format('opentype'); font-display:swap; }
+:root{
+  /* ── ui-prototype.html 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --bg-deep:#070c11; --bg-mid:#0b1218; --bg-rise:#12202c;
+  --field-surface:#0c1621; --field-grid:rgba(87,209,184,.11);
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+  --font-title:'BlackHanSansRuntime','Black Han Sans','Noto Sans KR',system-ui,sans-serif;
+  --font-ui:'JuaRuntime','Jua','Noto Sans KR',system-ui,sans-serif;
+  --font-body:'PretendardRuntime','Pretendard','Noto Sans KR',system-ui,sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0; padding:24px 16px 60px; background:var(--bg-deep); color:var(--text);
+  font-family:var(--font-body); font-size:14px; line-height:1.6;}
+.wrap{max-width:1240px; margin:0 auto;}
+h1{font-family:var(--font-title); font-weight:400; font-size:24px; margin:0 0 4px; color:var(--text-title); letter-spacing:.02em;}
+.sub{color:var(--muted); font-size:12px; margin:0 0 16px;}
+.sub a{color:var(--teal);}
+code{background:var(--surface-raised-b); padding:1px 5px; border-radius:4px; font-size:11px; color:#9fd0c4;}
+.quote{border-left:3px solid var(--amber); background:rgba(251,176,59,.06); padding:10px 14px; margin:0 0 18px;
+  border-radius:0 5px 5px 0; color:var(--text-caption); font-size:13px;}
+.quote b{color:var(--amber);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:4px;}
+
+.bar{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; background:var(--surface-card);
+  border:1px solid var(--hairline); border-radius:10px; padding:10px 14px; margin:0 0 14px;}
+.bar label{display:flex; align-items:center; gap:6px; font-family:var(--font-ui); font-size:14px; color:var(--text-btn); cursor:pointer;}
+.bar input[type=range]{accent-color:var(--teal); width:140px;}
+.bar input[type=checkbox]{accent-color:var(--teal); width:16px; height:16px;}
+.mapv{font-family:var(--font-title); color:var(--gold); font-size:16px; min-width:52px;}
+.btn{font-family:var(--font-ui); font-size:13px; color:var(--text-btn); background:var(--surface-raised-a);
+  border:1px solid var(--btn-border); border-radius:8px; padding:4px 12px; cursor:pointer;}
+.btn:hover{border-color:var(--teal); color:var(--teal);}
+.btn.gold{border-color:#7a6420; color:var(--gold); background:#1a1505;}
+.chip{font-family:var(--font-ui); font-size:12px; padding:2px 10px; border-radius:999px; border:1px solid var(--btn-border); color:var(--muted);}
+.chip.on{border-color:var(--teal); color:var(--teal);}
+
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+@media (max-width:920px){ .pair{grid-template-columns:1fr;} }
+.col{border:1px solid var(--hairline); border-radius:10px; background:var(--surface-card); padding:12px;}
+.col.now{border-color:var(--btn-border);}
+.col.v2{border-color:var(--teal);}
+.col h2{font-family:var(--font-title); font-weight:400; font-size:17px; margin:0 0 8px; color:var(--muted); letter-spacing:.04em;}
+.col.v2 h2{color:var(--teal);}
+.col h2 small{font-family:var(--font-body); font-size:11px; color:var(--muted); margin-left:6px;}
+canvas.field{display:block; width:100%; height:auto; aspect-ratio:560/380; border-radius:8px; cursor:crosshair;
+  background:var(--field-surface); touch-action:none;}
+.stats{font-size:11px; color:var(--muted); margin-top:6px; font-variant-numeric:tabular-nums; min-height:18px;}
+.stats b{color:var(--text-num); font-weight:400;}
+.legend{font-size:12px; color:var(--text-caption); margin-top:8px; line-height:1.7;}
+.legend ul{margin:4px 0 0; padding-left:18px;}
+.legend li.off{color:#4d5a6a; text-decoration:line-through;}
+.legend .k{color:var(--gold);}
+
+.toggles{display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:6px 12px; margin:10px 0 4px;}
+.tg{display:flex; gap:8px; align-items:flex-start; background:var(--surface-raised-b); border:1px solid var(--hairline);
+  border-radius:8px; padding:6px 8px; cursor:pointer; font-size:12px; color:var(--text-caption); line-height:1.45;}
+.tg input{accent-color:var(--teal); margin-top:2px; width:15px; height:15px; flex:none;}
+.tg b{font-family:var(--font-ui); font-weight:400; font-size:14px; color:var(--text-title);}
+.tg .cost{font-family:var(--font-ui); font-size:11px; padding:0 6px; border-radius:999px; margin-left:4px;}
+.cost.S{color:var(--green); border:1px solid rgba(52,211,153,.4);}
+.cost.M{color:var(--amber); border:1px solid rgba(251,176,59,.4);}
+.cost.L{color:var(--red); border:1px solid rgba(255,107,107,.4);}
+.tg .first{color:var(--gold); font-size:11px; margin-left:4px;}
+.presets{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+.foot{margin-top:22px; font-size:12px; color:var(--muted); line-height:1.8;}
+.foot b{color:var(--text-caption);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>런 타격감 — 현재 vs 강화안</h1>
+  <p class="sub">플랜 <a href="../docs/plans/03-qa-pending/phase-1/run-vfx-juice-plan.md"><code>docs/plans/03-qa-pending/phase-1/run-vfx-juice-plan.md</code></a> 의 비교 목업 ·
+    두 패널은 <b>같은 시뮬레이션</b>(같은 노드·커서·처치)을 공유하고 <b>피드백 렌더러만</b> 다르다.
+    패널 위에 마우스를 올리면 커서가 AOE 중심이 되어 <b>틱 간격</b>(기본 1.0초 · 하한 0.2초 — 게임 상수 그대로)마다 자동 타격한다(클릭 불필요). 로드 직후와 2초 멈추면 자동 데모(가장 밀집한 곳으로 이동). URL <code>?map=4&amp;preset=all&amp;tick=0.2&amp;low=1</code> 로 초기 상태 지정 가능(<code>&amp;snap=0.12</code> = 6초 뒤 틱 직후 0.12초에서 정지 — 캡처용).
+    스프라이트 버전 <code>?fx=v3</code>(기본 · 고퀄) / <code>?fx=v2</code>(동결 평면판) — 지금 <b id="fxVer">v3</b>.</p>
+  <div class="quote">"마이닝 게임에서의 인터랙티브는 조작감보다 <b>시각적 요소가 훨씬 큰 영향도</b>가 있고 정신없게 <b>도파민 파바박</b>이 대부분 하는 방식 … 지금 이펙트등이 뭔가 심심하다고 해야 할까.. <b>눈에 안 띈다</b>고 해야 할까"
+    <span class="who">owner · 게임 채널 · 2026-09-28</span></div>
+
+  <div class="bar">
+    <label>맵 <input id="map" type="range" min="1" max="4" step="1" value="1"><span class="mapv" id="mapv">맵 1</span></label>
+    <span class="chip" id="rewardRange">보상 10~100</span>
+    <label>틱 간격 <input id="tick" type="range" min="0" max="4" step="1" value="0"><span class="mapv" id="tickv">1.0초</span></label>
+    <label><input id="lowMotion" type="checkbox"> 저모션(lowMotion) <small style="color:var(--muted)">— 강화안에만 적용</small></label>
+    <button class="btn" id="pause">일시정지</button>
+    <button class="btn" id="slow">0.25× 슬로모</button>
+    <span class="chip" id="demoChip">자동 데모</span>
+  </div>
+
+  <div class="pair">
+    <div class="col now">
+      <h2>현재 <small>코드 조사 2026-09-28 그대로</small></h2>
+      <canvas class="field" id="cvNow" width="560" height="380"></canvas>
+      <div class="stats" id="statsNow"></div>
+      <div class="legend">
+        <b>켜져 있는 것</b>
+        <ul>
+          <li>피격 = 스프라이트 프레임 교체(파편 3f 0.30s → hit 0.40s — 틴트·조각 점으로 근사) + <b>키보드 해머</b> 낙하 0.07s → 임팩트 <b>선형 링</b>(0.22s · 크리 0.30s + 금 링 0.38s) + <b>노드 흔들림</b>(0.16s/18° · 크리 0.25s/30°, 40Hz). <b>막타엔 해머 없음</b>(<code>node.IsDying</code> 가드)</li>
+          <li>처치 = dead 4프레임 0.55s <b>알파 페이드</b>(일반 노드는 파편·링 0)</li>
+          <li>재화 팝업 <b>14pt 고정</b> · 선형 상승 0.7/s · 0.9s · 스케일 애니 0 · <b>데미지 숫자 0</b></li>
+          <li>구슬 <code>1+amount/7</code>(상한 4) · HUD 펄스 <code>0.18+amount×0.03</code>(상한 0.95 → 맵 1 초반에 이미 최대)</li>
+          <li>화면 흔들림·히트스톱 0(흔들림은 피버 진입·버프 콤보에만) · 처치 링은 골든(엘리트)만 · 링은 매번 새 GameObject(풀링 0 — 통계 「링 생성 누적」)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col v2">
+      <h2>강화안 <small>토글로 하나씩 A/B</small></h2>
+      <canvas class="field" id="cvV2" width="560" height="380"></canvas>
+      <div class="stats" id="statsV2"></div>
+      <div class="legend" id="legendV2"></div>
+    </div>
+  </div>
+
+  <div class="toggles" id="toggles"></div>
+  <div class="presets">
+    <button class="btn gold" data-preset="first">1차 묶음만 (T2·T1·T3·T4)</button>
+    <button class="btn" data-preset="all">전부 켜기</button>
+    <button class="btn" data-preset="none">전부 끄기 (= 현재와 같아야 함)</button>
+    <button class="btn" data-preset="noT4">T4 만 끄기 — 맵 4 로 올려 비교</button>
+  </div>
+
+  <div class="foot">
+    <b>보는 법</b> — ① 「전부 끄기」면 두 패널이 같아 보여야 한다(렌더러 공정성 확인). ② 맵 슬라이더를 1 → 4 로 올리면 <b>현재는 거의 안 변하고</b>,
+    강화안은 T4 가 켜져 있을 때만 숫자·파편·링·구슬이 같이 커진다. ③ 맵 4 에서 AOE 를 노드가 몰린 곳에 두면 틱당 다중 처치가 나온다 —
+    그때 통계 줄의 <b>파편 수가 예산(틱당 120 · 동시 160)</b>을 넘지 않는지, 팝업이 <b>24</b>에서 합쳐지는지 본다.
+    ④ 저모션을 켜면 흔들림·히트스톱·펀치가 0 이 되고 숫자·색·파편(절반)만 남는다.
+    ⑤ 히트스톱 중에도 <b>두 패널의 처치 수는 같다</b> — 연출 시계만 멈추고 경제 시계는 안 멈춘다(플랜 H3).<br>
+    <b>에셋</b> — 파편 버스트의 섬광·먼지·균열·링은 <code>html/fx-primitives.html</code> 의 SVG 정본(= 리포 <code>Sprites/Fx/fx_*.png</code> 의 원본)을
+    그대로 구워 흰색 × 노드색으로 곱했다(T9 링 · 「현재」). <b>v2</b> — 강화안의 T1·T2·T3 은 <code>html/run-juice-fx-common.js</code> 의 <b>스프라이트 시트 프레임</b>을 재생한다
+    (생성기 <a href="run-juice-fx-sprites.html" style="color:var(--teal)"><code>html/run-juice-fx-sprites.html</code></a> 와 같은 파일 — 여기서 보는 프레임 = 내보내는 PNG). 색은 토큰과 그 혼합만.
+  </div>
+</div>
+
+<script src="run-juice-fx-common-v2.js"></script>
+<script src="run-juice-fx-common.js"></script>
+<script>
+(() => {
+'use strict';
+// ?fx=v2 → 동결 v2(평면 벡터판) · 기본 v3(고퀄 정본). 둘 다 같은 API 라 아래 코드는 버전을 모른다.
+const FX = (() => { try { return new URLSearchParams(location.search).get('fx') === 'v2' ? 'v2' : 'v3'; } catch (e) { return 'v3'; } })();
+const J = FX === 'v2' ? window.JuiceFxV2 : window.JuiceFx;   // 프레임 드로잉 정본(생성기와 공유 — 동기화 필수)
+{ const el = document.getElementById('fxVer'); if (el) el.textContent = FX; }
+// ───────────────────────── 상수 ─────────────────────────
+const W = 560, H = 380, HUD_H = 30;
+const TS = 0.72;                 // 글자·구슬 축척(두 패널 공통)
+const HS = 0.6;                  // 키보드 해머 축척(게임 40×28px → 24×17px, 두 패널 공통)
+const U = 34;                    // 게임 월드 1유닛 ≈ 34px(흔들림 크기 환산)
+let TICK = 1.0;                  // AOE 자동 틱 주기 — 게임 기본 TickIntervalSeconds 1.0 · 하한 0.2 (슬라이더)
+const CSS = getComputedStyle(document.documentElement);
+const tok = n => CSS.getPropertyValue(n).trim();
+const C = {
+  teal: tok('--teal'), cyan: tok('--cyan'), gold: tok('--gold'), purple: tok('--purple'),
+  red: tok('--red'), amber: tok('--amber'), green: tok('--green'), num: tok('--text-num'),
+  muted: tok('--muted'), hair: tok('--hairline'), raisedA: tok('--surface-raised-a'), raisedB: tok('--surface-raised-b'),
+  field: tok('--field-surface'), grid: tok('--field-grid'),
+};
+// 코드 색 그대로: 재화 팝업 (0.50,1,0.78) · 크리 (1,0.86,0.22)
+const POPUP_GOLD = 'rgb(128,255,199)';
+const POPUP_CRIT = 'rgb(255,219,56)';
+const ORE = [C.teal, C.cyan, C.purple, C.amber, C.green];
+const FONT_TITLE = "'BlackHanSansRuntime','Black Han Sans','Noto Sans KR',sans-serif";
+const FONT_BODY  = "'PretendardRuntime','Pretendard','Noto Sans KR',sans-serif";
+
+// 맵별: 노드 수 · AOE 반경 · 기본 데미지 지수 · 처치까지 틱 수 · 보상 지수 범위
+const MAPS = {
+  1: { count: 28, aoe: 70, dmgExp: 0.6, ticks: [1.0, 2.5], rew: [1, 2] },
+  2: { count: 31, aoe: 78, dmgExp: 2.1, ticks: [1.1, 2.8], rew: [2, 4] },
+  3: { count: 35, aoe: 88, dmgExp: 3.6, ticks: [1.0, 2.5], rew: [3.5, 6] },
+  4: { count: 40, aoe: 100, dmgExp: 5.2, ticks: [1.0, 2.0], rew: [5, 8] },
+};
+
+// ───────────────────────── 유틸 ─────────────────────────
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeInQuad = t => t * t;
+const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const rand = (a, b) => a + Math.random() * (b - a);
+function fmt(n) {
+  n = Math.round(n);
+  if (n < 10000) return n.toLocaleString('en-US');
+  const u = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+  for (const [v, s] of u) if (n >= v) { const x = n / v; return (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)) + s; }
+  return String(n);
+}
+function hexA(hex, a) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ─────────────── fx 스프라이트 (fx-primitives.html SVG 정본 그대로) ───────────────
+const SVG = {
+  fx_ring: `<defs><radialGradient id="r1" cx="50%" cy="50%" r="50%"><stop offset="58%" stop-color="#fff" stop-opacity="0"/><stop offset="76%" stop-color="#fff" stop-opacity="0.55"/><stop offset="88%" stop-color="#fff" stop-opacity="1"/><stop offset="97%" stop-color="#fff" stop-opacity="0.35"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#r1)"/>`,
+  fx_glow: `<defs><radialGradient id="g1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="30%" stop-color="#fff" stop-opacity="0.55"/><stop offset="65%" stop-color="#fff" stop-opacity="0.16"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#g1)"/>`,
+  fx_spark: `<defs><radialGradient id="s1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="18%" stop-color="#fff" stop-opacity="0.5"/><stop offset="45%" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><circle cx="50" cy="50" r="50" fill="url(#s1)"/><path d="M50 2 C 53 34 55 44 62 50 C 55 56 53 66 50 98 C 47 66 45 56 38 50 C 45 44 47 34 50 2 Z" fill="#fff" opacity="0.95"/><path d="M2 50 C 34 47 44 45 50 38 C 56 45 66 47 98 50 C 66 53 56 55 50 62 C 44 55 34 53 2 50 Z" fill="#fff" opacity="0.75"/>`,
+  fx_crack: `<g stroke="#fff" fill="none" stroke-linecap="round"><path d="M50 50 L74 22" stroke-width="4"/><path d="M62 38 L72 40" stroke-width="2.6"/><path d="M50 50 L78 62" stroke-width="3.4"/><path d="M66 56 L70 68" stroke-width="2.2"/><path d="M50 50 L34 78" stroke-width="3.8"/><path d="M41 64 L30 66" stroke-width="2.4"/><path d="M50 50 L20 40" stroke-width="3.2"/><path d="M33 46 L28 34" stroke-width="2.2"/><path d="M50 50 L46 20" stroke-width="2.8"/></g>`,
+  fx_dust: `<g fill="#fff"><circle cx="34" cy="42" r="13" opacity="0.85"/><circle cx="58" cy="34" r="16" opacity="0.7"/><circle cx="68" cy="58" r="11" opacity="0.6"/><circle cx="44" cy="64" r="14" opacity="0.55"/><circle cx="24" cy="60" r="7" opacity="0.4"/><circle cx="72" cy="40" r="6" opacity="0.4"/><circle cx="52" cy="50" r="9" opacity="0.35"/></g>`,
+};
+const SPR = {};
+for (const k in SVG) {
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg viewBox="0 0 100 100" width="128" height="128" xmlns="http://www.w3.org/2000/svg">${SVG[k]}</svg>`);
+  SPR[k] = img;
+}
+const tintCache = new Map();
+// 흰색 스프라이트 × 런타임 색(fx-primitives 규약) — 색별로 한 번 굽고 캐시
+function tinted(name, color) {
+  const key = name + color;
+  let c = tintCache.get(key);
+  if (c) return c;
+  const img = SPR[name];
+  if (!img.complete || !img.naturalWidth) return null;
+  c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0, 128, 128);
+  x.globalCompositeOperation = 'source-in';
+  x.fillStyle = color; x.fillRect(0, 0, 128, 128);
+  tintCache.set(key, c);
+  return c;
+}
+
+// ───────────────────────── 시뮬레이션 (공유) ─────────────────────────
+// 두 패널이 같은 사건 스트림을 받는다 — 다른 건 렌더러뿐.
+const sim = {
+  nodes: [], nextId: 1, tickAcc: 0.85, spawnAcc: 0, time: 0, map: 1,
+  cursor: { x: W * 0.5, y: H * 0.55 }, kills: 0, tickNo: 0,
+};
+function mapCfg() { return MAPS[sim.map]; }
+function makeShape(r) {
+  const n = 7 + (Math.random() * 3 | 0), pts = [];
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rand(-0.2, 0.2); pts.push([Math.cos(a), Math.sin(a), rand(0.78, 1.08)]); }
+  const crystals = [];
+  const cn = 2 + (Math.random() * 2 | 0);
+  for (let i = 0; i < cn; i++) crystals.push([rand(-0.45, 0.45), rand(-0.45, 0.35), rand(0.28, 0.42), rand(-0.6, 0.6)]);
+  return { pts, crystals };
+}
+function spawnNode(events) {
+  const m = mapCfg();
+  const elite = Math.random() < 0.012 && !sim.nodes.some(n => n.elite);
+  const r = elite ? 23 : rand(14, 20);
+  let x, y, ok = false;
+  for (let t = 0; t < 40 && !ok; t++) {
+    x = rand(20 + r, W - 20 - r); y = rand(HUD_H + 16 + r, H - 14 - r); ok = true;
+    for (const n of sim.nodes) { const dx = n.x - x, dy = n.y - y; if (dx * dx + dy * dy < (n.r + r + 3) ** 2) { ok = false; break; } }
+  }
+  if (!ok) return;
+  const baseDmg = Math.pow(10, m.dmgExp);
+  const hp = baseDmg * rand(m.ticks[0], m.ticks[1]) * (elite ? 2.5 : 1);
+  const node = {
+    id: sim.nextId++, x, y, r, hp, max: hp, elite,
+    // 맵 티어 광물(75%) + 한 단계 아래 티어(25%) — 파편 칩 시트(juice_debris_t1~t4)와 같은 팔레트
+    tier: 't' + Math.max(1, sim.map - (Math.random() < 0.25 ? 1 : 0)),
+    color: null,
+    reward: Math.pow(10, rand(m.rew[0], m.rew[1])) * (elite ? 10 : 1),
+    shape: makeShape(r), born: sim.time,
+  };
+  node.color = elite ? C.gold : J.TIERS[node.tier].base;
+  sim.nodes.push(node);
+  events.push({ type: 'spawn', node });
+}
+function simStep(dt) {
+  const events = [];
+  sim.time += dt;
+  const m = mapCfg();
+  // 스폰 보충
+  sim.spawnAcc += dt;
+  while (sim.spawnAcc >= 0.09) { sim.spawnAcc -= 0.09; if (sim.nodes.length < m.count) spawnNode(events); }
+  while (sim.nodes.length > m.count + 4) sim.nodes.shift();
+  // AOE 자동 틱
+  sim.tickAcc += dt;
+  while (sim.tickAcc >= TICK) {
+    sim.tickAcc -= TICK;
+    sim.tickNo++;
+    const cx = sim.cursor.x, cy = sim.cursor.y, R = m.aoe;
+    let kills = 0; const killed = [];
+    const baseDmg = Math.pow(10, m.dmgExp);
+    for (const n of sim.nodes) {
+      const dx = n.x - cx, dy = n.y - cy;
+      if (dx * dx + dy * dy > (R + n.r * 0.5) ** 2) continue;
+      const crit = Math.random() < 0.15;
+      const dmg = baseDmg * rand(0.8, 1.2) * (crit ? 2.5 : 1);
+      n.hp -= dmg;
+      events.push({ type: 'hit', node: n, dmg, crit, dir: Math.atan2(dy, dx) });
+      if (n.hp <= 0) { killed.push({ n, crit }); }
+    }
+    for (const k of killed) {
+      kills++;
+      sim.kills++;
+      events.push({ type: 'kill', node: k.n, reward: k.n.reward, crit: k.crit });
+    }
+    if (killed.length) { const ids = new Set(killed.map(k => k.n.id)); sim.nodes = sim.nodes.filter(n => !ids.has(n.id)); }
+    events.push({ type: 'tick', kills, x: cx, y: cy, R });
+  }
+  return events;
+}
+
+// ───────────────────────── 렌더러 ─────────────────────────
+const PART_CAP = 160, PART_TICK_BUDGET = 120, POPUP_CAP = 24, RING_POOL = 48, ORB_TICK_CAP = 24;
+// 팝업 공유 풀 — 현행 `RunFxView.PopupPoolCap = 64`(RunFxView.cs:78). 데미지 숫자(T1)는 이 풀을 보상·이벤트 팝업과 **공유**한다.
+// 우선순위(플랜 T1): 이벤트 4 > 보상 크리 3 > 보상 2 > 데미지 크리 1 > 데미지 0
+const POPUP_POOL = 64;
+const popupPri = p => p.kind === 'event' ? 4 : p.kind === 'cur' ? (p.crit ? 3 : 2) : (p.crit ? 1 : 0);
+
+function Renderer(canvas, mode) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const R = {
+    mode, ctx, vis: new Map(), corpses: [], popups: [], orbs: [], rings: [], badges: [], fxSprites: [],
+    parts: Array.from({ length: PART_CAP }, () => ({ alive: false })), partCursor: 0, hammers: [], shakes: new Map(),
+    hud: { value: 0, shown: 0, pulse: 0 },
+    stopT: 0, stopCd: 0, shake: { age: 0, life: 0, mag: 0 }, tickFlash: 0,
+    anims: [], // 시트 프레임 재생(T2 플래시·임팩트 별 · T3 버스트·먼지·균열) — 풀 48, 넘치면 가장 오래된 것 재사용
+    stats: { animAlive: 0, animReuse: 0, chips: 0, sparks: 0, popupEvicted: 0, hiddenNow: 0, hiddenMax: 0, partsAlive: 0, partsThisTick: 0, popupMerged: 0, popupDropped: 0, ringNew: 0, ringReuse: 0, maxKillsTick: 0, stops: 0 },
+  };
+  const on = k => mode === 'v2' && T[k].on;
+  const low = () => mode === 'v2' && lowMotion.checked;
+  const intensity = reward => (mode === 'v2' && T.T4.on) ? clamp01(Math.log10(Math.max(1, reward)) / 8) : 0.3;
+
+  function vis(id) { let v = R.vis.get(id); if (!v) { v = { hitT: 0, debrisT: 0, flashT: 0, punchT: -1, dir: 0 }; R.vis.set(id, v); } return v; }
+
+  // ── 파티클 풀(T3) ──
+  const ANIM_POOL = 48;
+  function playAnim(name, x, y, size, o) {
+    if (R.anims.length >= ANIM_POOL) { R.anims.shift(); R.stats.animReuse++; }
+    R.anims.push(Object.assign({ name, x, y, size, t: 0, speed: 1, alpha: 1, rot: 0, delay: 0 }, o || {}));
+  }
+  function allocPart() {
+    let p = null;
+    for (let i = 0; i < PART_CAP; i++) { const q = R.parts[(R.partCursor + i) % PART_CAP]; if (!q.alive) { p = q; R.partCursor = (R.partCursor + i + 1) % PART_CAP; break; } }
+    if (!p) { p = R.parts[R.partCursor]; R.partCursor = (R.partCursor + 1) % PART_CAP; } // 가득 차면 가장 오래된 것 재사용
+    return p;
+  }
+  // 파편 칩(juice_debris_{tier}) — 중력 · 바닥 바운스 2회 · 회전각으로 시트 열 선택
+  function emitChip(n, I, rec) {
+    const p = allocPart();
+    const a = -Math.PI / 2 + rand(-1.35, 1.35), sp = rand(110, 230) * (0.7 + 0.6 * I);
+    Object.assign(p, { alive: true, kind: 'chip', x: n.x + rand(-4, 4), y: n.y + rand(-4, 4), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: rand(0.55, 0.85),
+      size: rand(rec.chipPx[0], rec.chipPx[1]), rot: rand(0, 6.28), vr: rand(-18, 18), row: (Math.random() * 3) | 0,
+      sheet: 'juice_debris_' + (n.elite ? 't4' : n.tier), ground: n.y + n.r * 0.7 + rand(2, 14), bounces: 0 });
+  }
+  // 스파크 줄무늬(juice_spark_trail) — 속도 방향 회전 · 수명에 맞춰 프레임 진행
+  function emitSpark(x, y, I, dir) {
+    const p = allocPart();
+    const a = dir == null ? rand(0, 6.28) : dir + rand(-0.7, 0.7), sp = rand(200, 360) * (0.7 + 0.5 * I);
+    Object.assign(p, { alive: true, kind: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: rand(0.2, 0.34), size: 22 + 10 * I, rot: 0, vr: 0 });
+  }
+  function emitPart(x, y, color, I) {
+    let p = null;
+    for (let i = 0; i < PART_CAP; i++) { const q = R.parts[(R.partCursor + i) % PART_CAP]; if (!q.alive) { p = q; R.partCursor = (R.partCursor + i + 1) % PART_CAP; break; } }
+    if (!p) { p = R.parts[R.partCursor]; R.partCursor = (R.partCursor + 1) % PART_CAP; } // 가득 차면 가장 오래된 것 재사용
+    const a = rand(0, Math.PI * 2), sp = rand(60, 160) * (0.7 + 0.6 * I);
+    Object.assign(p, { alive: true, x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - rand(20, 70), t: 0, life: rand(0.35, 0.6),
+      size: rand(2, 4.5) * (1 + 0.6 * I), rot: rand(0, 6.28), vr: rand(-12, 12), color });
+  }
+  // ── 링(T9: 이징 + 풀) ──
+  function addRing(x, y, r0, r1, life, color, eased, fillA = 0) {
+    if (eased) {
+      if (R.rings.length >= RING_POOL) { R.rings.shift(); }
+      R.stats.ringReuse++;
+    } else R.stats.ringNew++;
+    R.rings.push({ x, y, r0, r1, life, t: 0, color, eased, fillA });
+  }
+  function addPopup(p) {
+    p.pri = popupPri(p);
+    // 현행(「현재」 패널 · 강화안 T1 끔): `_popups` 는 상한 없는 List — 그리기가 **앞에서부터 64개만** 한다(아래 draw).
+    if (!on('T1')) { R.popups.push(p); return; }
+    // ── 강화안 T1: 공유 풀 64 + 우선순위 + 합산 ──
+    if (p.kind === 'dmg') {
+      // ① 같은 노드 데미지 팝업이 0.15s 안에 또 오면 합산(숫자 증가 + 펀치 재시작)
+      for (let i = R.popups.length - 1; i >= 0; i--) {
+        const q = R.popups[i];
+        if (q.kind === 'dmg' && q.nodeId === p.nodeId && q.t < 0.15) { q.value += p.value; q.crit = q.crit || p.crit; q.pri = popupPri(q); q.t = 0; R.stats.popupMerged++; return; }
+      }
+      // ② 데미지 몫 24 초과 → 같은 노드 최신 팝업에 합산, 없으면 가장 작은 비크리 데미지 팝업을 버림
+      const dmgs = R.popups.filter(q => q.kind === 'dmg');
+      if (dmgs.length >= POPUP_CAP) {
+        for (let i = R.popups.length - 1; i >= 0; i--) {
+          const q = R.popups[i];
+          if (q.kind === 'dmg' && q.nodeId === p.nodeId) { q.value += p.value; q.crit = q.crit || p.crit; q.pri = popupPri(q); q.t = Math.min(q.t, 0.05); R.stats.popupMerged++; return; }
+        }
+        let mi = -1, mv = Infinity;
+        for (let i = 0; i < R.popups.length; i++) { const q = R.popups[i]; if (q.kind === 'dmg' && !q.crit && q.value < mv) { mv = q.value; mi = i; } }
+        if (mi >= 0 && (p.crit || mv < p.value)) { R.popups.splice(mi, 1); R.stats.popupDropped++; }
+        else { R.stats.popupDropped++; return; }
+      }
+    }
+    // ③ 총 64 초과 → 가장 낮은 우선순위의 가장 오래된 것을 밀어낸다(그것이 새 것보다 높으면 새 것을 버린다)
+    if (R.popups.length >= POPUP_POOL) {
+      let vi = -1;
+      for (let i = 0; i < R.popups.length; i++) {
+        const q = R.popups[i];
+        if (vi < 0 || q.pri < R.popups[vi].pri || (q.pri === R.popups[vi].pri && q.t > R.popups[vi].t)) vi = i;
+      }
+      if (R.popups[vi].pri <= p.pri) { R.popups.splice(vi, 1); R.stats.popupEvicted++; }
+      else { R.stats.popupDropped++; return; }
+    }
+    R.popups.push(p);
+  }
+  function shake(mag, life) {
+    if (low()) return;
+    if (R.shake.life > 0 && R.shake.mag * (1 - R.shake.age / R.shake.life) >= mag) return;
+    R.shake = { age: 0, life, mag };
+  }
+  function hitstop(sec) {
+    if (low() || R.stopCd > 0) return;
+    R.stopT = Math.max(R.stopT, sec); R.stopCd = 0.25; R.stats.stops++;
+  }
+  function spawnOrbs(node, reward, n) {
+    for (let i = 0; i < n; i++) {
+      R.orbs.push({ sx: node.x + rand(-20, 20) * 0.5, sy: node.y + rand(-12, 12) * 0.5, t: 0, life: rand(0.45, 0.72),
+        size: rand(10, 16) * TS * (mode === 'v2' && T.T7.on ? (0.9 + 0.5 * intensity(reward)) : 1),
+        strength: mode === 'v2' && T.T7.on ? 0.15 + 0.8 * intensity(reward) : Math.min(0.95, Math.max(0.08, 0.18 + reward * 0.03)),
+        color: node.elite ? C.purple : 'rgb(158,255,209)' });
+    }
+  }
+
+  R.handle = function (events) {
+    let tickKills = 0, orbsThisTick = 0, partsThisTick = 0, maxI = 0, anyCritKill = false, anyElite = false;
+    const killsInTick = events.filter(e => e.type === 'kill').length;
+    let hammerIdx = 0;
+    // T3 파편 예산 — **보상 큰 순**으로 배정(플랜 T3): 개당 min(원하는 수, floor(120/N)), 잔여 0 이면 이후 처치는 입자 0
+    const partAlloc = new Map();
+    if (on('T3')) {
+      const ks = events.filter(e => e.type === 'kill').sort((a, b) => b.reward - a.reward);
+      const per = Math.floor(PART_TICK_BUDGET / Math.max(1, ks.length));
+      let left = PART_TICK_BUDGET;
+      for (const k of ks) {
+        const rec = J.killRecipe(intensity(k.reward), low());   // lowMotion 이면 레시피가 이미 절반
+        const want = Math.min(per, rec.debris + rec.sparks);
+        const give = Math.max(0, Math.min(want, left)); left -= give; partAlloc.set(k, give);
+      }
+    }
+    for (const e of events) {
+      if (e.type === 'spawn') { vis(e.node.id); continue; }
+      if (e.type === 'hit') {
+        const v = vis(e.node.id);
+        v.hitT = 0.40; v.debrisT = 0.30; v.dir = e.dir;
+        // 키보드 해머 — **두 패널 공통(현행)**. 처치 타격은 제외(SpawnKeyboardHammer 의 `node.IsDying` 가드 —
+        // ApplyDamageToNode 가 같은 호출 안에서 IsDying=true 를 세운 뒤라 막타에는 안 떨어진다).
+        if (e.node.hp > 0) {
+          const stagger = Math.min(hammerIdx, 4) * 0.004; hammerIdx++;
+          R.hammers.push({ node: e.node, crit: e.crit, t: -stagger, impact: false,
+            tx: e.node.x, ty: e.node.y - e.node.r * 0.8, ang: e.crit ? rand(-12, 12) : rand(-3, 3),
+            w: (e.crit ? 56 : 40) * HS, h: (e.crit ? 38 : 28) * HS, bounce: (e.crit ? 12 : 8) * HS });
+        }
+        if (on('T2')) {
+          v.flashT = 0.06; if (!low()) v.punchT = 0;
+          // 시트: 실루엣 위 가산 섬광(모든 타격 · 막타 포함) + 타격점 임팩트 별(해머 착지 시각 0.07s 에 맞춤 — 막타는 처치 버스트가 대신)
+          const Ih = intensity(e.node.reward), hr = J.hitRecipe(Ih, e.crit);
+          playAnim('juice_hit_flash', e.node.x, e.node.y, e.node.r * 2 * hr.flashK, { alpha: 0.85, follow: e.node.hp > 0 ? e.node : null });
+          if (e.node.hp > 0) playAnim('juice_impact_star', e.node.x, e.node.y - e.node.r * 0.8, hr.starPx * TS * 1.2, { rot: e.crit ? rand(0, 6.28) : rand(-0.2, 0.2), delay: 0.07 });
+          if (e.crit && on('T3')) for (let i = 0; i < hr.sparks; i++) emitSpark(e.node.x, e.node.y - e.node.r * 0.8, Ih, -Math.PI / 2);
+        }
+        if (on('T1')) {
+          addPopup({ kind: 'dmg', nodeId: e.node.id, x: e.node.x + rand(-8, 8), y: e.node.y - e.node.r * 0.6, value: e.dmg, crit: e.crit, t: 0, life: 0.8 });
+        }
+        continue;
+      }
+      if (e.type === 'kill') {
+        const n = e.node, I = intensity(e.reward);
+        maxI = Math.max(maxI, I); tickKills++;
+        if (e.crit) anyCritKill = true;
+        if (n.elite) anyElite = true;
+        R.corpses.push({ n, t: 0, life: 0.55, pop: on('T2') });
+        R.hud.value += e.reward;
+        // 재화 팝업
+        // 현행은 처치당 보상 팝업 2~3개(골드 Run.cs:1234 · 보조 :1251 · 주 재화 :1256) — 여기선 주 재화 + 골드 2개
+        const enh = mode === 'v2' && (T.T1.on || T.T4.on);
+        const curStyle = enh ? { size: (14 + (T.T4.on ? 12 * I : 0)) * TS, punch: T.T1.on && !low() } : { size: 14 * TS, punch: false, linear: true };
+        addPopup(Object.assign({ kind: 'cur', x: n.x, y: n.y - n.r - 6, value: e.reward, crit: e.crit, t: 0, life: 0.9 }, curStyle));
+        addPopup(Object.assign({ kind: 'cur', x: n.x + 6, y: n.y - n.r + 8, value: Math.max(1, e.reward * 0.35), crit: e.crit, t: 0, life: 0.9, suffix: ' 골드' }, curStyle, { size: curStyle.size * 0.85 }));
+        // 이벤트 텍스트(현행 `상자 확보!` Run.cs:1137 계열) — 골든(엘리트) 처치 시
+        if (n.elite) addPopup({ kind: 'event', x: n.x, y: n.y - n.r - 22, text: '상자 확보!', t: 0, life: 1.1, size: 15 * TS, linear: !enh, punch: enh && !low() });
+        // 구슬
+        let orbN;
+        if (on('T7')) { orbN = Math.max(1, Math.round(1 + 5 * I)); orbN = Math.min(orbN, ORB_TICK_CAP - orbsThisTick); }
+        else orbN = Math.max(1, Math.min(4, 1 + Math.floor(e.reward / 7)));
+        if (orbN > 0) { spawnOrbs(n, e.reward, orbN); orbsThisTick += orbN; }
+        // 골든(엘리트) 링 — 현재에도 있음(선형)
+        if (n.elite) addRing(n.x, n.y, n.r, n.r * 3.2, 0.5, C.gold, on('T9'));
+        // 파편 버스트(T3)
+        if (on('T3')) {
+          // 예산 분배(게이트1 R1-4): 개당 = floor(120/N) — N≤60 이면 ≥2, 61~120 이면 1, 그 이상은 남은 예산이 0 이 되어 드롭.
+          // `max(2, …)` 는 N>60 에서 120 을 넘었다(62킬=124) → 폐기. 아래 잔여 예산 클램프가 최종 상한이다.
+          // v2: 시트 프레임 — 균열(노드 위) → 티어 글로우 → 먼지 → 처치 버스트, 칩·스파크는 T3 예산 안에서
+          const rec = J.killRecipe(I, low());
+          const cnt = partAlloc.get(e) || 0;
+          const nSpark = Math.min(rec.sparks, Math.floor(cnt * rec.sparks / Math.max(1, rec.debris + rec.sparks)));
+          for (let i = 0; i < cnt - nSpark; i++) emitChip(n, I, rec);
+          for (let i = 0; i < nSpark; i++) emitSpark(n.x, n.y, I);
+          partsThisTick += Math.max(0, cnt);
+          playAnim('juice_crack', n.x, n.y, n.r * 3, { rot: rand(0, 6.28) });
+          R.fxSprites.push({ name: 'tierGlow', x: n.x, y: n.y, s0: n.r * 2, s1: rec.tierGlowPx, t: 0, life: 0.34, color: n.color, rot: 0 });
+          playAnim('juice_dust_puff', n.x, n.y + n.r * 0.4, rec.dustPx, { alpha: 0.7, delay: 0.03 });
+          playAnim('juice_kill_burst', n.x, n.y, rec.burstPx, { alpha: rec.burstAlpha, speed: rec.burstSpeed, delay: 0.02 });
+        } else if (on('T9')) {
+          addRing(n.x, n.y, n.r, n.r + (22 + 40 * I) * (low() ? 0.8 : 1), 0.32, n.color, true);
+        }
+        continue;
+      }
+      if (e.type === 'tick') {
+        R.tickFlash = 1;
+        R.stats.maxKillsTick = Math.max(R.stats.maxKillsTick * 0.995, e.kills);
+        R.stats.partsThisTick = partsThisTick;
+        if (e.kills > 0) {
+          // T6 화면 흔들림(위계: 피버 0.28 · 콤보 0.22 보다 작게)
+          if (on('T6')) {
+            if (anyElite) shake(0.14, 0.18);
+            else if (e.kills >= 4) shake(0.08, 0.12);
+            else if (anyCritKill) shake(0.06, 0.10);
+          }
+          // T5 히트스톱(시각 전용)
+          if (on('T5')) {
+            let s = 0;
+            if (anyElite) s = 0.07; else if (e.kills >= 6) s = 0.05; else if (anyCritKill) s = 0.04;
+            if (s > 0) hitstop(s);
+          }
+          // T8 멀티킬 배지
+          if (on('T8') && e.kills >= 3) {
+            const col = e.kills >= 8 ? C.amber : e.kills >= 5 ? C.gold : C.teal;
+            R.badges.push({ x: Math.min(W - 60, e.x + e.R * 0.72), y: Math.max(HUD_H + 22, e.y - e.R * 0.72), n: e.kills, color: col, hot: e.kills >= 8, t: 0, life: 0.9 });
+          }
+        }
+      }
+    }
+  };
+
+  R.update = function (realDt) {
+    // 히트스톱: 연출 시계만 멈춘다(시뮬레이션은 밖에서 계속 돈다)
+    let dt = realDt;
+    if (R.stopCd > 0) R.stopCd -= realDt;
+    if (R.stopT > 0) { R.stopT -= realDt; dt = 0; }
+    R.tickFlash = Math.max(0, R.tickFlash - realDt * 5);
+    for (const [id, v] of R.vis) {
+      v.hitT = Math.max(0, v.hitT - dt); v.debrisT = Math.max(0, v.debrisT - dt); v.flashT = Math.max(0, v.flashT - dt);
+      if (v.punchT >= 0) { v.punchT += dt; if (v.punchT > 0.10) v.punchT = -1; }
+    }
+    // 없어진 노드 vis 정리
+    if (R.vis.size > 200) { const alive = new Set(sim.nodes.map(n => n.id)); for (const id of R.vis.keys()) if (!alive.has(id)) R.vis.delete(id); }
+    // 키보드 해머(현행 UpdateKbHammers 상수 그대로: enter 0.025 · slam 0.045 · bounce 0.10 · fade 0.22)
+    for (const h of R.hammers) {
+      h.t += dt;
+      if (!h.impact && h.t >= 0.07) {
+        h.impact = true;
+        // OnKbHammerImpact — 노드 흔들림(0.16s/0.03/18° · 크리 0.25s/0.05/30° · 40Hz) + 링(선형, 이징 0)
+        const s = R.shakes.get(h.node.id);
+        const dur = h.crit ? 0.25 : 0.16, mag = h.crit ? 0.05 : 0.03, ang = h.crit ? 30 : 18;
+        R.shakes.set(h.node.id, { t: 0, dur: Math.max(dur, s ? s.dur - s.t : 0), mag: Math.max(mag, s ? s.mag : 0), ang: Math.max(ang, s ? s.ang : 0) });
+        const col = h.node.color;
+        addRing(h.tx, h.ty, 0.05 * U, (h.crit ? 0.72 : 0.46) * U, h.crit ? 0.30 : 0.22, col, on('T9'), h.crit ? 0.14 : 0.10);
+        if (h.crit) addRing(h.tx, h.ty, 0.12 * U, 1.10 * U, 0.38, C.gold, on('T9'), 0.08);
+      }
+    }
+    R.hammers = R.hammers.filter(h => h.t < 0.39);
+    for (const [id, s] of R.shakes) { s.t += dt; if (s.t >= s.dur) R.shakes.delete(id); }
+    for (const c of R.corpses) c.t += dt;
+    R.corpses = R.corpses.filter(c => c.t < c.life);
+    for (const p of R.popups) p.t += dt;
+    R.popups = R.popups.filter(p => p.t < p.life);
+    for (const o of R.orbs) {
+      o.t += dt;
+      if (o.t >= o.life && !o.done) { o.done = true; R.hud.pulse = Math.max(R.hud.pulse, Math.min(0.95, Math.max(0.08, o.strength))); }
+    }
+    R.orbs = R.orbs.filter(o => !o.done);
+    R.hud.pulse = Math.max(0, R.hud.pulse - realDt * 3.2);
+    if (on('T7')) R.hud.shown = lerp(R.hud.shown, R.hud.value, 1 - Math.exp(-realDt / 0.35 * 4));
+    else R.hud.shown = R.hud.value;
+    for (const r of R.rings) r.t += dt;
+    R.rings = R.rings.filter(r => r.t < r.life);
+    for (const a of R.anims) a.t += dt;
+    R.anims = R.anims.filter(a => a.t - a.delay < J.lifeOf(a.name, a.speed));
+    R.stats.animAlive = R.anims.length;
+    for (const s of R.fxSprites) s.t += dt;
+    R.fxSprites = R.fxSprites.filter(s => s.t < s.life);
+    for (const b of R.badges) b.t += dt;
+    R.badges = R.badges.filter(b => b.t < b.life);
+    let alive = 0, chips = 0, sparks = 0;
+    for (const p of R.parts) {
+      if (!p.alive) continue;
+      p.t += dt;
+      if (p.t >= p.life) { p.alive = false; continue; }
+      if (p.kind === 'chip') {
+        p.vy += 560 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; p.vx *= 1 - 0.9 * dt;
+        if (p.y > p.ground && p.vy > 0) {                     // 바닥 바운스(최대 2회, 이후 정지 후 페이드)
+          p.y = p.ground;
+          if (p.bounces < 2) { p.vy *= -0.42; p.vx *= 0.65; p.vr *= 0.55; p.bounces++; } else { p.vy = 0; p.vx *= 0.5; p.vr = 0; }
+        }
+        chips++;
+      } else if (p.kind === 'spark') {
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - 3.2 * dt; p.vy = p.vy * (1 - 3.2 * dt) + 240 * dt;
+        sparks++;
+      } else { p.vy += 380 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; p.vx *= 1 - 1.5 * dt; }
+      alive++;
+    }
+    R.stats.partsAlive = alive; R.stats.chips = chips; R.stats.sparks = sparks;
+    if (R.shake.life > 0) { R.shake.age += realDt; if (R.shake.age >= R.shake.life) R.shake.life = 0; }
+    if (low()) R.shake.life = 0;
+  };
+
+  function drawNode(n, alpha, scale, v, deadStep) {
+    const x = n.x, y = n.y, r = n.r * scale;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    // 골든 6Hz 펄스(현재에도 있음)
+    if (n.elite) {
+      const pulse = 0.5 + 0.5 * Math.sin(sim.time * Math.PI * 2 * 6);
+      ctx.fillStyle = hexA(C.gold, 0.12 + 0.12 * pulse);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    // 바위 몸통
+    ctx.beginPath();
+    n.shape.pts.forEach(([cx, cy, k], i) => { const px = cx * r * k, py = cy * r * k; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.closePath();
+    const hit = v && v.hitT > 0;
+    ctx.fillStyle = hit ? '#243344' : '#1a2633';
+    ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = n.elite ? hexA(C.gold, 0.9) : '#2e4155'; ctx.stroke();
+    // 광맥 결정
+    for (const [cx, cy, s, rot] of n.shape.crystals) {
+      ctx.save(); ctx.translate(cx * r, cy * r); ctx.rotate(rot);
+      const sz = s * r;
+      ctx.beginPath(); ctx.moveTo(0, -sz); ctx.lineTo(sz * 0.55, 0); ctx.lineTo(0, sz); ctx.lineTo(-sz * 0.55, 0); ctx.closePath();
+      ctx.fillStyle = n.color; ctx.globalAlpha = alpha * (hit ? 1 : 0.85); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = alpha;
+    // 현재 피격 = 프레임 교체 근사: hit 프레임은 방향 쪽 금 한 줄, debris 프레임은 가장자리 조각 3개(3프레임 계단)
+    if (v && v.hitT > 0) {
+      ctx.strokeStyle = 'rgba(207,218,230,.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(v.dir + Math.PI) * r * 0.8, Math.sin(v.dir + Math.PI) * r * 0.8); ctx.stroke();
+    }
+    if (v && v.debrisT > 0) {
+      const step = Math.min(2, Math.floor((0.30 - v.debrisT) / 0.10));
+      ctx.fillStyle = '#3a4d62';
+      for (let i = 0; i < 3; i++) {
+        const a = v.dir + Math.PI + (i - 1) * 0.5, d = r * (0.95 + step * 0.18);
+        ctx.fillRect(Math.cos(a) * d - 1.5, Math.sin(a) * d - 1.5, 3, 3);
+      }
+    }
+    // 강화안 T2: 흰 플래시(가산)
+    if (v && v.flashT > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * (v.flashT / 0.06) * 0.85;
+      ctx.beginPath();
+      n.shape.pts.forEach(([cx, cy, k], i) => { const px = cx * r * k, py = cy * r * k; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+      ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // 현재 사망 프레임: 균열 계단(4f)
+    if (deadStep != null) {
+      ctx.strokeStyle = 'rgba(11,18,24,.8)'; ctx.lineWidth = 1.4;
+      for (let i = 0; i <= deadStep; i++) { const a = i * 1.7; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+  function drawSprite(name, x, y, size, color, alpha, rot) {
+    const c = tinted(name, color);
+    if (!c) return;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); if (rot) ctx.rotate(rot);
+    ctx.drawImage(c, -size / 2, -size / 2, size, size); ctx.restore();
+  }
+
+  R.draw = function () {
+    ctx.save();
+    ctx.clearRect(0, 0, W, H);
+    // 배경(필드 표면 + 그리드)
+    const g = ctx.createRadialGradient(W / 2, H * 0.4, 20, W / 2, H * 0.45, W * 0.7);
+    g.addColorStop(0, '#12202c'); g.addColorStop(1, '#0a121b');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // 흔들림
+    if (R.shake.life > 0) {
+      const t = clamp01(R.shake.age / R.shake.life), fall = 1 - t, mag = R.shake.mag * U;
+      ctx.translate(Math.sin(R.shake.age * 78) * mag * fall, Math.cos(R.shake.age * 62) * mag * fall * 0.6);
+    }
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += 40) { ctx.beginPath(); ctx.moveTo(x + 0.5, HUD_H); ctx.lineTo(x + 0.5, H); ctx.stroke(); }
+    for (let y = HUD_H; y <= H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke(); }
+
+    // 노드
+    for (const n of sim.nodes) {
+      const v = R.vis.get(n.id);
+      const bornT = sim.time - n.born;
+      let s = bornT < 0.18 ? easeOutCubic(bornT / 0.18) : 1;
+      if (v && v.punchT >= 0) { const p = v.punchT / 0.10; s *= 1 + 0.12 * Math.sin(Math.PI * p) * (1 - 0.3 * p); }
+      const sh = R.shakes.get(n.id);
+      if (sh) {
+        // ApplyResourceNodeShake 근사 — 40Hz 진동, 남은 시간 비례 감쇠
+        const f = 1 - sh.t / sh.dur, w = Math.sin(sh.t * 40 * Math.PI * 2) * f;
+        ctx.save(); ctx.translate(n.x + w * sh.mag * U, n.y); ctx.rotate(w * sh.ang * Math.PI / 180 * 0.35); ctx.translate(-n.x, -n.y);
+        drawNode(n, 1, s, v, null); ctx.restore();
+      } else drawNode(n, 1, s, v, null);
+    }
+    // 사망 = 4프레임 0.55s 알파 페이드(두 패널 공통 — 강화안은 그 위에 버스트를 얹는다)
+    for (const c of R.corpses) {
+      const p = c.t / c.life, step = Math.min(3, Math.floor(p * 4));
+      if (c.pop) {
+        // 강화안: 막타 = 흰 실루엣 + 1.0→1.22 팽창 60ms 후 빠르게 사라짐(버스트가 몸통을 대신한다)
+        const q = Math.min(1, c.t / 0.06), sc = low() ? 1 : 1 + 0.22 * J.easeOutQuad(q);
+        if (c.t < 0.16) drawNode(c.n, 1 - c.t / 0.16, sc, { hitT: 0, debrisT: 0, flashT: c.t < 0.06 ? 0.06 - c.t : 0 }, step);
+      } else drawNode(c.n, 1 - p, 1, null, step);
+    }
+    // 스프라이트 연출(T3)
+    for (const s of R.fxSprites) {
+      const p = s.t / s.life;
+      if (s.name === 'tierGlow') {   // 버스트 아래 티어색 글로우(가산)
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        J.glow(ctx, s.x, s.y, lerp(s.s0, s.s1, easeOutCubic(p)) * 0.5, s.color.startsWith('#') ? s.color : '#57d1b8', 0.75 * (1 - easeInQuad(p)));
+        ctx.restore(); continue;
+      }
+      const size = lerp(s.s0, s.s1, easeOutCubic(p));
+      const a = (s.alpha ?? 1) * (1 - easeInQuad(p));
+      drawSprite(s.name, s.x, s.y, size, s.color, a, s.rot);
+    }
+    // 링
+    for (const r of R.rings) {
+      const p = r.t / r.life;
+      if (r.eased) {
+        const rad = lerp(r.r0, r.r1, easeOutCubic(p));
+        drawSprite('fx_ring', r.x, r.y, rad * 2, r.color, 1 - easeInQuad(p), 0);
+      } else {
+        const rad = lerp(r.r0, r.r1, p);
+        ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = r.color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2);
+        if (r.fillA) { ctx.fillStyle = hexA(r.color.startsWith('#') ? r.color : '#ffffff', r.fillA); ctx.fill(); }
+        ctx.stroke(); ctx.restore();
+      }
+    }
+    // 파편 입자
+    // 시트 프레임 애니(균열·먼지·처치 버스트·플래시·임팩트 별) — 먼지는 아래, 가산은 위
+    for (const pass of [0, 1]) for (const an of R.anims) {
+      const isDust = an.name === 'juice_dust_puff';
+      if ((pass === 0) !== isDust) continue;
+      const tt = an.t - an.delay; if (tt < 0) continue;
+      const f = J.frameAt(an.name, tt, an.speed); if (f < 0) continue;
+      const x = an.follow ? an.follow.x : an.x, y = an.follow ? an.follow.y : an.y;
+      J.drawFrame(ctx, an.name, f, x, y, an.size, { alpha: an.alpha, rot: an.rot });
+    }
+    for (const p of R.parts) {
+      if (!p.alive) continue;
+      if (p.kind === 'chip') {
+        const fa = p.t > p.life - 0.22 ? (p.life - p.t) / 0.22 : 1;
+        const nc = J.SHEETS[p.sheet].cols, col = Math.floor((((p.rot % 6.283) + 6.283) % 6.283) / 6.283 * nc) % nc;
+        J.drawFrame(ctx, p.sheet, p.row * nc + col, p.x, p.y, p.size, { alpha: fa });
+        continue;
+      }
+      if (p.kind === 'spark') {
+        const nf = J.SHEETS.juice_spark_trail.frames, f = Math.min(nf - 1, Math.floor(p.t / p.life * nf));
+        J.drawFrame(ctx, 'juice_spark_trail', f, p.x, p.y, p.size, { rot: Math.atan2(p.vy, p.vx) });
+        continue;
+      }
+      const a = 1 - easeInQuad(p.t / p.life);
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color; ctx.beginPath(); ctx.moveTo(0, -p.size); ctx.lineTo(p.size * 0.8, p.size * 0.6); ctx.lineTo(-p.size * 0.7, p.size * 0.5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    // 키보드 해머(두 패널 공통 — 현행)
+    for (const h of R.hammers) {
+      if (h.t < 0) continue;
+      const start = h.ty - 35 * HS;
+      let y, a = 1, sx = 1, sy = 1;
+      if (h.t < 0.025) { const p = h.t / 0.025; y = start - 6 * HS * (1 - p * p); a = p; }
+      else if (h.t < 0.07) { const p = (h.t - 0.025) / 0.045; y = lerp(start, h.ty, p * p * p); sx = 1 + p * 0.18; sy = 1 - p * 0.14; }
+      else if (h.t < 0.17) { const p = (h.t - 0.07) / 0.10; y = h.ty - p * h.bounce; sx = 1 + (1 - p) * 0.28; sy = 1 - (1 - p) * 0.22; }
+      else { const p = (h.t - 0.17) / 0.22; y = h.ty - h.bounce; a = 1 - p * p; }
+      ctx.save(); ctx.globalAlpha = clamp01(a); ctx.translate(h.tx, y); ctx.rotate(h.ang * Math.PI / 180); ctx.scale(sx, sy);
+      const w = h.w, hh = h.h;
+      ctx.fillStyle = '#16202c'; ctx.strokeStyle = h.crit ? C.gold : h.node.color; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-w / 2, -hh, w, hh, 3) : ctx.rect(-w / 2, -hh, w, hh); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = hexA(C.num.startsWith('#') ? C.num : '#cfdae6', 0.55);
+      const kw = w / 7;
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) ctx.fillRect(-w / 2 + kw * 0.6 + c * kw, -hh + 3 + r * (hh - 5) / 3, kw * 0.7, (hh - 8) / 3);
+      ctx.restore();
+    }
+    // AOE 커서(두 패널 공통)
+    const m = mapCfg(), cx = sim.cursor.x, cy = sim.cursor.y;
+    ctx.save();
+    ctx.strokeStyle = hexA(C.teal, 0.55 + 0.35 * R.tickFlash); ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
+    ctx.lineDashOffset = -sim.time * 20;
+    ctx.beginPath(); ctx.arc(cx, cy, m.aoe, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = hexA(C.teal, 0.05 + 0.08 * R.tickFlash); ctx.fill();
+    ctx.fillStyle = C.teal; ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+    // 다음 틱까지 호
+    ctx.strokeStyle = hexA(C.teal, 0.8); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (sim.tickAcc / TICK)); ctx.stroke();
+    ctx.restore();
+
+    // 팝업 — 현행 Canvas 는 `_popups` 를 **앞에서부터 64개만** 그린다(RunFxView.cs:284) ⇒ 넘치면 새 팝업이 안 보인다
+    R.stats.hiddenNow = Math.max(0, R.popups.length - POPUP_POOL);
+    R.stats.hiddenMax = Math.max(R.stats.hiddenMax, R.stats.hiddenNow);
+    for (let pi = 0; pi < Math.min(R.popups.length, POPUP_POOL); pi++) {
+      const p = R.popups[pi];
+      const u = p.t / p.life;
+      let size, y, a, scale = 1, color, text, font;
+      if (p.kind === 'dmg') {
+        // T1 스펙 = 생성기 §B(JuiceFx.DMG) — 크기·외곽선·경사 채움·크리 번짐·펀치 곡선 동일
+        const px = J.DMG.size(p.value, p.crit) * TS;
+        const sc = low() ? 1 : J.DMG.punch(p.t);
+        const yy = p.y - (low() ? J.DMG.rise / 2 : J.DMG.rise) * easeOutCubic(Math.min(1, p.t / J.DMG.life));
+        const aa = p.t > p.life - J.DMG.fadeTail ? (p.life - p.t) / J.DMG.fadeTail : 1;
+        J.drawDamageNumber(ctx, fmt(p.value), p.x, yy, px, p.crit, aa, sc);
+        continue;
+      } else {
+        size = p.size;
+        if (p.linear) { y = p.y - 0.7 * U * p.t; a = 1 - u; }
+        else {
+          if (p.punch && p.t < 0.12) { const q = p.t / 0.12; scale = q < 0.5 ? lerp(0.3, 1.2, q / 0.5) : lerp(1.2, 1.0, (q - 0.5) / 0.5); }
+          y = p.y - 0.7 * U * 1.1 * easeOutCubic(u) * p.life; a = p.t > p.life - 0.3 ? (p.life - p.t) / 0.3 : 1;
+        }
+        if (p.kind === 'event') { color = C.amber; text = p.text; }
+        else { color = p.crit ? POPUP_CRIT : POPUP_GOLD; text = '+' + fmt(p.value) + (p.suffix || ''); }
+        font = `${size.toFixed(1)}px ${p.linear ? FONT_BODY : FONT_TITLE}`;
+      }
+      ctx.save(); ctx.globalAlpha = clamp01(a); ctx.translate(p.x, y); ctx.scale(scale, scale);
+      ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (!p.linear) { ctx.lineWidth = Math.max(2, size * 0.16); ctx.strokeStyle = 'rgba(7,12,17,.9)'; ctx.strokeText(text, 0, 0); }
+      if (p.kind === 'dmg' && p.crit) { ctx.lineWidth = 1; ctx.strokeStyle = C.amber; ctx.strokeText(text, 0, 0); }
+      ctx.fillStyle = color; ctx.fillText(text, 0, 0);
+      ctx.restore();
+    }
+    // 멀티킬 배지(T8)
+    for (const b of R.badges) {
+      let s = 1;
+      if (!low() && b.t < 0.14) { const q = b.t / 0.14; s = q < 0.5 ? lerp(0.4, 1.35, q / 0.5) : lerp(1.35, 1, (q - 0.5) / 0.5); }
+      const a = b.t > 0.5 ? 1 - (b.t - 0.5) / 0.4 : 1;
+      ctx.save(); ctx.globalAlpha = clamp01(a); ctx.translate(b.x, b.y); ctx.scale(s, s); ctx.rotate(-0.08);
+      ctx.font = `${22 + Math.min(10, b.n)}px ${FONT_TITLE}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 5; ctx.strokeStyle = b.hot ? C.red : 'rgba(7,12,17,.92)'; ctx.strokeText('×' + b.n, 0, 0);
+      ctx.fillStyle = b.color; ctx.fillText('×' + b.n, 0, 0);
+      ctx.font = `11px ${FONT_TITLE}`; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(7,12,17,.92)';
+      ctx.strokeText('MULTI', 0, 17); ctx.fillStyle = b.color; ctx.fillText('MULTI', 0, 17);
+      ctx.restore();
+    }
+    ctx.restore(); // 흔들림 해제 — HUD·구슬은 화면 고정 레이어
+
+    // HUD 상단 띠
+    ctx.fillStyle = 'rgba(11,18,24,.92)'; ctx.fillRect(0, 0, W, HUD_H);
+    ctx.fillStyle = hexA(C.teal, 0.2); ctx.fillRect(0, HUD_H - 1, W, 1);
+    const pulseS = 1 + R.hud.pulse * 0.28;
+    ctx.save(); ctx.translate(16, HUD_H / 2); ctx.scale(pulseS, pulseS);
+    ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.font = `14px ${FONT_TITLE}`; ctx.textBaseline = 'middle'; ctx.fillStyle = hexA(C.gold, 0.9 + 0.1 * R.hud.pulse);
+    ctx.fillText(fmt(R.hud.shown), 12, 1);
+    ctx.restore();
+    ctx.font = `12px ${FONT_BODY}`; ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(`맵 ${sim.map} · 처치 ${sim.kills}`, W - 10, HUD_H / 2);
+    ctx.textAlign = 'left';
+    // 구슬(26px 호로 HUD 로)
+    for (const o of R.orbs) {
+      const p = clamp01(o.t / o.life), e = easeInQuad(p);
+      const tx = 16, ty = HUD_H / 2;
+      const x = lerp(o.sx, tx, e), y = lerp(o.sy, ty, e) - Math.sin(Math.PI * p) * 26 * TS;
+      ctx.fillStyle = o.color; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.arc(x, y, o.size / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(x, y, o.size * 0.9, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    if (R.stopT > 0) { ctx.fillStyle = hexA(C.amber, 0.9); ctx.font = `11px ${FONT_TITLE}`; ctx.fillText('HIT-STOP', W - 70, HUD_H + 14); }
+  };
+  return R;
+}
+
+// ───────────────────────── 토글 ─────────────────────────
+const T = {
+  T1: { on: true, first: true, cost: 'M', name: '데미지 숫자 팝업', desc: '자릿수·크리로 크기(14→34pt), 펀치 0→1.25→1.0, 동시 24 · 초과분 합산' },
+  T2: { on: true, first: true, cost: 'S', name: '피격 흰 플래시 + 스케일 펀치', desc: '60ms 흰 가산 · 1→1.12→1 (0.10s) · 시트 juice_hit_flash(모든 타격) + juice_impact_star(해머 착지점) · 막타 = 흰 실루엣 팽창' },
+  T3: { on: true, first: true, cost: 'M', name: '파괴 파편 버스트', desc: '시트 juice_kill_burst·crack·dust_puff + 티어 칩(juice_debris_t1~4, 중력·바운스)·스파크 · 틱당 예산 120 · 동시 160' },
+  T4: { on: true, first: true, cost: 'S', name: '처치 강도 스케일', desc: 'I = log10(보상)/8 하나로 팝업·파편·링·구슬을 같이 민다(끄면 0.3 고정)' },
+  T5: { on: false, first: false, cost: 'M', name: '히트스톱(시각 전용)', desc: '크리 40ms · 틱당 6킬 50ms · 골든 70ms · 쿨 0.25s — 경제 시계는 안 멈춤' },
+  T6: { on: false, first: false, cost: 'S', name: '화면 흔들림 확장', desc: '크리 0.06 · 4킬 0.08 · 골든 0.14 (피버 0.28 보다 작게)' },
+  T7: { on: false, first: false, cost: 'S', name: '구슬 상한 재설계 + HUD 롤링', desc: '구슬 1~6(강도) · 틱당 24 · HUD 0.35s 카운트업 · 펄스=강도' },
+  T8: { on: false, first: false, cost: 'S', name: '멀티킬 카운터', desc: '틱당 3킬↑ ×N 배지 · 3~4 teal · 5~7 gold · 8+ amber' },
+  T9: { on: false, first: false, cost: 'S', name: '링 이징 + 풀링', desc: 'easeOutCubic 반경 · easeInQuad 알파 · fx_ring · 풀 48' },
+};
+const togglesEl = document.getElementById('toggles');
+const lowMotion = document.getElementById('lowMotion');
+function renderToggles() {
+  togglesEl.innerHTML = Object.entries(T).map(([k, t]) => `
+    <label class="tg"><input type="checkbox" data-k="${k}" ${t.on ? 'checked' : ''}>
+      <span><b>${k} ${t.name}</b><span class="cost ${t.cost}">${t.cost}</span>${t.first ? '<span class="first">1차</span>' : ''}<br>${t.desc}</span></label>`).join('');
+  togglesEl.querySelectorAll('input').forEach(i => i.addEventListener('change', () => { T[i.dataset.k].on = i.checked; renderLegend(); }));
+}
+function renderLegend() {
+  const items = Object.entries(T).map(([k, t]) => `<li class="${t.on ? '' : 'off'}"><span class="k">${k}</span> ${t.name}</li>`).join('');
+  document.getElementById('legendV2').innerHTML = `<b>켜져 있는 것</b>${lowMotion.checked ? ' <span style="color:var(--amber)">· 저모션 — 흔들림·히트스톱·펀치 0, 파편 절반</span>' : ''}<ul>${items}</ul>`;
+}
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  const p = b.dataset.preset;
+  for (const [k, t] of Object.entries(T)) {
+    t.on = p === 'all' ? true : p === 'none' ? false : p === 'first' ? t.first : p === 'noT4' ? (k !== 'T4') : t.on;
+  }
+  if (p === 'noT4') { mapEl.value = 4; setMap(4); }
+  renderToggles(); renderLegend();
+}));
+lowMotion.addEventListener('change', renderLegend);
+
+// ───────────────────────── 맵 · 입력 · 루프 ─────────────────────────
+const mapEl = document.getElementById('map');
+const REW_LABEL = { 1: '보상 10~100', 2: '보상 100~1만', 3: '보상 3천~100만', 4: '보상 10만~1억' };
+function setMap(v) {
+  sim.map = +v;
+  document.getElementById('mapv').textContent = '맵 ' + v;
+  document.getElementById('rewardRange').textContent = REW_LABEL[v];
+  // 새 맵 규모로 **즉시** 채운다(게임도 런 시작 시 필드가 차 있다) — 이후엔 처치될 때마다 0.09s 간격 리스폰
+  sim.nodes = [];
+  const m = mapCfg();
+  for (let i = 0; i < m.count * 3 && sim.nodes.length < m.count; i++) spawnNode([]);
+  for (const n of sim.nodes) n.born = sim.time - 1;
+  demoRetarget = 0;
+}
+mapEl.addEventListener('input', () => setMap(mapEl.value));
+// 틱 간격: 게임 기본 1.0초 → 공속 성장으로 하한 0.2초(MinimumTickIntervalSeconds). 최악 조건은 0.2초.
+const TICK_STEPS = [1.0, 0.7, 0.5, 0.35, 0.2];
+const tickEl = document.getElementById('tick');
+function setTick(i) {
+  i = Math.max(0, Math.min(TICK_STEPS.length - 1, i | 0));
+  TICK = TICK_STEPS[i]; tickEl.value = i;
+  document.getElementById('tickv').textContent = TICK.toFixed(TICK < 0.5 ? 2 : 1) + '초' + (i === TICK_STEPS.length - 1 ? ' (하한)' : '');
+  sim.tickAcc = Math.min(sim.tickAcc, TICK);
+}
+tickEl.addEventListener('input', () => setTick(+tickEl.value));
+
+const cvNow = document.getElementById('cvNow'), cvV2 = document.getElementById('cvV2');
+const rNow = Renderer(cvNow, 'now'), rV2 = Renderer(cvV2, 'v2');
+let lastInput = -1e9, paused = false, slow = false;
+const SNAP = (() => { try { const v = parseFloat(new URLSearchParams(location.search).get('snap')); return v > 0 ? v : 0; } catch (e) { return 0; } })();   // 로드 직후부터 자동 데모
+function onMove(ev, cv) {
+  const b = cv.getBoundingClientRect();
+  const pt = ev.touches ? ev.touches[0] : ev;
+  sim.cursor.x = Math.max(0, Math.min(W, (pt.clientX - b.left) / b.width * W));
+  sim.cursor.y = Math.max(HUD_H, Math.min(H, (pt.clientY - b.top) / b.height * H));
+  lastInput = performance.now() / 1000;
+}
+for (const cv of [cvNow, cvV2]) {
+  cv.addEventListener('mousemove', e => onMove(e, cv));
+  cv.addEventListener('touchmove', e => { onMove(e, cv); e.preventDefault(); }, { passive: false });
+}
+document.getElementById('pause').addEventListener('click', e => { paused = !paused; e.target.textContent = paused ? '재생' : '일시정지'; });
+document.getElementById('slow').addEventListener('click', e => { slow = !slow; e.target.classList.toggle('gold', slow); });
+const demoChip = document.getElementById('demoChip');
+
+// 자동 데모: 노드가 가장 많이 몰린 곳(각 노드 위치를 후보 중심으로 두고 AOE 안 노드 수 최대)으로 이동
+let demoTarget = null, demoRetarget = 0, demoFirst = true;
+function countIn(x, y, R) { let c = 0; for (const n of sim.nodes) { const dx = n.x - x, dy = n.y - y; if (dx * dx + dy * dy <= (R + n.r * 0.5) ** 2) c++; } return c; }
+function demoStep(dt) {
+  const R = mapCfg().aoe;
+  demoRetarget -= dt;
+  if (demoRetarget <= 0 || !demoTarget || countIn(demoTarget.x, demoTarget.y, R) < 2) {
+    demoRetarget = 1.2;
+    let best = { x: W / 2, y: H / 2 }, bestN = -1;
+    for (const n of sim.nodes) {
+      const x = Math.max(R * 0.6, Math.min(W - R * 0.6, n.x)), y = Math.max(HUD_H + R * 0.5, Math.min(H - R * 0.5, n.y));
+      const c = countIn(x, y, R);
+      if (c > bestN) { bestN = c; best = { x, y }; }
+    }
+    demoTarget = best;
+    if (demoFirst) { sim.cursor.x = best.x; sim.cursor.y = best.y; demoFirst = false; }
+  }
+  const k = 1 - Math.exp(-dt * 6);
+  sim.cursor.x = lerp(sim.cursor.x, demoTarget.x + Math.sin(sim.time * 1.7) * 10, k);
+  sim.cursor.y = lerp(sim.cursor.y, demoTarget.y + Math.cos(sim.time * 1.3) * 7, k);
+}
+
+const statsNow = document.getElementById('statsNow'), statsV2 = document.getElementById('statsV2');
+let prev = performance.now() / 1000, statAcc = 0, fpsAcc = 0, fpsN = 0, fps = 60;
+// 한 스텝 = 시뮬 + 두 렌더러 갱신. 긴 공백(백그라운드 탭·헤드리스 가상 시간)은 0.05s 조각으로 나눠 **누적 dt 를 전부** 소화한다.
+function advance(dt) {
+  const demo = performance.now() / 1000 - lastInput > 2;
+  demoChip.classList.toggle('on', demo);
+  if (demo) demoStep(dt);
+  const ev = simStep(dt);
+  rNow.handle(ev); rV2.handle(ev);
+  rNow.update(dt); rV2.update(dt);
+}
+function pump() {
+  const now = performance.now() / 1000;
+  let real = now - prev;
+  if (real < 0.008) return;          // rAF 와 타이머가 같이 불러도 한 번만
+  prev = now;
+  real = Math.min(real, 2);          // 2초 넘는 공백은 버린다
+  fpsAcc += real; fpsN++;
+  if (fpsAcc >= 0.5) { fps = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
+  let dt = paused ? 0 : real * (slow ? 0.25 : 1);
+  if (dt === 0) { rNow.update(0); rV2.update(0); }
+  while (dt > 0) {
+    let s = Math.min(0.02, dt);
+    // ?snap=0.12 — 6초 이후 첫 틱의 s초 뒤에서 정지(스크린샷·리뷰용 결정적 정지 화면)
+    if (SNAP && !paused && sim.time > 6 && sim.tickAcc < SNAP) s = Math.min(s, SNAP - sim.tickAcc + 1e-4);
+    advance(s); dt -= s;
+    if (SNAP && !paused && sim.time > 6 && sim.tickAcc >= SNAP && sim.tickAcc < SNAP + 0.03 && sim.tickNo > 0) { paused = true; document.getElementById('pause').textContent = '재생'; break; }
+  }
+  rNow.draw(); rV2.draw();
+  statAcc += real;
+  if (statAcc > 0.2) {
+    statAcc = 0;
+    const s = rV2.stats;
+    statsNow.innerHTML = `처치 <b>${sim.kills}</b> · 노드 <b>${sim.nodes.length}</b> · 팝업 목록 <b>${rNow.popups.length}</b>(그려짐 ≤64 · <b>안 보임 ${rNow.stats.hiddenNow}</b> · 최대 ${rNow.stats.hiddenMax}) · 구슬 <b>${rNow.orbs.length}</b> · 링 생성 누적 <b>${rNow.stats.ringNew}</b> · 파편 <b>0</b> · ${fps}fps`;
+    statsV2.innerHTML = `처치 <b>${sim.kills}</b> · 입자 <b>${s.partsAlive}</b>/160(칩 ${s.chips} · 스파크 ${s.sparks}) · 시트 애니 <b>${s.animAlive}</b>/48(재사용 ${s.animReuse}) · 이번 틱 <b>${s.partsThisTick}</b>/120 · 팝업 풀 <b>${rV2.popups.length}</b>/64 (숫자 ${rV2.popups.filter(p => p.kind === 'dmg').length}/24 · 합산 ${s.popupMerged} · 밀려남 ${s.popupEvicted} · 버림 ${s.popupDropped}${s.hiddenNow ? ' · 안 보임 ' + s.hiddenNow : ''}) · 구슬 <b>${rV2.orbs.length}</b> · 링 새로 ${s.ringNew} / 풀 ${s.ringReuse} · 히트스톱 ${s.stops}회`;
+  }
+}
+function frame() { pump(); requestAnimationFrame(frame); }
+renderToggles(); renderLegend(); setMap(1);
+// URL 로 초기 상태 지정(공유·스크린샷용): ?map=1~4 &preset=first|all|none|noT4 &tick=1.0~0.2 &low=1
+try {
+  const qs = new URLSearchParams(location.search);
+  const qm = +qs.get('map'); if (qm >= 1 && qm <= 4) { mapEl.value = qm; setMap(qm); }
+  const qp = qs.get('preset'); if (qp) { const btn = document.querySelector(`[data-preset="${qp}"]`); if (btn) btn.click(); }
+  if (qs.get('low') === '1') { lowMotion.checked = true; renderLegend(); }
+  const qt = parseFloat(qs.get('tick')); if (qt > 0) { let bi = 0; TICK_STEPS.forEach((v, i) => { if (Math.abs(v - qt) < Math.abs(TICK_STEPS[bi] - qt)) bi = i; }); setTick(bi); }
+} catch (e) { /* file:// 등에서 실패해도 기본값으로 돈다 */ }
+requestAnimationFrame(frame);
+setInterval(pump, 16);               // rAF 가 안 도는 환경(헤드리스·가려진 탭) 대비 — 누적 dt 로 같은 결과
+})();
+</script>
+</body>
+</html>

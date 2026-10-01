@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>연출 프리미티브 정본 (P3)</title>
+<style>
+:root{--bg:#0b1016;--panel:#111823;--line:#1e2937;--txt:#e6ecf3;--dim:#8b95a3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:26px 30px 60px}
+h1{font-size:19px;margin:0 0 6px}
+h2{font-size:14px;margin:26px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;max-width:1060px;margin:6px 0 12px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.art{width:140px;height:140px;background:
+  linear-gradient(45deg,#141a22 25%,transparent 25%,transparent 75%,#141a22 75%),
+  linear-gradient(45deg,#141a22 25%,#0e1319 25%,#0e1319 75%,#141a22 75%);
+  background-size:14px 14px;background-position:0 0,7px 7px}
+.nm{font-size:11px;color:var(--dim);text-align:center;margin-top:6px;max-width:140px;line-height:1.5}
+.nm b{color:#e6ecf3}
+svg{display:block;width:100%;height:100%}
+#export{display:none}
+#export.visible{display:block}
+.export-cell{width:512px;height:512px;background:transparent;padding:0;margin:0}
+.export-cell svg{width:512px;height:512px;display:block}
+</style>
+</head>
+<body>
+
+<h1>연출 프리미티브 — 스프라이트 정본 (P3)</h1>
+<p class="note">
+  <b class="hi">현행</b>: 링·스파크·광선·글로우·번개가 전부 <b class="hi">단색 사각형/원</b>이다 —
+  링 <code>Rendering.cs:969-1014</code> · <code>GemDrawView.cs:1128-1142</code>, 광선
+  <code>GemFusionView.cs:750</code>(<code>NewLine</code> = 민무늬 rect) · <code>GemDrawView.cs:1236-1247</code>,
+  번개·균열 <code>Weapons.cs:1143-1183</code> · <code>Rendering.cs:1022-1050</code>.<br>
+  연출은 <b class="hi">밝기가 끝에서 사라져야</b> 빛으로 읽히는데 민무늬 사각형은 끝이 뚝 끊긴다.
+  ⇒ P2 와 같은 규약 — <b class="hi">흰색 고정 + 알파 경사</b>로 굽고 색·세기는 런타임이 곱한다.<br>
+  <b class="hi">공용 자산이다</b> — 젬 뽑기·합성·런 FX·무기 체인이 같은 7장을 나눠 쓴다.
+</p>
+
+<h2>굽는 그림 7장</h2>
+<div class="grid" id="grid"></div>
+
+<div id="export"></div>
+
+<script>
+const svgWrap = (inner) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+const PIECES = [
+  {
+    name: 'fx_ring',
+    use: '확산 웨이브 링 — 안쪽이 비고 테두리만 빛난다. 코드가 지름을 키우며 알파를 줄인다',
+    svg: `<defs><radialGradient id="r1" cx="50%" cy="50%" r="50%">
+            <stop offset="58%" stop-color="#fff" stop-opacity="0"/>
+            <stop offset="76%" stop-color="#fff" stop-opacity="0.55"/>
+            <stop offset="88%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="97%" stop-color="#fff" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient></defs>
+          <circle cx="50" cy="50" r="50" fill="url(#r1)"/>`,
+  },
+  {
+    name: 'fx_glow',
+    use: '방사 글로우 — 중심이 밝고 밖으로 사라진다. 헤일로·잔광 공용',
+    svg: `<defs><radialGradient id="g1" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"  stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity="0.55"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity="0.16"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient></defs>
+          <circle cx="50" cy="50" r="50" fill="url(#g1)"/>`,
+  },
+  {
+    name: 'fx_beam',
+    use: '광선 — 뿌리가 밝고 끝이 사라진다. 세로로 늘여 쓴다(합성 광선 16개·뽑기 광선)',
+    svg: `<defs><linearGradient id="b1" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%"  stop-color="#fff" stop-opacity="1"/>
+            <stop offset="45%" stop-color="#fff" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="b2" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"  stop-color="#000" stop-opacity="1"/>
+            <stop offset="50%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#000" stop-opacity="1"/>
+          </linearGradient>
+          <mask id="bm"><rect x="0" y="0" width="100" height="100" fill="url(#b2)"/></mask></defs>
+          <rect x="0" y="0" width="100" height="100" fill="url(#b1)" mask="url(#bm)"/>`,
+  },
+  {
+    name: 'fx_spark',
+    use: '스파크 — 4방향 십자 섬광. 뽑기 스파크 120장이 쓰던 자리',
+    svg: `<defs><radialGradient id="s1" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"  stop-color="#fff" stop-opacity="1"/>
+            <stop offset="18%" stop-color="#fff" stop-opacity="0.5"/>
+            <stop offset="45%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient></defs>
+          <circle cx="50" cy="50" r="50" fill="url(#s1)"/>
+          <path d="M50 2 C 53 34 55 44 62 50 C 55 56 53 66 50 98
+                   C 47 66 45 56 38 50 C 45 44 47 34 50 2 Z" fill="#fff" opacity="0.95"/>
+          <path d="M2 50 C 34 47 44 45 50 38 C 56 45 66 47 98 50
+                   C 66 53 56 55 50 62 C 44 55 34 53 2 50 Z" fill="#fff" opacity="0.75"/>`,
+  },
+  {
+    name: 'fx_bolt',
+    use: '번개 — 지그재그 한 마디. 체인 스킬·균열이 쓰던 직선 rect 를 대체한다',
+    svg: `<path d="M56 0 L36 42 L50 42 L40 72 L64 34 L50 34 L60 8 Z" fill="#fff"/>
+          <path d="M56 0 L36 42 L50 42 L40 72 L64 34 L50 34 L60 8 Z" fill="#fff"
+                stroke="#fff" stroke-opacity="0.35" stroke-width="7" stroke-linejoin="round"/>`,
+  },
+  {
+    name: 'fx_crack',
+    use: '균열 — 중심에서 갈라지는 금. 노드 파괴·타격에 얹는다',
+    svg: `<g stroke="#fff" fill="none" stroke-linecap="round">
+            <path d="M50 50 L74 22" stroke-width="4"/><path d="M62 38 L72 40" stroke-width="2.6"/>
+            <path d="M50 50 L78 62" stroke-width="3.4"/><path d="M66 56 L70 68" stroke-width="2.2"/>
+            <path d="M50 50 L34 78" stroke-width="3.8"/><path d="M41 64 L30 66" stroke-width="2.4"/>
+            <path d="M50 50 L20 40" stroke-width="3.2"/><path d="M33 46 L28 34" stroke-width="2.2"/>
+            <path d="M50 50 L46 20" stroke-width="2.8"/>
+          </g>`,
+  },
+  {
+    name: 'fx_dust',
+    use: '먼지 퍼프 — 불규칙한 알갱이 뭉치. 임팩트 잔해에 얹는다',
+    svg: `<g fill="#fff">
+            <circle cx="34" cy="42" r="13" opacity="0.85"/><circle cx="58" cy="34" r="16" opacity="0.7"/>
+            <circle cx="68" cy="58" r="11" opacity="0.6"/><circle cx="44" cy="64" r="14" opacity="0.55"/>
+            <circle cx="24" cy="60" r="7" opacity="0.4"/><circle cx="72" cy="40" r="6" opacity="0.4"/>
+            <circle cx="52" cy="50" r="9" opacity="0.35"/>
+          </g>`,
+  },
+];
+
+document.getElementById('grid').innerHTML = PIECES.map(p => `
+  <div class="tile"><div class="art">${svgWrap(p.svg)}</div>
+  <div class="nm"><b>${p.name}</b><br>${p.use}</div></div>`).join('');
+
+document.getElementById('export').innerHTML = PIECES.map(p => `
+  <div class="export-cell" data-name="${p.name}">${svgWrap(p.svg)}</div>`).join('');
+</script>
+</body>
+</html>

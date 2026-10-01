@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>결과 오버레이 — 현재 vs 보드형 V2 비교본</title>
+<!--
+  result-overlay-board-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : owner QA 라운드2(2026-08-24) "자원을 상징하는 이미지 : 몇 / 세로 나열 /
+          진짜 결과 보드 창처럼" 요구에 대한 **판단 재료**. 정적 비교본이고 실조작 없음.
+  소유  : docs/plans/01-defined/phase-1/run-result-launchpad-plan.md T-html
+  정본  : html/ui-prototype.html 은 **무수정**(#result :3568-3586 옛 3줄 구조 그대로).
+          여기는 사본이 아니라 "현재 vs V2" 비교 전용 별도 파일이다.
+  팔레트: ui-prototype.html :50-85 토큰 그대로 복사(raw 색 신설 0).
+  아이콘: 실제 게임은 기존 스프라이트 4장을 재사용한다 —
+          MvpGameController.UI.cs:2356 GetCurrencySpritePath
+            Gold      → UI/Progression/Currency/coin
+            Commit    → UI/Progression/Currency/paper
+            BCoin     → UI/Progression/Currency/coin2
+            ArchToken → UI/Progression/Currency/diamond
+          (Assets/Resources/UI/Progression/Currency/{coin,paper,coin2,diamond}.png 실재 확인 2026-08-24)
+          이 html 에는 png 를 못 넣으므로 **색 원 + 약어 배지(G/C/B/A)** 로 근사한다.
+          원의 색은 근사가 아니라 실제값이다 — MvpGameController.UI.cs:2368 GetCurrencyThemeColor.
+-->
+<style>
+:root{
+  /* ── ui-prototype.html :50-85 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --btn-gold-border:#7a6420; --btn-gold-fill-a:#2a2008; --btn-gold-fill-b:#1a1505;
+  --bg-deep:#070c11; --bg-mid:#0b1218; --bg-rise:#12202c;
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+
+  /* ── 재화 4종 = GetCurrencyThemeColor(UI.cs:2368) 실제값 ── */
+  --cur-gold:#f5e859;   /* (0.96,0.91,0.35) */
+  --cur-commit:#a8d9a8; /* (0.66,0.85,0.66) */
+  --cur-bcoin:#5cabff;  /* (0.36,0.67,1.00) */
+  --cur-arch:#bf85fc;   /* (0.75,0.52,0.99) */
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 60px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+h1{font-size:20px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em;}
+.sub{color:var(--muted); font-size:12px; margin:0 0 18px;}
+.wrap{max-width:1180px; margin:0 auto;}
+
+.quote{
+  border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:12px 16px; margin:0 0 22px; border-radius:0 5px 5px 0;
+  color:var(--text-caption); font-size:13px;
+}
+.quote b{color:var(--amber);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.compare{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+@media(max-width:980px){.compare{grid-template-columns:1fr;}}
+
+.pane{min-width:0;}
+.pane h2 .tagnow{color:var(--red);}
+.pane h2 .tagv2{color:var(--teal);}
+.badge-h{
+  display:inline-block; font-size:10px; letter-spacing:.1em; padding:2px 8px;
+  border-radius:3px; margin-left:8px; vertical-align:2px;
+}
+.badge-now{background:rgba(255,107,107,.12); color:var(--red); border:1px solid rgba(255,107,107,.3);}
+.badge-v2{background:rgba(87,209,184,.12); color:var(--teal); border:1px solid rgba(87,209,184,.3);}
+
+/* ── 무대(배경 3겹) — ui-prototype .l-deep/.l-circuit/.l-vignette ── */
+.stage{position:relative; width:100%; height:600px; border-radius:10px; overflow:hidden; background:#000;}
+.stage>.lay{position:absolute; inset:0;}
+.l-deep{background:radial-gradient(ellipse at 50% 38%,#12202c 0%,#0b1218 55%,#070c11 100%);}
+.l-circuit{opacity:.055; background-image:
+  repeating-linear-gradient(0deg,var(--teal) 0 1px,transparent 1px 40px),
+  repeating-linear-gradient(90deg,var(--teal) 0 1px,transparent 1px 40px);}
+.l-vignette{background:radial-gradient(ellipse at center,transparent 46%,rgba(4,8,12,.82) 100%);}
+
+/* ── 패널 공통(현재 코드 MainMenuOverlayViews.cs:75-104 대응) ── */
+.panel{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:480px; background:var(--surface-card); border:1px solid var(--hairline);
+  border-radius:10px; padding:24px 28px;
+}
+.p-title{color:var(--text-title); font-size:20px; font-weight:700;}
+.p-line{color:var(--text-num); margin-top:8px;}
+.p-line.big{font-size:17px; font-weight:700;}
+.p-foot{color:var(--text-caption); font-size:12px; margin-top:12px; line-height:1.5;}
+
+/* 버튼 */
+.cta{
+  background:linear-gradient(175deg,var(--surface-raised-a),var(--surface-raised-b));
+  border:1px solid var(--btn-border); color:var(--text-btn);
+  padding:10px 18px; border-radius:5px; font:inherit; font-size:12px;
+  letter-spacing:.06em; white-space:nowrap; cursor:default;
+}
+.cta-gold{background:linear-gradient(175deg,var(--btn-gold-fill-a),var(--btn-gold-fill-b));
+  border-color:var(--btn-gold-border); color:var(--gold);}
+.cta-mini{padding:5px 11px; font-size:11px; border-radius:4px;}
+.row-btn{display:flex; gap:12px; margin-top:20px;}
+/* 포커스 링 = CanvasUi.SyncFocusRing 이 칠하는 보더(MainMenuView.cs:346-365) */
+.focus{box-shadow:0 0 0 1px var(--teal),0 0 12px rgba(87,209,184,.35); border-color:var(--teal)!important;}
+.focus-tag{
+  position:absolute; font-size:10px; color:var(--teal); letter-spacing:.08em;
+  transform:translateY(-2px);
+}
+
+/* ══════ V2 보드 전용 ══════ */
+.board-head{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.board-title{color:var(--text-title); font-size:21px; font-weight:700; letter-spacing:.03em;}
+.newbest{
+  font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--gold);
+  border:1px solid var(--btn-gold-border); background:linear-gradient(175deg,var(--btn-gold-fill-a),var(--btn-gold-fill-b));
+  padding:3px 10px; border-radius:3px;
+}
+.rule{height:1px; background:var(--hairline); margin:14px 0 12px;}
+.rule.tight{margin:10px 0;}
+.sect-cap{
+  font-size:10px; letter-spacing:.16em; color:var(--muted); margin-bottom:8px; text-transform:uppercase;
+}
+
+/* 기록 / Δ */
+.rec{display:flex; align-items:baseline; justify-content:space-between; margin-top:4px;}
+.rec .k{color:var(--text-caption); font-size:13px;}
+.rec .v{color:var(--text-title); font-size:18px; font-weight:700; font-variant-numeric:tabular-nums;}
+.delta{color:var(--muted); font-size:12px; margin-top:6px;}
+.up{color:var(--green);} .down{color:var(--red);}
+
+/* ★ 재화 세로 나열 — owner 요구의 핵심 ★ */
+.cur-list{display:flex; flex-direction:column; gap:0;}
+.cur-row{
+  display:flex; align-items:center; gap:12px; padding:7px 2px;
+  border-bottom:1px solid rgba(27,40,54,.55);
+}
+.cur-row:last-child{border-bottom:none;}
+.ico{
+  width:26px; height:26px; border-radius:50%; flex:0 0 26px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800; letter-spacing:0; color:#070d12;
+  box-shadow:0 0 10px -2px currentColor;
+}
+.ico.g{background:var(--cur-gold); color:#070d12;}
+.ico.c{background:var(--cur-commit); color:#07120b;}
+.ico.b{background:var(--cur-bcoin); color:#050f1a;}
+.ico.a{background:var(--cur-arch); color:#0f0718;}
+.cur-name{color:var(--text-caption); font-size:13px; flex:1 1 auto;}
+.cur-colon{color:var(--muted); font-size:14px; flex:0 0 auto;}
+.cur-val{
+  color:var(--text-num); font-size:17px; font-weight:700; min-width:96px; text-align:right;
+  font-variant-numeric:tabular-nums; flex:0 0 auto;
+}
+.cur-val.gold{color:var(--gold);}
+.cur-wallet{color:var(--muted); font-size:11px; min-width:104px; text-align:right; flex:0 0 auto;}
+
+/* 티켓 / 다음 행동 */
+.act{display:flex; align-items:center; gap:10px; margin-top:9px;}
+.act .txt{flex:1 1 auto; color:var(--text-num); font-size:13px;}
+.act .txt em{font-style:normal; color:var(--teal);}
+.act .txt b{color:var(--gold);}
+
+.slot{
+  position:absolute; right:-8px; font-size:9px; color:var(--teal); opacity:.75;
+  letter-spacing:.08em; transform:translateX(100%);
+}
+
+/* ── 주석 리스트 ── */
+.notes{margin:14px 0 0; padding:0 0 0 18px; font-size:12.5px; color:var(--text-caption);}
+.notes li{margin:5px 0;}
+.notes.bad li::marker{color:var(--red);}
+.notes.good li::marker{color:var(--teal);}
+.notes code{background:rgba(87,209,184,.09); color:var(--teal); padding:1px 5px; border-radius:3px; font-size:11.5px;}
+
+/* ── 하단 표 ── */
+table{width:100%; border-collapse:collapse; margin-top:12px; font-size:12.5px;}
+th,td{border:1px solid var(--hairline); padding:7px 10px; text-align:left; vertical-align:top;}
+th{background:rgba(87,209,184,.06); color:var(--teal); font-weight:600; letter-spacing:.04em;}
+td{color:var(--text-caption);}
+td code,th code{background:rgba(255,255,255,.04); color:var(--text-num); padding:1px 5px; border-radius:3px;}
+.spec{margin-top:34px; border-top:1px solid var(--hairline); padding-top:22px;}
+.spec h2{font-size:15px; color:var(--text-title); margin-bottom:4px;}
+.spec p{color:var(--muted); font-size:12px; margin:2px 0 0;}
+.warn{color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>결과 오버레이 — 현재 vs 보드형 V2</h1>
+  <p class="sub">
+    대상: <code>MainMenuOverlayViews.cs</code> <code>ResultOverlayView</code>(Canvas, <code>UseCanvas.MainMenuUnit=true</code> 에서만 보임) ·
+    플랜 <code>run-result-launchpad-plan.md</code> · 작성 2026-08-24 · 정적 비교본(실조작 없음)
+  </p>
+
+  <div class="quote">
+    “보통 골드, 커밋 이런 게 아니고 <b>자원을 상징하는 이미지 : 몇</b>, 이렇게 해야지.
+    그리고 <b>가로 나열이 아니고 세로 나열</b>로 해야지.
+    <b>진짜 결과 보드 창처럼</b> 보여야지, 너무 허접함”
+    <span class="who">— owner QA 라운드2, 2026-08-24</span>
+  </div>
+
+  <div class="compare">
+
+    <!-- ═══════════════════════ 좌 : 현재 ═══════════════════════ -->
+    <section class="pane">
+      <h2><span class="tagnow">현재</span> — 코드 그대로<span class="badge-h badge-now">AS-IS</span></h2>
+
+      <div class="stage">
+        <div class="lay l-deep"></div>
+        <div class="lay l-circuit"></div>
+        <div class="lay l-vignette"></div>
+
+        <div class="panel">
+          <div class="p-title">런 결과</div>
+
+          <!-- Sync() :189-193 문자열 그대로 -->
+          <div class="p-line big" style="margin-top:14px;">획득 골드: +1,240</div>
+          <div class="p-line">획득 커밋: +18&nbsp;&nbsp;&nbsp;B코인: +4&nbsp;&nbsp;&nbsp;아키텍트: +2</div>
+          <!-- 실제 서식: AppendWalletCurrencySummaryPart(UI.cs:2475-2485) = 구분자 공백 3칸 + int 그대로(천단위 콤마 없음) -->
+          <div class="p-line big">정산 후 지갑: 골드 8420&nbsp;&nbsp;&nbsp;커밋 132&nbsp;&nbsp;&nbsp;B코인 27&nbsp;&nbsp;&nbsp;아키텍트 9</div>
+          <div class="p-line">처리한 리소스 수: 37</div>
+
+          <div class="p-foot">
+            정산 결과가 영구 지갑에 반영되었습니다.<br>
+            타깃 집중을 바꾸거나 바로 다음 런을 시작할 수 있습니다.
+          </div>
+
+          <div class="row-btn">
+            <button class="cta focus">확인</button>
+            <button class="cta">다시 시작</button>
+          </div>
+          <div class="focus-tag" style="left:28px; bottom:10px;">▲ 기본 포커스 = 확인(런에서 멀어짐)</div>
+        </div>
+      </div>
+
+      <ul class="notes bad">
+        <li><b>재화가 한 줄에 3종 가로 나열</b> — <code>_currencyText</code> 한 줄에 커밋·B코인·아키텍트가 공백으로 붙어 있어 시선이 갈라진다.</li>
+        <li><b>아이콘 0</b> — 전부 “이름: 숫자” 텍스트다. 게임 안 다른 화면(노드 패널·무장 화면)은 이미 재화 스프라이트를 쓰는데 결과 화면만 안 쓴다.</li>
+        <li><b>위계 없음</b> — 제목 빼면 전부 같은 굵기의 평문 4줄. 무엇이 이번 런의 성과인지 눈이 못 고른다.</li>
+        <li><b>정산 후 지갑</b>이 획득량과 같은 크기로 섞여 “이번 런”과 “누적”이 구분되지 않는다. 게다가 이 줄만 <b>천단위 콤마가 없다</b> — <code>AppendWalletCurrencySummaryPart</code>(<code>UI.cs:2475-2485</code>)가 <code>int</code> 를 그대로 붙이고 구분자도 <code>·</code> 가 아니라 <b>공백 3칸</b>이다(위 패널은 그 실제 출력을 재현한 것).</li>
+        <li>기록·Δ·티켓·다음 행동이 <b>전부 없다</b>(계산·저장은 이미 되는데 안 보여준다).</li>
+        <li>버튼 둘 다 회색, 포커스가 <code>확인</code>(런에서 멀어지는 쪽).</li>
+      </ul>
+    </section>
+
+    <!-- ═══════════════════════ 우 : V2 보드형 ═══════════════════════ -->
+    <section class="pane">
+      <h2><span class="tagv2">V2 보드형</span> — 아이콘 : 값 · 세로 나열<span class="badge-h badge-v2">TO-BE</span></h2>
+
+      <div class="stage">
+        <div class="lay l-deep"></div>
+        <div class="lay l-circuit"></div>
+        <div class="lay l-vignette"></div>
+
+        <div class="panel">
+
+          <!-- ① 제목 + NEW BEST -->
+          <div class="board-head">
+            <div class="board-title">런 결과</div>
+            <div class="newbest">NEW BEST</div>
+          </div>
+
+          <div class="rule"></div>
+
+          <!-- ② 기록 / Δ -->
+          <div class="sect-cap">기록</div>
+          <div class="rec">
+            <span class="k">처리한 리소스</span>
+            <span class="v">37</span>
+          </div>
+          <div class="delta">
+            최고 37 · 직전 런 대비 <span class="up">클리어 +5</span> · <span class="up">골드 +180</span>
+          </div>
+
+          <div class="rule"></div>
+
+          <!-- ③ ★ 재화 세로 나열 — 아이콘 : 값 ★ -->
+          <div class="sect-cap">획득 재화</div>
+          <div class="cur-list">
+            <div class="cur-row">
+              <span class="ico g">G</span>
+              <span class="cur-name">골드</span>
+              <span class="cur-colon">:</span>
+              <span class="cur-val gold">+1,240</span>
+              <span class="cur-wallet">8,420</span>
+            </div>
+            <div class="cur-row">
+              <span class="ico c">C</span>
+              <span class="cur-name">커밋</span>
+              <span class="cur-colon">:</span>
+              <span class="cur-val">+18</span>
+              <span class="cur-wallet">132</span>
+            </div>
+            <div class="cur-row">
+              <span class="ico b">B</span>
+              <span class="cur-name">B코인</span>
+              <span class="cur-colon">:</span>
+              <span class="cur-val">+4</span>
+              <span class="cur-wallet">27</span>
+            </div>
+            <div class="cur-row">
+              <span class="ico a">A</span>
+              <span class="cur-name">아키텍트</span>
+              <span class="cur-colon">:</span>
+              <span class="cur-val">+2</span>
+              <span class="cur-wallet">9</span>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0; margin-top:5px;">
+            <span style="font-size:10px; color:var(--muted); letter-spacing:.06em;">우측 흐린 숫자 = 정산 후 지갑(누적)</span>
+          </div>
+
+          <div class="rule tight"></div>
+
+          <!-- ④ 티켓 -->
+          <div class="act">
+            <span class="txt">보물티켓 <em>3장</em></span>
+            <button class="cta cta-mini">장비로</button>
+          </div>
+
+          <!-- ⑤ 다음 행동 -->
+          <div class="act">
+            <span class="txt">지금 구매 가능: 병렬 파이프라인 (골드 <b>900</b>)</span>
+            <button class="cta cta-mini">바로 가기</button>
+          </div>
+
+          <!-- ⑥ 버튼 -->
+          <div class="row-btn" style="margin-top:16px;">
+            <button class="cta">확인</button>
+            <button class="cta cta-gold focus">다시 시작</button>
+          </div>
+          <div class="focus-tag" style="right:28px; bottom:10px;">기본 포커스 = 다시 시작 ▲</div>
+        </div>
+      </div>
+
+      <ul class="notes good">
+        <li><b>재화 4종 = 세로 4행</b>, 각 행이 <code>[아이콘] 이름 : 값</code>. 값은 우측 정렬 + <code>tabular-nums</code> 로 자릿수가 세로로 맞는다.</li>
+        <li><b>아이콘은 신규 에셋 0</b> — <code>GetCurrencySpritePath</code>(coin/paper/coin2/diamond)를 그대로 <code>Image.sprite</code> 로 쓰고 색은 <code>GetCurrencyThemeColor</code>. 이 html 은 png 를 못 넣어 <b>색 원 + 약어</b>로 근사했다(원의 색은 실제값).</li>
+        <li><b>보드 위계</b> — 제목/NEW BEST → 구분선 → 기록·Δ → 구분선 → 재화 → 구분선 → 티켓/다음 행동 → 버튼. 구분선 3개가 “창”의 느낌을 만든다.</li>
+        <li><b>누적을 분리</b> — 정산 후 지갑을 별도 줄에서 빼고 각 재화 행 우측에 흐린 숫자로 붙였다(획득 vs 누적이 같은 행에서 대비된다).</li>
+        <li><code>다시 시작</code> 이 골드 primary + 기본 포커스 → Space 한 번에 다음 런.</li>
+        <li>구현되는 Canvas 위젯은 <code>LabNodePanelsView.CostIconRow</code>(:1061-1100)·<code>ArmamentWeaponView</code>(:672-710) 와 <b>같은 패턴</b>이다 — 새 위젯을 발명하지 않는다.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ═══════════════════════ 사양 ═══════════════════════ -->
+  <div class="spec">
+    <h2>1. 슬롯 이름 계약 — 유지, 배치만 세로 보드</h2>
+    <p>
+      플랜 §5 가 확정한 슬롯 이름은 <b>그대로</b>다(다른 플랜 3개가 이 이름으로 자기 줄을 끼운다).
+      바뀌는 것은 <b>배치</b>뿐 — 평문 한 줄들이 구분선으로 묶인 블록이 되고, 재화 한 줄이 4행으로 펼쳐진다.
+    </p>
+    <table>
+      <tr><th>보드 구역</th><th>슬롯(생성 순서)</th><th>소유 플랜</th><th>비고</th></tr>
+      <tr><td>① 머리</td><td><code>Title</code> · <code>Best</code></td><td>이 플랜(T2)</td><td><code>Best</code> 가 줄 → <b>제목 우측 배지</b>로. 갱신 시에만 활성</td></tr>
+      <tr><td>② 기록</td><td><code>Clears</code> → <code>Delta</code> → <code>Fever</code> → <code>Goal</code></td><td>이 플랜(T1·T2) / <b>P3 · P4</b></td><td>클리어는 큰 숫자 + 카운트업 0.75s, 나머지는 아래 캡션 줄. <code>Fever</code>(P3)·<code>Goal</code>(P4)는 <b>이 구역 안</b>에 들어간다 — 이 플랜은 자리만 예약(줄 생성 0)</td></tr>
+      <tr><td>③ 재화</td><td><code>Gold</code> · <code>Currency</code> · <code>Wallet</code></td><td>이 플랜(T1)</td><td><b>1줄 → 4행</b>. <code>Wallet</code> 은 각 행 우측 흐린 값으로 흡수</td></tr>
+      <tr><td>④ 행동</td><td><code>Tickets</code> → <code>Pin</code> → <code>NextAction</code></td><td>이 플랜(T3·T4) / <b>P6</b></td><td>각 행에 mini 버튼 1개. <code>_focusOrder</code> 에는 넣지 않는다. <code>Pin</code> 은 <b>P6 가 이 구역 안</b>에 끼운다</td></tr>
+      <tr><td>⑤ 버튼</td><td><code>Buttons</code></td><td>이 플랜(T5)</td><td>포커스 0번 = <code>다시 시작</code>, 라벨 골드</td></tr>
+    </table>
+
+    <h2 style="margin-top:24px;">2. 아이콘 소스 — 신규 에셋 0</h2>
+    <table>
+      <tr><th>재화</th><th>스프라이트(<code>GetCurrencySpritePath</code> UI.cs:2356)</th><th>색(<code>GetCurrencyThemeColor</code> UI.cs:2368)</th><th>이 html 의 근사</th></tr>
+      <tr><td>Gold</td><td><code>UI/Progression/Currency/coin</code></td><td>#F5E859</td><td><span class="ico g" style="display:inline-flex;width:20px;height:20px;font-size:10px;">G</span></td></tr>
+      <tr><td>Commit</td><td><code>UI/Progression/Currency/paper</code></td><td>#A8D9A8</td><td><span class="ico c" style="display:inline-flex;width:20px;height:20px;font-size:10px;">C</span></td></tr>
+      <tr><td>BCoin</td><td><code>UI/Progression/Currency/coin2</code></td><td>#5CABFF</td><td><span class="ico b" style="display:inline-flex;width:20px;height:20px;font-size:10px;">B</span></td></tr>
+      <tr><td>ArchToken</td><td><code>UI/Progression/Currency/diamond</code></td><td>#BF85FC</td><td><span class="ico a" style="display:inline-flex;width:20px;height:20px;font-size:10px;">A</span></td></tr>
+    </table>
+    <p style="margin-top:8px;">
+      4장 모두 <code>Assets/Resources/UI/Progression/Currency/</code> 에 실재한다(2026-08-24 확인).
+      Canvas 로드 경로는 <code>LoadProgressionSprite(GetCurrencySpritePath(t))</code> 로 이미 3개 뷰가 쓰고 있다.
+    </p>
+
+    <h2 style="margin-top:24px;">3. owner 확인 항목</h2>
+    <table>
+      <tr><th>#</th><th>물어보는 것</th><th>대안</th></tr>
+      <tr><td>Q1</td><td>재화 4행을 <b>항상 4개</b> 보여줄까, <b>0 인 재화는 접을까</b>?</td><td>(a) 항상 4행(자리 안 흔들림) / (b) 0 이면 접기(<code>Tickets</code> 와 같은 규칙)</td></tr>
+      <tr><td>Q2</td><td>정산 후 지갑(누적)을 <b>각 행 우측</b>에 붙일까, <b>따로 한 줄</b>로 뺄까?</td><td>(a) 행 우측 흐린 값(위 목업) / (b) 재화 블록 아래 요약 1줄</td></tr>
+      <tr><td>Q3</td><td>패널 폭 <b>480 유지</b>? 4행 + 우측 누적이면 520~560 이 편하다</td><td>(a) 480 유지 / (b) 520 으로 확대</td></tr>
+      <tr><td>Q4</td><td>구분선 3개가 맞나, 더 “창”스럽게 <b>블록 배경</b>(재화 블록만 살짝 밝은 면)을 줄까?</td><td>(a) 구분선만 / (b) 재화 블록에 <code>--surface-raised-b</code> 면</td></tr>
+    </table>
+    <p class="warn" style="margin-top:10px;">
+      ⚠ 이 파일은 판단 재료다. 정본 <code>html/ui-prototype.html</code> <code>#result</code>(:3568-3586)는 <b>건드리지 않았다</b> —
+      owner 가 V2 를 고른 뒤에 정본을 한 번에 갱신한다.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

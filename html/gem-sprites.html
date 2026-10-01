@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>젬 스프라이트 정본 — C3R 기울어진 베벨 (P1)</title>
+<style>
+:root{--bg:#0b1016;--panel:#111823;--line:#1e2937;--txt:#e6ecf3;--dim:#8b95a3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:26px 30px 60px}
+h1{font-size:19px;margin:0 0 6px}
+h2{font-size:14px;margin:28px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;max-width:1080px;margin:6px 0 12px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.art{width:112px;height:112px}
+.nm{font-size:11px;color:var(--dim);text-align:center;margin-top:6px}
+.legib{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.row{display:flex;align-items:center;gap:16px;padding:7px 0;border-bottom:1px solid #16202c}
+.row:last-child{border-bottom:none}
+.lab{width:92px;font-size:12px;color:var(--dim)}
+.s16{width:16px;height:16px}.s26{width:26px;height:26px}.s80{width:80px;height:80px}.s215{width:215px;height:215px}
+svg{display:block;width:100%;height:100%}
+/* 캡처 셀 — 스크립트가 data-name 으로 찾는다. 기본은 숨김. */
+#export{display:none}
+#export.visible{display:block}
+.export-cell{width:512px;height:512px;background:transparent;padding:0;margin:0}
+.export-cell svg{width:512px;height:512px;display:block}
+/* 틴트 미리보기용 등급색 — 실제 색은 런타임이 곱한다. */
+.tint-common{color:#9ca3af}.tint-rare{color:#3b82f6}.tint-epic{color:#a855f7}
+.tint-legendary{color:#f5a623}.tint-mythic{color:#57d1b8}
+.tinted svg{filter:none}
+</style>
+</head>
+<body>
+
+<h1>젬 스프라이트 정본 — <b class="hi">C3R 기울어진 베벨</b></h1>
+<p class="note">
+  owner 2026-09-05 확정: <i>"C인데 가운데로 올수록 화면에 가까운… 살짝 솟아있는"</i> → <b class="hi">C3</b>,
+  그중 런타임이 실제로 낼 수 있는 <b class="hi">C3R</b>. 비교 근거는 <code>html/gem-sprites-compare.html</code>.<br>
+  <b class="hi">회색으로 굽는다</b> — 등급색은 런타임 <code>Image.color</code> 곱연산이 정본이다.
+  Mythic 이 <code>HSVToRGB</code> 회전 무지개라(<code>UI.cs:3018</code>) 등급별로 구우면 무지개가 죽는다.<br>
+  <b class="hi">램프는 0.55 → 1.00</b>. 곱연산은 등급색보다 밝아질 수 없으므로 <b class="hi">1.0(흰색)이 천장</b>이고
+  그 자리가 등급색 원본이 된다. 바깥으로 갈수록 어두워지는 <b class="hi">단조 경사</b>가 "솟음"을 만들고,
+  안쪽 단을 <b class="hi">좌상단으로 밀어</b> 광원을 준다(리포 아트 원칙 = 좌상단 광원).<br>
+  ⚠ 등급당 파일을 굽지 않으므로 <b class="hi">6장이면 끝</b>이다(전수조사의 "24장" 추정은 등급별 파일 전제였다).
+</p>
+
+<h2>A. 6모양 (실제로 굽는 그림 — 회색 원본)</h2>
+<div class="grid" id="grid"></div>
+
+<h2>B. 실제 크기 판독 (등급색을 곱한 미리보기)</h2>
+<p class="note">
+  왼쪽부터 <b class="hi">215</b>(뽑기 결과) · <b class="hi">80</b>(인벤토리) · <b class="hi">26</b>(온아트 소켓) ·
+  <b class="hi">16</b>(무기 목록 점). 마지막 둘에서 <b class="hi">솟음이 남아 있는가</b>가 합격 기준이다.
+</p>
+<div class="legib" id="legib"></div>
+
+<div id="export"></div>
+
+<script>
+// ── C3R 정의 ───────────────────────────────────────────────────────
+// 5단 · 동심 정렬 — 밝기 램프만으로 입체를 낸다. 이 숫자가 에셋의 정본이다.
+const STEPS = [
+  { scale: 1.00, gray: 0.55, dx: 0,    dy: 0 },
+  { scale: 0.78, gray: 0.68, dx: 0, dy: 0 },
+  { scale: 0.58, gray: 0.80, dx: 0, dy: 0 },
+  { scale: 0.38, gray: 0.90, dx: 0, dy: 0 },
+  { scale: 0.20, gray: 1.00, dx: 0, dy: 0 },
+];
+const SHAPES = ['circle', 'square', 'triangle', 'pentagon', 'hexagon', 'star'];
+
+// 코드의 회전값을 그대로 따른다(`EnsureSprites`: 삼각형 -90° · 오각형 -90° · 육각형 -30° · 마름모 45°).
+function poly(sides, rotDeg, r) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = (rotDeg * Math.PI) / 180 + (Math.PI * 2 * i) / sides;
+    pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]);
+  }
+  return pts;
+}
+function starPts(outer, inner) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = (-90 * Math.PI) / 180 + (Math.PI * i) / 5;
+    const r = i % 2 ? inner : outer;
+    pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]);
+  }
+  return pts;
+}
+const dOf = (pts) => `M${pts.map(p => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' L')} Z`;
+
+// 한 단(step)의 도형. `circle` 만 <circle>, 나머지는 path.
+function stepEl(shape, st) {
+  const k = st.scale, dx = st.dx, dy = st.dy;
+  const g = Math.round(st.gray * 255);
+  const fill = `rgb(${g},${g},${g})`;
+  const move = (pts) => pts.map(([x, y]) => [50 + (x - 50) * k + dx, 50 + (y - 50) * k + dy]);
+  switch (shape) {
+    case 'circle':
+      return `<circle cx="${(50 + dx).toFixed(2)}" cy="${(50 + dy).toFixed(2)}" r="${(44 * k).toFixed(2)}" fill="${fill}"/>`;
+    case 'square':   return `<path d="${dOf(move(poly(4, 45, 46)))}" fill="${fill}"/>`;
+    case 'triangle': return `<path d="${dOf(move(poly(3, -90, 48)))}" fill="${fill}"/>`;
+    case 'pentagon': return `<path d="${dOf(move(poly(5, -90, 44)))}" fill="${fill}"/>`;
+    case 'hexagon':  return `<path d="${dOf(move(poly(6, -30, 44)))}" fill="${fill}"/>`;
+    case 'star':     return `<path d="${dOf(move(starPts(46, 20)))}" fill="${fill}"/>`;
+  }
+}
+const svgFor = (shape) =>
+  `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${STEPS.map(st => stepEl(shape, st)).join('')}</svg>`;
+
+// A. 회색 원본 격자
+document.getElementById('grid').innerHTML = SHAPES.map(s => `
+  <div class="tile"><div class="art">${svgFor(s)}</div><div class="nm">gem_${s}</div></div>`).join('');
+
+// B. 크기 판독 — **실제로 등급색을 곱한다**(회색값 × 등급색 = 런타임 `Image.color` 와 같은 연산).
+// ⚠ 2026-09-05 교차 리뷰 R1-3 — 초판은 "곱한 미리보기"라고 써 놓고 회색 원본을 그대로 그렸다.
+//   그러면 이 절이 틴트 확인 자료로서 거짓이 된다. 여기서 진짜로 곱한다.
+const GRADES = [['common','#9ca3af'],['rare','#3b82f6'],['epic','#a855f7'],['legendary','#f5a623']];
+function svgTinted(shape, hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const [R, G, B] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const steps = STEPS.map((st) => {
+    const m = (c) => Math.round(c * st.gray);
+    return stepEl(shape, st).replace(/fill="rgb\([^)]*\)"/, `fill="rgb(${m(R)},${m(G)},${m(B)})"`);
+  }).join('');
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${steps}</svg>`;
+}
+document.getElementById('legib').innerHTML = SHAPES.map((s, i) => {
+  const [gname, hex] = GRADES[i % GRADES.length];
+  return `<div class="row">
+    <span class="lab">gem_${s}<br><small>${gname}</small></span>
+    <span class="s215">${svgTinted(s, hex)}</span>
+    <span class="s80">${svgTinted(s, hex)}</span>
+    <span class="s26">${svgTinted(s, hex)}</span>
+    <span class="s16">${svgTinted(s, hex)}</span>
+  </div>`;
+}).join('');
+
+// C. 캡처 셀
+document.getElementById('export').innerHTML = SHAPES.map(s => `
+  <div class="export-cell" data-name="gem_${s}">${svgFor(s)}</div>`).join('');
+</script>
+</body>
+</html>

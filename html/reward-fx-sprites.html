@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>보상 신호 스프라이트 정본 (P6)</title>
+<style>
+:root{--bg:#0b1016;--panel:#111823;--line:#1e2937;--txt:#e6ecf3;--dim:#8b95a3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:26px 30px 60px}
+h1{font-size:19px;margin:0 0 6px}
+h2{font-size:14px;margin:26px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;max-width:1060px;margin:6px 0 12px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.grid{display:flex;flex-wrap:wrap;gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.art{width:132px;height:132px;background:
+  linear-gradient(45deg,#141a22 25%,transparent 25%,transparent 75%,#141a22 75%),
+  linear-gradient(45deg,#141a22 25%,#0e1319 25%,#0e1319 75%,#141a22 75%);
+  background-size:14px 14px;background-position:0 0,7px 7px}
+.nm{font-size:11px;color:var(--dim);text-align:center;margin-top:6px;max-width:132px;line-height:1.5}
+.nm b{color:#e6ecf3}
+svg{display:block;width:100%;height:100%}
+#export{display:none}
+#export.visible{display:block}
+.export-cell{width:512px;height:512px;background:transparent;padding:0;margin:0}
+.export-cell svg{width:512px;height:512px;display:block}
+</style>
+</head>
+<body>
+
+<h1>보상 신호 — 스프라이트 정본 (P6)</h1>
+<p class="note">
+  <b class="hi">현행</b>: 보상 연출이 전부 민무늬 원·사각형이다 — 재화 구슬 <b class="hi">96개</b>가
+  <code>NewDot</code>(민무늬 원, <code>RunFxView.cs:440-467</code>), 빛기둥은 사각형 3장
+  (<code>EquipmentView.cs:474-497</code>), 확산 링·룬도 원 스프라이트다(<code>:690-720</code>).<br>
+  P2·P3 와 같은 규약 — <b class="hi">흰색 고정 + 알파 경사</b>. 색·세기는 런타임이 곱한다.<br>
+  ⚠ <b class="hi">P3 와 겹치지 않게</b> 짰다: 확산 링은 <code>fx_ring</code>, 범용 글로우는 <code>fx_glow</code> 를
+  그대로 쓰고, 여기서는 <b class="hi">보상 맥락에서만 쓰는 9장</b>만 만든다.
+</p>
+
+<h2>굽는 그림 9장</h2>
+<div class="grid" id="grid"></div>
+
+<div id="export"></div>
+
+<script>
+const svgWrap = (inner) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+const PIECES = [
+  { name:'reward_orb', use:'재화 구슬 — 중심이 단단하고 밖으로 번진다. 민무늬 원 96개를 대체',
+    svg:`<defs><radialGradient id="o1" cx="42%" cy="38%" r="62%">
+          <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+          <stop offset="38%" stop-color="#fff" stop-opacity="0.92"/>
+          <stop offset="62%" stop-color="#fff" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+        </radialGradient></defs>
+        <circle cx="50" cy="50" r="50" fill="url(#o1)"/>` },
+
+  { name:'reward_trail', use:'구슬 꼬리 — 뒤로 늘어지는 잔상. 구슬 뒤에 겹친다',
+    svg:`<defs><linearGradient id="t1" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stop-color="#fff" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="M38 100 C 38 70 44 42 50 0 C 56 42 62 70 62 100 Z" fill="url(#t1)"/>` },
+
+  { name:'reward_pillar', use:'빛기둥 — 사각형 3장(외·중·코어)을 한 장으로. 가로로 사라진다',
+    svg:`<defs><linearGradient id="p1" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
+          <stop offset="32%" stop-color="#fff" stop-opacity="0.42"/>
+          <stop offset="50%" stop-color="#fff" stop-opacity="1"/>
+          <stop offset="68%" stop-color="#fff" stop-opacity="0.42"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="p2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000"/><stop offset="22%" stop-color="#fff"/>
+          <stop offset="78%" stop-color="#fff"/><stop offset="100%" stop-color="#000"/>
+        </linearGradient>
+        <mask id="pm"><rect width="100" height="100" fill="url(#p2)"/></mask></defs>
+        <rect width="100" height="100" fill="url(#p1)" mask="url(#pm)"/>` },
+
+  { name:'reward_beacon', use:'비콘 — 위로 갈수록 벌어지는 빛기둥(원뿔). 상자 위치 표시',
+    svg:`<defs><linearGradient id="bc" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stop-color="#fff" stop-opacity="0.95"/>
+          <stop offset="60%" stop-color="#fff" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="M42 100 L58 100 L78 0 L22 0 Z" fill="url(#bc)"/>` },
+
+  { name:'reward_rune', use:'룬 — 잠금 카드의 봉인 문양. 현행은 원 2장뿐이라 문양이 없다',
+    svg:`<g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="40" stroke-width="4" stroke-opacity="0.9"/>
+          <circle cx="50" cy="50" r="29" stroke-width="2" stroke-opacity="0.45"/>
+          <path d="M50 16 L50 84 M20 33 L80 67 M80 33 L20 67" stroke-width="3.4" stroke-opacity="0.8"/>
+          <path d="M50 30 L62 50 L50 70 L38 50 Z" stroke-width="3.6"/>
+        </g>` },
+
+  { name:'reward_burst', use:'방사 폭발선 — 획득 순간 사방으로 뻗는 선. 길이 12개',
+    svg:`<g fill="#fff">${Array.from({ length: 12 }, (_, i) => {
+          const a = (i * 360) / 12;
+          const long = i % 3 === 0;
+          const r0 = long ? 22 : 28;
+          const r1 = long ? 49 : 41;
+          const w = long ? 3.4 : 2.1;
+          return `<rect x="${50 - w / 2}" y="${100 - r1 - 50}" width="${w}" height="${r1 - r0}"
+                   rx="${w / 2}" transform="rotate(${a} 50 50)" opacity="${long ? 0.95 : 0.6}"/>`;
+        }).join('')}</g>` },
+
+  { name:'reward_shard', use:'보상 파편 — 튀어오르는 조각. 회전시켜 여러 개 뿌린다',
+    svg:`<path d="M50 6 L74 44 L50 94 L26 44 Z" fill="#fff" fill-opacity="0.92"/>
+         <path d="M50 6 L74 44 L50 52 Z" fill="#fff" fill-opacity="0.55"/>` },
+
+  { name:'reward_sparkle', use:'작은 반짝임 — fx_spark 보다 가늘고 짧다(획득 잔여감)',
+    svg:`<path d="M50 10 C 52 40 54 46 62 50 C 54 54 52 60 50 90
+                  C 48 60 46 54 38 50 C 46 46 48 40 50 10 Z" fill="#fff"/>
+         <path d="M18 50 C 40 48 45 46 50 42 C 55 46 60 48 82 50
+                  C 60 52 55 54 50 58 C 45 54 40 52 18 50 Z" fill="#fff" fill-opacity="0.6"/>` },
+
+  { name:'reward_frame', use:'보상 카드 강조 테두리 — 안쪽으로 사라지는 네모 링(9-slice 아님, 통짜)',
+    svg:`<defs><linearGradient id="fr" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+          <stop offset="100%" stop-color="#fff" stop-opacity="0.25"/>
+        </linearGradient>
+        <mask id="frm">
+          <rect width="100" height="100" fill="#fff"/>
+          <rect x="9" y="9" width="82" height="82" rx="9" fill="#000"/>
+        </mask></defs>
+        <rect width="100" height="100" rx="13" fill="url(#fr)" mask="url(#frm)"/>` },
+];
+
+document.getElementById('grid').innerHTML = PIECES.map(p => `
+  <div class="tile"><div class="art">${svgWrap(p.svg)}</div>
+  <div class="nm"><b>${p.name}</b><br>${p.use}</div></div>`).join('');
+
+document.getElementById('export').innerHTML = PIECES.map(p => `
+  <div class="export-cell" data-name="${p.name}">${svgWrap(p.svg)}</div>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무기 패널 재배분 — 현재 vs G1×G2 비교본 (owner 재확인용)</title>
+<!--
+  weapon-panel-rebalance-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : weapon-panel-layout-rebalance-plan **T1** 산출물.
+          owner 가 §1.5 의 결정 2축(G1 키보드 아트 / G2 그릇·배경판)을 **눈으로 재확인**
+          하기 위한 정적 비교본이다. 실조작·게임 로직 없음.
+  소유  : docs/plans/02-in-progress/phase-1/weapon-panel-layout-rebalance-plan.md T1
+  게이트: 게이트1 재리뷰 R2 APPROVE
+          (docs/reviews/2026-08-30-weapon-panel-layout-rebalance-plan.md)
+          — 그 승인 범위는 **01→02 + T1 착수까지**이고, 이 비교본의 owner 재확인이
+          T2 착수의 별도 관문이다(플랜 수용기준 2).
+
+  ⚠ 이 문서가 존재하는 이유 (읽고 시작할 것)
+     2026-08-28 owner "권장으로 ㄱ"(G1=(c) · G2=(a))는
+       ① T1 비교본 **없이**
+       ② 목업 비율 **87 %** 라는 틀린 근거(실측 91.6 %)로
+     내려진 것이라 플랜 v2 에서 **가확정으로 격하**됐다(R1 H1 · H5).
+     이 비교본은 그 결정을 **다시 묻는다.** 같은 답이 나와도 좋고 바뀌어도 좋다 —
+     중요한 건 **틀린 수치를 근거로 두지 않는 것**이다.
+
+  정본  : html/armament-menu.html · html/ui-prototype.html 은 **무수정**(읽기만).
+          .cs 파일도 무수정 — 여기 수치는 전부 코드 실측 인용이다.
+  팔레트: armament-menu.html :9-31 토큰 그대로. **신규 raw 색 0.**
+          알파 변형만 파생했다(정본 자신이 --border-gold 로 쓰는 방식).
+          도해의 색은 **블록 구분자**이지 제안하는 UI 색이 아니다.
+  자기완결: 외부 요청 0 — 폰트·스크립트·이미지 전부 인라인/시스템 폰트.
+
+  ⚠ 이 비교본이 명시하는 기준 3건
+   1) **점유율의 정본 정의** = 실 콘텐츠 외곽 rect(2열 블록폭 × 두 열 중 큰 콘텐츠 높이)
+      ÷ 본문(1872 × 968 = 1,812,096). **분모는 카드가 아니라 본문**이다(R1 H3).
+      "그려지지만 비어 있는 카드 면적"은 분자에서 제외한다 — owner 가 보는 것은 그것이다.
+   2) **아트 절대폭이 증상 ①의 유일한 척도**다. 비율(아트/카드)은 (c)에서 분모를 같이
+      줄여 자동 통과하므로 단독 기준으로 쓰지 않는다(R1 H2).
+   3) 목업 실측은 **Puppeteer 1920×1080 getBoundingClientRect**(CSS 재계산 아님).
+-->
+<style>
+:root{
+  /* ── armament-menu.html :9-31 토큰 (그대로 복사) ── */
+  --bg:      #0b1218;
+  --panel:   #111b24;
+  --border:  #c9a227;
+  --border-gold: rgba(201,162,39,0.25);
+  --teal:    #57d1b8;
+  --gold:    #f5e859;
+  --text:    #e2e8f0;
+  --muted:   #8c99ad;
+  --muted2:  #2a3a4a;
+  --red:     #ff6b6b;
+  --g-common:    #9ca3af;
+  --g-rare:      #3b82f6;
+  --g-epic:      #a855f7;
+  --g-legendary: #f5a623;
+  --g-mythic:    #ffffff;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 90px; background:var(--bg); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1520px; margin:0 auto;}
+h1{font-size:21px; margin:0 0 6px; color:var(--text); letter-spacing:.02em;}
+h2{font-size:13px; margin:0 0 4px; letter-spacing:.09em; color:var(--teal); text-transform:uppercase;}
+h3{font-size:12px; margin:24px 0 8px; letter-spacing:.04em; color:var(--text);}
+h4{font-size:11.5px; margin:16px 0 6px; letter-spacing:.03em; color:var(--g-common);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 20px;}
+code{font-family:'Consolas','D2Coding',ui-monospace,monospace; font-size:.92em; color:var(--text);}
+.sec{margin:0 0 40px; padding:18px 20px 20px; border:1px solid var(--muted2);
+     border-radius:9px; background:var(--panel);}
+.sec > .lead{color:var(--muted); font-size:12px; margin:0 0 16px;}
+
+.quote{border-left:3px solid var(--g-legendary); background:rgba(245,166,35,.06);
+  padding:12px 16px; margin:0 0 18px; border-radius:0 5px 5px 0; color:var(--text); font-size:13px;}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px;}
+
+.warn{border-left:3px solid var(--red); background:rgba(255,107,107,.06);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; color:var(--text); font-size:12px;}
+.info{border-left:3px solid var(--teal); background:rgba(87,209,184,.05);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; color:var(--text); font-size:12px;}
+.goldbox{border-left:3px solid var(--gold); background:rgba(245,232,89,.05);
+  padding:10px 14px; margin:14px 0 0; border-radius:0 5px 5px 0; color:var(--text); font-size:12px;}
+.warn b, .info b, .goldbox b{color:var(--text);}
+
+/* 최상단 대형 경고 — (c) +13 % 와 목업 542 는 이 문서의 헤드라인이다 */
+.headline{border:1px solid var(--red); border-radius:9px; background:rgba(255,107,107,.07);
+  padding:16px 20px; margin:0 0 16px;}
+.headline .k{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--red); margin:0 0 6px;}
+.headline .big{font-size:17px; line-height:1.5; color:var(--text); font-weight:700;}
+.headline .big em{font-style:normal; color:var(--red);}
+.headline .m{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.65;}
+.headline.teal{border-color:var(--teal); background:rgba(87,209,184,.06);}
+.headline.teal .k{color:var(--teal);}
+.headline.teal .big em{color:var(--teal);}
+
+/* ── 배지 ── */
+.badges{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0;}
+.badge{font-size:10.5px; letter-spacing:.02em; padding:3px 8px; border-radius:3px;
+  border:1px solid currentColor; white-space:nowrap;}
+.badge.red{color:var(--red); background:rgba(255,107,107,.09);}
+.badge.ok{color:var(--teal); background:rgba(87,209,184,.09);}
+.badge.gold{color:var(--gold); background:rgba(245,232,89,.07);}
+.badge.amber{color:var(--g-legendary); background:rgba(245,166,35,.09);}
+.badge.epic{color:var(--g-epic); background:rgba(168,85,247,.10);}
+.badge.muted{color:var(--muted); background:rgba(140,153,173,.08);}
+
+/* ── 도해 ── */
+.hud{position:relative; background:#070c11; border:1px solid var(--muted2);
+  border-radius:4px; overflow:hidden; flex:0 0 auto;}
+.hud .blk{position:absolute; overflow:hidden;}
+.hud .shell{background:#070c11;}
+.hud .plate{background:var(--panel); border:1px solid var(--border-gold); border-radius:3px;}
+.hud .plate.ghost{background:transparent; border-style:dashed; border-color:rgba(140,153,173,.35);}
+.hud .list{background:rgba(14,22,34,.9); border:1px solid rgba(154,163,175,.35); border-radius:3px;}
+.hud .listrow{background:#0e1620; border:1px solid rgba(154,163,175,.28); border-radius:2px;}
+.hud .listrow.eq{background:rgba(87,209,184,.10); border-color:rgba(87,209,184,.5);}
+.hud .card{background:rgba(22,32,44,.9); border:1px solid rgba(154,163,175,.35); border-radius:3px;}
+.hud .art{background:rgba(87,209,184,.10); border:1px solid var(--teal); border-radius:2px;}
+.hud .art.big{background:rgba(87,209,184,.16);}
+.hud .row{background:rgba(154,163,175,.22); border-radius:1px;}
+.hud .row.cta{background:rgba(87,209,184,.26); border:1px solid rgba(87,209,184,.55);}
+.hud .row.bar{background:rgba(245,232,89,.35); border:1px solid rgba(245,232,89,.6);}
+.hud .row.gold{background:rgba(245,232,89,.22); border:1px solid rgba(245,232,89,.45);}
+.hud .empty{border:1px dashed rgba(255,107,107,.55); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(255,107,107,.16) 0 5px, transparent 5px 10px);}
+.hud .mat{border:1px dashed rgba(140,153,173,.4); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(140,153,173,.10) 0 5px, transparent 5px 10px);}
+.hud .side{border:1px dashed rgba(168,85,247,.5); border-radius:2px;
+  background:repeating-linear-gradient(135deg, rgba(168,85,247,.14) 0 5px, transparent 5px 10px);}
+.hud .txt{position:absolute; font-size:9.5px; line-height:1.25; letter-spacing:.01em;
+  color:var(--text); white-space:nowrap; pointer-events:none;}
+.hud .txt.sm{font-size:8.5px;}
+.hud .txt.md{font-size:11px;}
+.hud .txt.mut{color:var(--muted);}
+.hud .txt.red{color:var(--red);}
+.hud .txt.gold{color:var(--gold);}
+.hud .txt.teal{color:var(--teal);}
+.hud .txt.amber{color:var(--g-legendary);}
+.hud .txt.epic{color:var(--g-epic);}
+.hud .txt.b{font-weight:700;}
+
+.figcap{font-size:11px; color:var(--muted); margin:7px 0 0; line-height:1.55;}
+.figcap b{color:var(--text);}
+.figcap .pct{color:var(--gold); font-weight:700;}
+
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; align-items:start;}
+.grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start;}
+/* 도해는 1:1 축소라 폭이 고정이다 — 좁아지면 컬럼을 접는다(가로 스크롤 대신). */
+@media (max-width:1440px){ .grid3{grid-template-columns:1fr;} }
+@media (max-width:1000px){ .grid2{grid-template-columns:1fr;} }
+.card2{border:1px solid var(--muted2); border-radius:7px; background:rgba(14,22,34,.55);
+  padding:13px 14px 15px; overflow-x:auto;}
+.card2.pick{border-color:rgba(87,209,184,.5);}
+.card2.risk{border-color:rgba(255,107,107,.45);}
+.card2 h5{margin:0 0 3px; font-size:12.5px; color:var(--text); letter-spacing:.02em; font-weight:700;}
+.card2 .k{font-size:10.5px; color:var(--muted); letter-spacing:.09em; text-transform:uppercase; margin:0 0 9px;}
+
+.tblwrap{overflow-x:auto;}
+table{border-collapse:collapse; width:100%; font-size:12px; margin:8px 0 0; min-width:640px;}
+th,td{border:1px solid var(--muted2); padding:6px 9px; text-align:left; vertical-align:top;}
+th{color:var(--teal); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;
+   background:rgba(87,209,184,.05);}
+td{color:var(--text);}
+td.num{font-variant-numeric:tabular-nums; white-space:nowrap;}
+tr.now td{background:rgba(140,153,173,.06);}
+tr.warnrow td{background:rgba(255,107,107,.07);}
+tr.okrow td{background:rgba(87,209,184,.06);}
+td .ok{color:var(--teal);} td .no{color:var(--red);} td .hi{color:var(--gold); font-weight:700;}
+caption{caption-side:bottom; text-align:left; font-size:11px; color:var(--muted); padding:8px 2px 0; line-height:1.6;}
+
+/* ── 아트 절대폭 1:1 비교 자 ── */
+.ruler{margin-top:10px; overflow-x:auto;}
+.rline{display:flex; align-items:center; gap:12px; margin:0 0 9px;}
+.rline .nm{width:190px; flex:0 0 auto; font-size:11px; color:var(--muted); text-align:right;}
+.rline .nm b{color:var(--text); display:block; font-size:11.5px;}
+.rbar{position:relative; background:rgba(87,209,184,.10); border:1px solid var(--teal); border-radius:2px;
+  flex:0 0 auto;}
+.rbar.now{background:rgba(140,153,173,.14); border-color:var(--g-common);}
+.rbar.mock{background:rgba(245,166,35,.12); border-color:var(--g-legendary); border-style:dashed;}
+.rbar .v{position:absolute; right:5px; top:50%; transform:translateY(-50%);
+  font-size:9.5px; color:var(--text); white-space:nowrap;}
+.rline .after{font-size:10.5px; color:var(--muted); white-space:nowrap;}
+
+/* ── 결정 박스 ── */
+.decide{border:1px solid var(--gold); border-radius:9px; background:rgba(245,232,89,.035); padding:20px 22px 22px;}
+.decide h2{color:var(--gold);}
+.dgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px 26px; margin-top:14px;}
+@media (max-width:900px){ .dgrid{grid-template-columns:1fr;} }
+.dblock{border:1px solid var(--muted2); border-radius:6px; background:rgba(11,18,24,.7); padding:13px 15px 14px;}
+.dblock > .t{font-size:12px; color:var(--text); font-weight:700; margin:0 0 3px;}
+.dblock > .h{font-size:11px; color:var(--muted); margin:0 0 10px; line-height:1.55;}
+.opt{display:flex; align-items:flex-start; gap:8px; padding:6px 0; font-size:12px; color:var(--text);
+  border-top:1px solid rgba(42,58,74,.8);}
+.opt:first-of-type{border-top:none;}
+.opt input{margin:3px 0 0; accent-color:#f5e859; width:14px; height:14px; flex:0 0 auto;}
+.opt .lab b{color:var(--text);}
+.opt .lab .m{display:block; color:var(--muted); font-size:10.5px; line-height:1.5; margin-top:1px;}
+.opt .lab .m .no{color:var(--red);} .opt .lab .m .ok{color:var(--teal);} .opt .lab .m .hi{color:var(--gold);}
+.sign{margin-top:16px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--muted2); padding-top:12px;}
+.sign .line{display:inline-block; border-bottom:1px solid var(--muted2); min-width:180px; margin:0 10px;}
+
+.legend{display:flex; flex-wrap:wrap; gap:14px; margin:0 0 14px; font-size:11px; color:var(--muted);}
+.legend span{display:inline-flex; align-items:center; gap:6px;}
+.legend i{width:13px; height:11px; border-radius:2px; display:inline-block;}
+.foot{font-size:11px; color:var(--muted); line-height:1.85; margin-top:8px;}
+.foot b{color:var(--text);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>무기 패널 — 키보드 아트 확대 + 하단 공백 재배분 · G1×G2 비교본</h1>
+  <p class="sub">
+    <code>weapon-panel-layout-rebalance-plan</code> <b>T1</b> ·
+    게이트1 재리뷰 R2 APPROVE(<code>docs/reviews/2026-08-30-weapon-panel-layout-rebalance-plan.md</code>) ·
+    이 비교본의 <b style="color:var(--gold)">owner 재확인이 T2 착수의 선행 조건</b>입니다.
+    수치는 전부 코드 실측(<code>ArmamentWeaponView.cs:219-251, 330-339, 445-556</code> ·
+    <code>MvpGameController.UI.cs:1889-1897, 2417-2429</code>) + 목업 DOM 실측입니다.
+  </p>
+
+  <div class="quote">
+    “키보드 자체가 너무 작음” <span style="color:var(--muted2)">·</span>
+    “오른쪽 영역 하단이 화면 절반 차지 병신같음”
+    <span class="who">owner 육안 QA 라운드 2 · 2026-08-24 — <b>두 문장이고, 원인도 두 개입니다.</b></span>
+  </div>
+
+  <div class="headline">
+    <p class="k">⚠ 가확정 (c) 를 그대로 고를 경우 — 반드시 읽어 주세요</p>
+    <p class="big">“(c) 를 고르면 키보드는 <em>480 → 544 (+13 %)</em> 입니다 —
+      <em>지금보다 크게 보이지 않을 수 있습니다.</em></p>
+    <p class="m">
+      (c)“목업 그대로 이식”은 <b>분모(카드)를 2.6배 줄이는</b> 안입니다. 분자(아트)는 480 → 544 로
+      64px 늘 뿐입니다. 그래서 (c) 는 증상 ②<b>(비었다)</b> 전용 안이고,
+      증상 ①<b>(작다)</b>은 <b>(a) 또는 (b)</b> 로만 풀립니다. 두 증상을 한 안으로 동시에
+      없애는 선택지는 <b>존재하지 않습니다</b>(R1 H2).
+    </p>
+  </div>
+
+  <div class="headline teal" style="margin-bottom:26px;">
+    <p class="k">목업 실측 정정 — 근거가 바뀌었습니다</p>
+    <p class="big"><em>목업의 키보드도 542 px 입니다 — 현행 480 과 사실상 같습니다.</em></p>
+    <p class="m">
+      화면(1920) 대비 <b>목업 28.2 % vs 현행 25.0 %</b>. 즉 “목업은 87 % 인데 우리는 31 %” 라는
+      기존 대비는 <b>키보드가 작다는 근거가 아니었습니다</b> — 그 격차는 아트가 작아서가 아니라
+      <b>Unity 의 카드가 목업보다 2.6배 넓기 때문</b>(1532 vs 592)입니다.
+      2026-08-28 “권장으로 ㄱ” 승인이 딛고 있던 <b>87 % 는 실측 91.6 %</b> 였고,
+      <code>min(560px,100%)</code> 의 <b>560 캡은 이 폭에서 한 번도 걸리지 않습니다</b>(사문).
+      그래서 그 결정은 <b>가확정으로 격하</b>됐고, 이 문서로 다시 묻습니다.
+    </p>
+  </div>
+
+  <!-- ══════════ A. 현재 ══════════ -->
+  <section class="sec">
+    <h2>A. 현재 — 본문 1872 × 968 실측 도해 (3상태)</h2>
+    <p class="lead">
+      블록 기하는 본문 가상 좌표를 <b>1:1 비례 축소</b>한 것입니다(글자 크기만 가독성 위해 비례하지 않음).
+      <code>GetLabBodyRect()</code>(<code>UI.cs:1889-1897</code>) = <code>(24, 88, 1872, 968)</code> ·
+      리스트 <b>320</b> + 갭 <b>20</b> + 카드 <b>1532</b>(<code>ArmamentWeaponView.cs:247</code>) ·
+      아트 <code>min(1532−48, 480)</code> → <b>480 × 195</b>(캡이 항상 이깁니다).
+    </p>
+
+    <div class="legend">
+      <span><i style="background:var(--panel); border:1px solid var(--border-gold);"></i>본문 배경판 <code>PanelBackground</code></span>
+      <span><i style="background:rgba(14,22,34,.9); border:1px solid rgba(154,163,175,.35);"></i>리스트 / 카드 판</span>
+      <span><i style="background:rgba(87,209,184,.14); border:1px solid var(--teal);"></i>키보드 아트</span>
+      <span><i style="background:rgba(154,163,175,.22);"></i>텍스트 · CTA 행</span>
+      <span><i style="background:rgba(255,107,107,.16); border:1px dashed rgba(255,107,107,.55);"></i>하단 공백(그려지지만 비어 있음)</span>
+      <span><i style="background:rgba(168,85,247,.14); border:1px dashed rgba(168,85,247,.5);"></i>좌우 공백(중앙 정렬 시 신설)</span>
+    </div>
+
+    <div id="fig-now-hero"></div>
+
+    <h3>A-2. 하단 공백 3상태 — <code>LayoutCard</code>(<code>:445-556</code>) y 커서 합산</h3>
+    <div class="grid3" id="fig-now-3"></div>
+
+    <div class="tblwrap">
+      <table>
+        <caption>
+          y 커서 = <code>CardContentTop 22</code> → <code>아트(195) + ArmamentWeaponArtTopPadding 12</code> →
+          <code>TitleAdvance 44</code> → … 상수는 <code>ArmamentWeaponView.cs:90-116</code>.
+          <b>공백 = 968 − 콘텐츠 바닥</b>(카드 높이는 <code>childForceExpandHeight = true</code>(<code>:245</code>)로 항상 968).
+        </caption>
+        <thead><tr><th>상태</th><th>y 커서 합산</th><th class="num">콘텐츠 바닥</th><th class="num">하단 공백</th><th class="num">÷ 카드 968</th><th class="num">÷ 화면 1080</th></tr></thead>
+        <tbody>
+          <tr class="warnrow"><td>만렙 · 장착</td><td><code>22 + (195+12) + 44 + 32 + 28 + 30 + 40 + 24(최대레벨 라벨)</code></td><td class="num">427</td><td class="num"><b class="no">541 px</b></td><td class="num">55.9 %</td><td class="num">50.1 %</td></tr>
+          <tr><td>비만렙 · 미장착</td><td><code>427 − 24 + 50(장착 CTA) + 36(레벨업 비용) + 44(레벨업 CTA)</code></td><td class="num">533</td><td class="num"><b class="no">435 px</b></td><td class="num">44.9 %</td><td class="num">40.3 %</td></tr>
+          <tr class="warnrow"><td>미해금</td><td><code>22 + (195+12) + 44 + 50 + 44 + 44(해금 CTA)</code></td><td class="num">411</td><td class="num"><b class="no">557 px</b></td><td class="num">57.5 %</td><td class="num">51.6 %</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn">
+      <b>owner 의 “화면 절반”은 과장이 아닙니다.</b> 최악 상태(미해금) 557 px = 화면 세로의 <b>51.6 %</b>.
+      다만 이건 <b>증상 ② 전용</b> 수치입니다 — 아래 §B 가 증상 ①의 진짜 척도를 보여줍니다.
+    </div>
+  </section>
+
+  <!-- ══════════ B. 목업 실측 정정 ══════════ -->
+  <section class="sec">
+    <h2>B. 목업 실측 정정 — “87 %” 는 없었다</h2>
+    <p class="lead">
+      <code>html/armament-menu.html</code> 을 <b>Puppeteer 1920×1080 으로 실제 렌더</b>해
+      <code>getBoundingClientRect()</code> 로 잰 값입니다(CSS 를 읽고 계산한 08-24 리뷰의 방법을 의도적으로 바꿨습니다 —
+      87 % 오차는 산술이 아니라 <b>측정 방법</b>에서 나왔습니다).
+    </p>
+
+    <div class="grid2">
+      <div class="card2">
+        <h5>목업 DOM 실측 (1920 × 1080)</h5>
+        <p class="k">html/armament-menu.html</p>
+        <div class="tblwrap">
+          <table style="min-width:0;">
+            <tbody>
+              <tr><td><code>#arm-wrap</code></td><td class="num">980.0 × 676.6</td><td class="num mut">max-width 980</td></tr>
+              <tr><td><code>#arm-panel</code></td><td class="num">980.0</td><td class="num">border 1px × 2</td></tr>
+              <tr><td><code>#arm-body</code></td><td class="num">978.0</td><td class="num">padding 22/24 → <b>content 930</b></td></tr>
+              <tr><td><code>.weapon-layout</code></td><td class="num">930.0</td><td class="num">grid <code>320px 592px</code>, gap <b>18</b></td></tr>
+              <tr class="okrow"><td><code>.weapon-card</code></td><td class="num"><b>592.0</b> × 510.6</td><td class="num"><span class="no">기존 주장 642</span></td></tr>
+              <tr class="okrow"><td><code>.weapon-art</code></td><td class="num"><b>542.0</b> × 220.2</td><td class="num"><span class="no">기존 주장 560</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="badges">
+          <span class="badge red">기존 87 % → 실측 <b>91.6 %</b> (542 / 592)</span>
+          <span class="badge red"><code>min(560px, 100%)</code> 의 560 캡 = <b>사문</b> (542 &lt; 560 이라 100 % 가 이김)</span>
+          <span class="badge ok">목업 규칙의 실체 = <b>“카드 콘텐츠 박스를 꽉 채움(= 카드 − 패딩 48)”</b></span>
+        </div>
+      </div>
+
+      <div class="card2">
+        <h5>목업 vs 현행 — 같은 화면(1920) 위에 겹쳐 보기</h5>
+        <p class="k">아트 절대폭 · 1:1 축척</p>
+        <div id="fig-mock-overlay"></div>
+        <p class="figcap">
+          목업의 카드(592)는 Unity 카드(1532)의 <b>38.6 %</b> 지만,
+          <b>키보드는 542 vs 480 — 차이가 62 px 뿐</b>입니다.
+          비율 91.6 % vs 31.3 % 라는 큰 격차는 <b>전부 분모(카드) 차이</b>에서 옵니다.
+        </p>
+      </div>
+    </div>
+
+    <div class="goldbox">
+      <b style="color:var(--gold)">이 정정이 바꾸는 것</b> —
+      G1(b) 의 계수 출처가 <code>×0.87</code> 이 아니라 <b><code>cardWidth − 48</code></b> 로 바뀌고
+      (1532 카드에서 <b>1484</b>, 기존 문서의 1333 아님),
+      G1(c) 의 “같은 그릇·같은 비율” 근거가 <b>930 / 592 / 544</b> 로 교체됩니다
+      (기존 980 / 640 / 560 은 셋 다 목업 값이 아니었습니다). 갭도 20 이 아니라 <b>18</b> 입니다.
+    </div>
+  </section>
+
+  <!-- ══════════ C. G1 3안 ══════════ -->
+  <section class="sec">
+    <h2>C. G1 — 키보드 아트 (증상 ① 전용 축)</h2>
+    <p class="lead">
+      G1 은 <b>“작다를 고칠 것인가 / 비었다를 고칠 것인가”</b> 의 선택입니다.
+      아래 자는 세 안의 아트 폭을 <b>같은 축척으로 1:1</b> 그린 것입니다 — 표의 숫자보다 이 그림이 결정적입니다.
+    </p>
+
+    <h3>C-1. 아트 절대폭 자 (1 : 0.30 축척)</h3>
+    <div class="ruler" id="ruler-art"></div>
+
+    <h3>C-2. 절대 크기 비교표 (플랜 §1.5 / 승인서 H2 표)</h3>
+    <div class="tblwrap">
+      <table>
+        <caption>
+          아트 높이 = 폭 × <code>ArmamentWeaponArtAspectRatio 208/512 = 0.40625</code>(<code>UI.cs:2419</code>) ·
+          소켓 지름 = <code>artWidth × anchor.r(0.0162) × 2</code>(<code>UI.cs:2460-2470</code>, 앵커 37개 전부 같은 r) ·
+          클릭 판정 사각 = 지름 × 지름(<code>ArmamentWeaponView.cs:998-1014</code>).
+          <b>“÷ 화면”이 증상 ①의 정본 척도</b>입니다 — “÷ 카드”는 (c)에서 분모가 같이 줄어 자동 통과합니다(R1 H2).
+        </caption>
+        <thead><tr>
+          <th>안</th><th class="num">아트 폭</th><th class="num">÷ 화면 1920</th><th class="num">현행 대비</th>
+          <th class="num">아트 높이</th><th class="num">÷ 카드</th><th class="num">소켓 지름</th><th class="num">클릭 판정</th><th>젬 장착 탭(900) 대비</th>
+        </tr></thead>
+        <tbody>
+          <tr class="now"><td><b>현행</b></td><td class="num">480</td><td class="num">25.0 %</td><td class="num">—</td><td class="num">195.0</td><td class="num">31.3 %</td><td class="num">15.55</td><td class="num">15.6²</td><td><span class="ok">유지 (480 &lt; 900)</span></td></tr>
+          <tr class="okrow"><td><b>(a)</b> 캡 상향 960<br><code>min(cardWidth−48, 960)</code></td><td class="num"><b>960</b></td><td class="num"><b class="hi">50.0 %</b></td><td class="num"><b class="hi">+100 %</b></td><td class="num">390.0</td><td class="num">62.7 %</td><td class="num">31.10</td><td class="num">31.1²</td><td><b class="no">⚠ 역전 (960 &gt; 900)</b></td></tr>
+          <tr class="okrow"><td><b>(b)</b> 카드 꽉 채움<br><code>artWidth = cardWidth − 48</code></td><td class="num"><b>1484</b></td><td class="num"><b class="hi">77.3 %</b></td><td class="num"><b class="hi">+209 %</b></td><td class="num">602.9</td><td class="num">96.9 %</td><td class="num">48.08</td><td class="num">48.1²</td><td><b class="no">⚠ 역전 (1484 ≫ 900)</b></td></tr>
+          <tr class="warnrow"><td><b>(c)</b> 목업 이식<br>블록 930 = 320 + 18 + 592</td><td class="num">544</td><td class="num">28.3 %</td><td class="num"><b class="no">+13.3 %</b></td><td class="num">221.0</td><td class="num">91.9 %</td><td class="num">17.63</td><td class="num">17.6²</td><td><span class="ok">유지 (544 &lt; 900)</span></td></tr>
+          <tr><td class="mut">참고 — 목업 정본 DOM</td><td class="num">542</td><td class="num">28.2 %</td><td class="num">+12.9 %</td><td class="num">220.2</td><td class="num">91.6 %</td><td class="num">17.56</td><td class="num">—</td><td><span class="ok">유지</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="figcap" style="margin-top:10px;">
+      <b>(c) 544 vs 목업 DOM 542 의 2 px 차이</b>는 CSS 카드 보더 1px × 2 이고 Unity 박스 모델에는 없습니다 —
+      <b>Unity 기준으로는 544 가 옳습니다</b>(승인서 R2 §2 확인).
+    </p>
+
+    <h3>C-3. 안별 도해</h3>
+    <div class="grid3" id="fig-g1"></div>
+
+    <div class="warn">
+      <b>⚠ 함정 1 — 젬 장착 탭 크기 역전 (a) · (b) 공통</b><br>
+      <code>html/armament-menu.html:213-215</code> 가
+      <i>“젬 장착 탭은 드롭 정확도를 위해 무기 탭보다 아트를 크게 잡는다
+      (Unity: <code>ArmamentSocketsWeaponArtWidth 900f</code> vs <code>ArmamentWeaponArtWidth 480f</code>)”</i>
+      라고 <b>설계 의도를 못박아 두었습니다</b>. (a) 960 · (b) 1484 를 고르면 이 관계가 역전돼
+      <b>탭 전환 시 같은 키보드가 커졌다 작아졌다</b> 합니다.
+      ⇒ <b>“소켓 탭 아트도 같이 올릴 것인가”라는 파생 결정 1건이 발생</b>하고, 그건
+      <code>SocketsView</code> 를 건드리는 일이라 이 플랜(B 등급)의 범위를 넘습니다.
+      <b>역으로 이것이 (c) 를 지지하는 유일한 실측 근거입니다.</b>
+    </div>
+
+    <div class="warn">
+      <b>⚠ 함정 2 — (c) 는 “작다”를 고치지 않습니다</b> (문서 맨 위 헤드라인 재게).
+      480 → 544 는 <b>+13 %</b> 입니다. 수용 기준을 전부 통과하고도 owner 가 다시 “작다”고 말하는 결말이
+      <b>구조적으로 가능</b>합니다 — 그래서 플랜 수용기준 3 에 <b>절대폭 하한</b>이 들어갔고,
+      그 하한 픽셀값은 <b>owner 가 이 문서에서 승인한 값</b>이 됩니다.
+    </div>
+
+    <div class="info">
+      <b>덤 — (a)/(b) 의 계량 가능한 실이득 1건.</b> 현재 온-아트 소켓의 클릭·드롭 판정은
+      <b>15.55 × 15.55 px</b> 입니다(<code>:998-1014</code> 의 <code>_root</code> 크기).
+      (a) 31.1² · (b) 48.1² 로 커지면 판정 면적이 각각 <b>4.0배 · 9.6배</b> 가 됩니다 —
+      아트 확대는 “보기 좋다” 외에 <b>드롭 정확도</b>를 직접 개선합니다.
+    </div>
+  </section>
+
+  <!-- ══════════ D. G2 ══════════ -->
+  <section class="sec">
+    <h2>D. G2 — 그릇 / 공백 (증상 ② 전용 축) + 배경판 처분</h2>
+    <p class="lead">
+      <b>여기가 이번 재확인의 진짜 신설 축입니다.</b> 카드 높이만 줄이면 공백은
+      <b>사라지지 않고 “카드 밖 배경판”으로 이동</b>합니다 —
+      <code>Build()</code> 가 <code>_panel</code> 을 본문 1872×968 <b>통째로</b> 잡고
+      (<code>ArmamentWeaponView.cs:224-225</code>) 그 위에 <code>PanelBackground</code> 를
+      stretch + <code>ignoreLayout</code> 로 <b>둥근 판 한 장</b>을 깔기 때문입니다(<code>:230-235</code>).
+      <b>owner 가 본 “반쯤 빈 검정”은 카드 안쪽이 아니라 화면의 그 자리</b>입니다.
+    </p>
+
+    <h3>D-1. G2 = (a) 카드 높이를 콘텐츠에 맞춤 × <b>배경판 처분 3안</b></h3>
+    <p class="lead" style="margin:0 0 12px;">
+      아래 셋은 <b>카드가 똑같이 줄어든 상태</b>인데 <b>화면이 완전히 다릅니다</b>.
+      셋 중 하나를 고르지 않으면 T2 는 착수할 수 없습니다(구현자 재량 아님 — R1 H3).
+      도해는 <b>G1=(c) 와 짝지은 상태</b>(가확정 조합)로 그렸습니다.
+    </p>
+    <div class="grid3" id="fig-g2a"></div>
+
+    <div class="tblwrap">
+      <table>
+        <caption>
+          “그려지는 어두운 판”= 실제로 화면에 칠해지는 <code>PanelBackground</code> 면적 ÷ 본문(1,812,096).
+          <b>owner 가 “비었다”고 느끼는 대상</b>은 이 판 중 콘텐츠가 없는 부분입니다.
+          <code>_panel</code> 축소(a-i)는 <b>레이아웃 부모</b>를 줄이는 것이라
+          <code>_cardWidth = body.width − 320 − 20</code>(<code>:247</code>)의 입력까지 함께 바꿔야 합니다 —
+          a-ii 는 배경 이미지만 줄이므로 레이아웃·히트 영역은 그대로입니다.
+        </caption>
+        <thead><tr><th>배경판 처분</th><th>손대는 곳</th><th class="num">그려지는 어두운 판</th><th>판 밖은 무엇인가</th><th>성격</th></tr></thead>
+        <tbody>
+          <tr><td><b>(a-i)</b> <code>_panel</code> 자체를 콘텐츠 크기로 축소</td><td><code>:224-225</code>(Place 인자) + <code>:247</code> 카드폭 재계산</td><td class="num"><b class="ok">28.1 %</b></td><td>랩 화면 셸 배경(판 없음)</td><td>가장 과감 — 히트 영역·레이아웃까지 같이 줄어듦</td></tr>
+          <tr><td><b>(a-ii)</b> <code>PanelBackground</code> 만 축소</td><td><code>:230-235</code>(Stretch → Place)</td><td class="num"><b class="ok">28.1 %</b></td><td>랩 화면 셸 배경(판만 없고 rect 는 남음)</td><td>보수적 — 그림은 a-i 와 거의 같고 레이아웃 무변경</td></tr>
+          <tr class="warnrow"><td><b>(a-iii)</b> 배경판 1872×968 유지 + 여백을 의도된 <b>매트</b>로</td><td>배경 무변경 (여백 설계만)</td><td class="num"><b class="no">100 %</b></td><td>—(판이 화면을 다 덮음)</td><td>가장 보수 — <b>“빈 검정”이 그대로 남습니다</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn">
+      <b>⚠ a-iii 을 고르면 증상 ②는 “해결”이 아니라 “의도”가 됩니다.</b>
+      판이 그대로 1872×968 이므로 owner 가 본 화면은 <b>거의 변하지 않습니다</b>
+      (카드 테두리 위치만 바뀝니다). a-iii 은 “여백을 디자인으로 인정한다”는 <b>선언</b>이지
+      공백 제거가 아닙니다 — 그 선언을 할 것인지가 이 항목의 질문입니다.
+    </div>
+
+    <h3>D-2. G2 = (c) 아트가 세로를 흡수 — G1 (a)/(b) 와 짝</h3>
+    <p class="lead" style="margin:0 0 12px;">
+      카드를 968 그대로 두고 <b>아트를 키워 세로 공백을 먹는</b> 안입니다. 문제는 <b>먹을 수 있는 한계</b>가 있다는 것입니다.
+    </p>
+    <div class="grid2">
+      <div class="card2 risk"><div id="fig-g2c"></div></div>
+      <div>
+        <div class="tblwrap">
+          <table style="min-width:0;">
+            <caption>필요 아트 폭 = <code>(968 − 아트 외 콘텐츠) ÷ 0.40625</code>. 상한은 <code>cardWidth − 48 = 1484</code>.</caption>
+            <thead><tr><th>상태</th><th class="num">968 을 채우는 데 필요한 아트 폭</th><th class="num">실현 가능 상한</th><th class="num">남는 공백</th></tr></thead>
+            <tbody>
+              <tr><td>만렙 · 장착</td><td class="num">1812</td><td class="num">1484</td><td class="num"><b class="no">133 px</b></td></tr>
+              <tr class="okrow"><td>비만렙 · 미장착</td><td class="num">1551</td><td class="num">1484</td><td class="num"><b class="ok">27 px</b></td></tr>
+              <tr><td>미해금</td><td class="num">1851</td><td class="num">1484</td><td class="num"><b class="no">149 px</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="badges">
+          <span class="badge red">G2=(c) 는 <b>3상태 어디서도 968 을 완전히 채우지 못합니다</b></span>
+          <span class="badge amber">G2=(c) 의 실현형 = 사실상 <b>G1=(b)</b> 그 자체</span>
+          <span class="badge red">G1=(a) 와 짝지으면 캡 960 이 흡수를 막아 <b>실질 = (a) 단독</b></span>
+        </div>
+        <p class="figcap" style="margin-top:12px;">
+          <b>읽어야 할 한 줄:</b> G2=(c) 는 독립적인 선택지가 아니라
+          <b>“G1 을 (b) 로 고르면 자동으로 따라오는 결과”</b> 에 가깝습니다.
+          (b) 를 고르면서 G2 를 (a) 로 두면 카드가 콘텐츠(835/941/819)에 맞아 <b>공백이 133/27/149 로 줄고</b>,
+          그때도 <b>배경판 처분(a-i/ii/iii)은 여전히 별도로 골라야 합니다.</b>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ E. 점유율 산식표 ══════════ -->
+  <section class="sec">
+    <h2>E. 조합별 콘텐츠 점유율 산식표 (분모 = 본문 1872 × 968)</h2>
+    <p class="lead">
+      <b>점유율 = 2열 블록폭 × max(리스트 콘텐츠 높이 524, 카드 콘텐츠 높이) ÷ 1,812,096.</b>
+      “그려지지만 비어 있는 카드 면적”은 분자에서 뺍니다 — <b>owner 가 보는 것은 채워진 면적</b>이기 때문입니다.
+      리스트 콘텐츠 높이 <b>524</b> = <code>10 × 46 + 9 × 6 + 10</code>
+      (<code>ArmamentListRowHeight/RowGap</code> = <code>UI.cs:2428-2429</code> · <code>ListPadTop</code> = <code>:87</code>).
+    </p>
+
+    <div class="tblwrap">
+      <table>
+        <caption>
+          카드 콘텐츠 높이 = <b>아트 높이 + 232</b>(만렙·장착) / <b>+ 338</b>(비만렙) / <b>+ 216</b>(미해금).
+          상수는 <code>ArmamentWeaponView.cs:90-116</code>. 현행(아트 195) 검산 = 427 / 533 / 411 ✅.
+          <b>“빈 %” = 100 − 점유율</b> 이며, 그것이 실제로 <b>어두운 판으로 보이는지</b>는
+          §D 의 배경판 처분에 달려 있습니다(a-iii 면 전부 보입니다).
+        </caption>
+        <thead><tr>
+          <th>조합</th><th class="num">블록 폭</th><th class="num">아트</th>
+          <th class="num">카드 콘텐츠 H<br>(만렙·장착)</th><th class="num">점유율<br>만렙·장착</th>
+          <th class="num">점유율<br>비만렙</th><th class="num">점유율<br>미해금</th>
+          <th class="num">3상태 평균</th><th class="num">빈 %<br>(평균)</th>
+        </tr></thead>
+        <tbody>
+          <tr class="now"><td><b>현행</b> (G1·G2 무변경)</td><td class="num">1872</td><td class="num">480</td><td class="num">427</td><td class="num">54.1 %</td><td class="num">55.1 %</td><td class="num">54.1 %</td><td class="num"><b>54.4 %</b></td><td class="num">45.6 %</td></tr>
+          <tr class="warnrow"><td><b>(c) + G2(a)</b> — 2026-08-28 가확정 조합</td><td class="num">930</td><td class="num">544</td><td class="num">453</td><td class="num">26.9 %</td><td class="num">28.7 %</td><td class="num">26.9 %</td><td class="num"><b class="no">27.5 %</b></td><td class="num"><b class="no">72.5 %</b></td></tr>
+          <tr><td>(c) 단독 (G2 무변경)</td><td class="num">930</td><td class="num">544</td><td class="num">453</td><td class="num">26.9 %</td><td class="num">28.7 %</td><td class="num">26.9 %</td><td class="num">27.5 %</td><td class="num">72.5 %</td></tr>
+          <tr><td>(a) 단독 (G2 무변경)</td><td class="num">1872</td><td class="num">960</td><td class="num">622</td><td class="num">64.3 %</td><td class="num">75.2 %</td><td class="num">62.6 %</td><td class="num">67.4 %</td><td class="num">32.6 %</td></tr>
+          <tr class="okrow"><td><b>(a) + G2(a)</b></td><td class="num">1872</td><td class="num">960</td><td class="num">622</td><td class="num">64.3 %</td><td class="num">75.2 %</td><td class="num">62.6 %</td><td class="num"><b>67.4 %</b></td><td class="num">32.6 %</td></tr>
+          <tr class="okrow"><td><b>(b) + G2(a)</b> ≡ (b) + G2(c)</td><td class="num">1872</td><td class="num">1484</td><td class="num">835</td><td class="num">86.3 %</td><td class="num">97.2 %</td><td class="num">84.6 %</td><td class="num"><b class="hi">89.4 %</b></td><td class="num"><b class="ok">10.6 %</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="headline" style="margin-top:18px;">
+      <p class="k">⚠ 함정 3 — 조합 보장 없음</p>
+      <p class="big">가확정 조합 <em>(c) + G2(a)</em> 는 콘텐츠 점유율을
+        <em>54.4 % → 27.5 %</em> 로 <em>절반으로 떨어뜨립니다.</em></p>
+      <p class="m">
+        “비어 보이는 총량”이 현행보다 <b>준다는 보장이 없습니다</b> — 오히려 <b>빈 면적은 45.6 % → 72.5 % 로 늘어납니다.</b>
+        (c)+(a) 가 실제로 나아 보이려면 <b>배경판 처분이 반드시 a-i 또는 a-ii</b> 여야 합니다
+        (그래야 늘어난 빈 면적이 “어두운 판”이 아니라 “판 밖”이 됩니다).
+        <b>(c) + a-iii 조합은 화면이 거의 바뀌지 않으면서 콘텐츠만 절반으로 줄어드는, 이 표에서 가장 나쁜 칸입니다.</b><br>
+        반대로 <b>(b)</b> 는 점유율을 <b>89.4 %</b> 까지 올려 두 증상을 수치상 동시에 해소하지만,
+        젬 장착 탭 역전(§C 함정 1)이라는 파생 결정을 지불해야 합니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ F. 소켓 링 ══════════ -->
+  <section class="sec">
+    <h2>F. 관찰 항목 — 온-아트 소켓 강조 링 왜소화</h2>
+    <p class="lead">
+      소켓의 <b>좌표·지름</b>은 전부 아트 rect 상대(<code>center = uv × artSize</code>, <code>:998-1014</code>)라
+      비례해서 같이 커집니다 — 앵커 37개 <code>(u,v)</code> 는 <b>무영향</b>입니다.
+      그런데 <b>강조 링의 코너 반경 7 과 두께 2f 는 생성자에 절대값으로 박혀 있고
+      <code>Sync</code> 가 갱신하지 않습니다</b>
+      (<code>ArmamentWeaponView.cs:992</code> — 플랜은 <code>:986</code> 으로 인용, 현재 실측 <code>:992</code>).
+    </p>
+    <div class="tblwrap">
+      <table>
+        <caption>
+          킷 규약 <code>PillRadius = clamp(floor(짧은 변 / 2), 2, 64)</code>(<code>html/ui-prototype.html:786-792</code>).
+          지름의 절반보다 반경이 작으면 <b>뭉개지지는 않지만 “덜 둥근” 링</b>이 됩니다.
+          <b>이 표는 결정 항목이 아니라 owner 육안 관찰 항목입니다</b> — T3 에서 파생 처분을 정합니다.
+        </caption>
+        <thead><tr><th>안</th><th class="num">소켓 지름</th><th class="num">규약상 반경</th><th class="num">실제 반경(고정 7)</th><th class="num">둥긂 손실</th><th class="num">상대 두께 (2f ÷ 지름)</th></tr></thead>
+        <tbody>
+          <tr class="now"><td>현행 480</td><td class="num">15.55</td><td class="num">7</td><td class="num">7</td><td class="num"><span class="ok">0 % (규약 일치)</span></td><td class="num">12.9 %</td></tr>
+          <tr><td>(c) 544</td><td class="num">17.63</td><td class="num">8</td><td class="num">7</td><td class="num">−12.5 %</td><td class="num">11.3 %</td></tr>
+          <tr class="warnrow"><td>(a) 960</td><td class="num">31.10</td><td class="num">15</td><td class="num">7</td><td class="num"><b class="no">−53 %</b></td><td class="num"><b class="no">6.4 %</b></td></tr>
+          <tr class="warnrow"><td>(b) 1484</td><td class="num">48.08</td><td class="num">24</td><td class="num">7</td><td class="num"><b class="no">−71 %</b></td><td class="num"><b class="no">4.2 %</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info">
+      <b>무해로 확인된 2건</b>(T3 에 “확인했고 무해”로 기록) —
+      <code>GetArmamentOnArtSocketDiameter</code> 의 <code>Mathf.Max(4f, …)</code>(<code>UI.cs:2469</code>)는
+      <b>하한</b>이라 확대 방향에선 무해하고, <code>anchor.KeySize</code> 분기(<code>:2463-2467</code>)는
+      현재 앵커 테이블이 3인자 생성자만 써서(<code>MvpGameController.Armament.cs:161-167</code>) <b>비활성</b>입니다.
+      또 <code>ArmamentSocketRingDiameter 30f</code>(<code>UI.cs:2422</code>)는 이제 렌더에 안 쓰이고
+      젬 반지름 비율(9/30 = 0.3)의 <b>분모로만</b> 남아 있습니다 — 확대 방향에서 재발 위험 없음.
+    </div>
+  </section>
+
+  <!-- ══════════ G. 결정 박스 ══════════ -->
+  <section class="sec decide">
+    <h2>G. owner 결정 박스</h2>
+    <p class="lead" style="color:var(--muted);">
+      <b style="color:var(--gold)">이 박스가 T2 착수의 관문입니다</b>(플랜 수용기준 2).
+      2026-08-28 “권장으로 ㄱ”은 <b>가확정</b>이며, 같은 답을 다시 고르셔도 됩니다 —
+      다만 이번엔 <b>실측 91.6 % · 아트 544(+13 %) · 배경판 3안</b>을 보고 고르시는 것입니다.
+      아래 라디오는 로컬 표시용이며 저장되지 않습니다(스크린샷 또는 구두 회신으로 전달해 주세요).
+    </p>
+
+    <div class="dgrid">
+      <div class="dblock">
+        <p class="t">G1 — 키보드 아트 (증상 ① “작다”)</p>
+        <p class="h">척도는 <b>÷ 화면 1920 절대폭</b>입니다. 여기서 고른 픽셀값이 곧
+          <b>플랜 수용기준 3 의 절대폭 하한</b>이 됩니다.</p>
+
+        <label class="opt"><input type="radio" name="g1" value="a"><span class="lab">
+          <b>(a) 캡 상향 960 — <code>min(cardWidth−48, 960)</code></b>
+          <span class="m">아트 <b>960 × 390 · 화면의 50.0 %</b>(현행 +100 %) · 소켓 지름 31.1 · 변경 1줄.
+          <span class="ok">“작다” 확실 해소.</span>
+          <span class="no">⚠ 젬 장착 탭(900) 크기 역전 → 소켓 탭 파생 결정 1건 발생.</span></span></span></label>
+
+        <label class="opt"><input type="radio" name="g1" value="b"><span class="lab">
+          <b>(b) 카드 콘텐츠 꽉 채움 — <code>artWidth = cardWidth − 48</code></b>
+          <span class="m">현행 그릇에서 <b>1484 × 603 · 화면의 77.3 %</b>(현행 +209 %) · 소켓 지름 48.1.
+          <span class="ok">점유율 89.4 % — 두 증상을 수치상 동시 해소.</span>
+          <span class="no">⚠ 역전 폭이 (a)보다 큼(1484 ≫ 900). 소켓 링 둥긂 −71 %.</span>
+          G2 로 그릇을 줄이면 그에 종속해 함께 줄어듭니다.</span></span></label>
+
+        <label class="opt"><input type="radio" name="g1" value="c"><span class="lab">
+          <b>(c) 목업 그대로 이식 — 블록 930(320 + 18 + 592) 중앙</b>
+          <span class="m">아트 <b>544 × 221 · 화면의 28.3 %</b>.
+          <span class="no">⚠ <b>키보드는 480 → 544 (+13 %) 뿐입니다 — 지금보다 크게 보이지 않을 수 있습니다.</b></span>
+          <span class="ok">젬 장착 탭 900 관계는 유지(파생 결정 0).</span>
+          좌우에 <b>471 × 968 씩</b> 새 공백이 생깁니다 → G2 배경판 처분이 <b>더 중요해집니다</b>.</span></span></label>
+
+        <label class="opt"><input type="radio" name="g1" value="hold"><span class="lab">
+          <b>현상 유지 (480)</b>
+          <span class="m">증상 ① 미해결. 이 경우 G2 만 진행합니다.</span></span></label>
+      </div>
+
+      <div class="dblock">
+        <p class="t">G2 — 그릇 / 공백 (증상 ② “비었다”) <span style="color:var(--red)">+ 배경판 처분</span></p>
+        <p class="h">(a) 를 고르면 <b>배경판 처분 a-i / a-ii / a-iii 중 하나를 반드시 함께</b> 고르셔야 합니다 —
+          셋은 <b>화면이 완전히 다르고</b>, 구현자 재량이 아닙니다(R1 H3).</p>
+
+        <label class="opt"><input type="radio" name="g2" value="a-i"><span class="lab">
+          <b>(a-i) 카드 높이 콘텐츠 맞춤 + <code>_panel</code> 자체 축소</b>
+          <span class="m">카드 <b>435 ~ 557</b>(현행 아트 기준) · 그려지는 어두운 판 <b>28.1 %</b> · 판 밖은 셸 배경.
+          <span class="ok">공백이 “이동”하지 않고 실제로 사라짐.</span>
+          <span class="no">⚠ 레이아웃 부모까지 줄어 <code>_cardWidth</code>(<code>:247</code>) 재계산 필요 — 손잡이 <code>:238-245</code>.</span></span></span></label>
+
+        <label class="opt"><input type="radio" name="g2" value="a-ii"><span class="lab">
+          <b>(a-ii) 카드 높이 콘텐츠 맞춤 + <code>PanelBackground</code> 만 축소</b>
+          <span class="m">그림은 a-i 과 <b>거의 같고</b>(판 28.1 %) <code>_panel</code> rect·히트 영역은 1872×968 그대로.
+          <span class="ok">레이아웃 무변경 — 가장 안전.</span>
+          <span class="m" style="margin:0;">손대는 곳은 <code>:230-235</code> 한 곳.</span></span></span></label>
+
+        <label class="opt"><input type="radio" name="g2" value="a-iii"><span class="lab">
+          <b>(a-iii) 카드 높이 콘텐츠 맞춤 + 배경판 1872×968 유지(의도된 매트)</b>
+          <span class="m">그려지는 어두운 판 <b class="no">100 % 그대로</b>.
+          <span class="no">⚠ owner 가 본 화면이 거의 바뀌지 않습니다 — “여백을 디자인으로 인정한다”는 <b>선언</b>이지 공백 제거가 아닙니다.</span></span></span></label>
+
+        <label class="opt"><input type="radio" name="g2" value="c"><span class="lab">
+          <b>(c) 아트가 세로를 흡수 — G1 (a)/(b) 와 짝</b>
+          <span class="m">
+          <span class="no">⚠ 3상태 어디서도 968 을 다 못 채웁니다</span>(잔여 133 / 27 / 149 px, 상한 1484).
+          G1=(a) 와 짝지으면 캡 960 이 흡수를 막아 <b>실질 = (a) 단독</b>.
+          실현형은 사실상 <b>G1=(b)</b> 이며, 그때도 배경판 처분은 별도로 필요합니다.</span></span></label>
+
+        <label class="opt"><input type="radio" name="g2" value="hold"><span class="lab">
+          <b>현상 유지 (카드 968 · 배경판 그대로)</b>
+          <span class="m">증상 ② 미해결. G1 만 진행합니다.</span></span></label>
+      </div>
+    </div>
+
+    <div class="dblock" style="margin-top:18px;">
+      <p class="t">관찰 항목 — 확인했다고 체크해 주세요 (결정 아님)</p>
+      <p class="h">T3 이 판정할 파생 항목입니다. owner 인지 여부만 남깁니다.</p>
+      <label class="opt"><input type="checkbox" name="obs" value="ring"><span class="lab">
+        <b>소켓 강조 링 왜소화를 인지했다</b>
+        <span class="m">강조 링 반경 <b>7 · 두께 2f 는 생성자 고정</b>(<code>:992</code>)이라 아트를 키워도 <b>안 따라 커집니다</b>.
+        규약 반경은 (c) 8 / (a) 15 / (b) 24 → 고정 7 은 각각 <b>−12.5 % / −53 % / −71 %</b> 덜 둥글고,
+        상대 두께는 12.9 % → 11.3 / 6.4 / 4.2 % 로 <b>얇아 보입니다</b>.
+        ⇒ T3 에서 <code>CanvasUi.PillRadius(diameter)</code> 파생으로 바꿀지 결정합니다.</span></span></label>
+      <label class="opt"><input type="checkbox" name="obs" value="socketstab"><span class="lab">
+        <b>(a)/(b) 선택 시 젬 장착 탭 파생 결정 1건이 발생함을 인지했다</b>
+        <span class="m">무기 탭 아트 &gt; 소켓 탭 아트(900) 역전. 소켓 탭도 같이 올릴지는
+        <code>SocketsView</code> 를 건드리는 일이라 <b>이 플랜의 B 등급·범위 밖</b>입니다.</span></span></label>
+      <label class="opt"><input type="checkbox" name="obs" value="absolute"><span class="lab">
+        <b>수용기준에 박을 아트 절대폭 하한을 승인했다</b>
+        <span class="m">위 G1 에서 고른 값(544 / 960 / 1484 중 하나)이 그대로
+        플랜 수용기준 3 의 <b>“절대폭 ≥ owner 승인 픽셀값”</b> 이 됩니다.</span></span></label>
+      <label class="opt"><input type="checkbox" name="obs" value="parity"><span class="lab">
+        <b>이 결정이 나머지 4화면에 자동 적용되지 않음을 인지했다</b>
+        <span class="m"><code>mockup-parity-sweep</code> G1(5화면 공통)은 미확정입니다. 여기서 정한 것은
+        <b>선례로 인용될 뿐</b>이고 나머지 4화면 처분은 그 플랜 소관입니다
+        (<code>mockup-parity-sweep-plan.md:35-36</code> <i>“채울 내용이 없으면 카드를 줄이고 여백을 설계”</i>와 같은 방향).</span></span></label>
+    </div>
+
+    <p class="sign">
+      owner 확인 <span class="line"></span> 일자 <span class="line"></span>
+      &nbsp;·&nbsp; 확인 즉시 플랜 §1.5 체크박스와 §결정 기록을 갱신하고 T2 를 착수합니다.
+    </p>
+  </section>
+
+  <p class="foot">
+    <b>각주 1 — 점유율 분자 정의.</b> 이 문서의 점유율 = <b>2열 블록폭 × max(524, 카드 콘텐츠 높이)</b> ÷ (1872 × 968).
+    “그려지지만 비어 있는 카드 면적”은 <b>분자에서 제외</b>합니다. 플랜·승인서의 <b>“(c)+(a) = 28 %”</b> 는
+    같은 정의의 근사값이고 여기서는 3상태를 각각 계산해 평균 <b>27.5 %</b> 로 적었습니다 — <b>결론 불변</b>입니다.<br>
+    <b>각주 2 — 아트 캡의 소비자.</b> <code>ArmamentWeaponArtWidth(480)</code> 의 소비자는
+    <code>ArmamentWeaponView.cs:332</code> <b>하나뿐</b>이고, 소켓 탭은 별도 상수
+    <code>ArmamentSocketsWeaponArtWidth(900)</code> 를 씁니다. 반면
+    <code>ArmamentWeaponArtSidePadding/TopPadding</code> 은 <code>SocketsView.cs:481, 499, 504, 538, 693</code>
+    <b>5곳이 공유</b>하며, 특히 <code>:481</code> 은 PR #181(08-29 빈 인벤토리 3분기, <code>ac8ed35d</code>)이 손댄
+    밴드의 입력입니다 — <b>패딩은 건드리지 않습니다</b>(플랜 하드 제약 1).<br>
+    <b>각주 3 — 앵커 드리프트 1건.</b> 플랜 T3 이 인용한 강조 링 <code>:986</code> 은 이 문서 작성 시점 실측
+    <code>ArmamentWeaponView.cs:992</code> 입니다(6줄 밀림, 코드 내용 동일). T2 착수 시 정리 대상.<br>
+    <b>각주 4 — 무수정 대상.</b> 이 파일 외 <code>html/armament-menu.html</code> ·
+    <code>html/ui-prototype.html</code> · 모든 <code>.cs</code> 는 <b>읽기만</b> 했습니다(diff 0).
+    Unity 에디터 접촉 0.
+  </p>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ══ 코드 실측 상수 ══
+     UI.cs:1889-1897(본문) · :2417-2429(아트/리스트) · ArmamentWeaponView.cs:85-116(카드 상수) */
+  var BODY_W = 1872, BODY_H = 968;
+  var LIST_W = 320, GAP_UNITY = 20, GAP_MOCK = 18;
+  var CARD_W_NOW = 1532;                 // BODY_W - LIST_W - GAP_UNITY
+  var ART_SIDE_PAD = 24, ART_TOP_PAD = 12;
+  var ASPECT = 208 / 512;                // 0.40625
+  var CARD_PAD_X = 24, CARD_TOP = 22;
+  var CTA_W = 200, LEVELBAR_W = 320;
+  var LIST_CONTENT_H = 10 * 46 + 9 * 6 + 10;   // 524
+  var DEN = BODY_W * BODY_H;             // 1,812,096
+  var SOCKET_R2 = 0.0162 * 2;            // 앵커 37개 공통
+
+  function artH(w){ return w * ASPECT; }
+  function f1(n){ return n.toFixed(1); }
+
+  /* 카드 콘텐츠 바닥(카드 상단 기준) — LayoutCard(:445-556) y 커서 재현 */
+  function cardContentH(aw, state){
+    var y = CARD_TOP + artH(aw) + ART_TOP_PAD;   // 아트 소비
+    y += 44;                                      // TitleAdvance
+    if(state === 'locked'){
+      y += 50;                                    // LockedDescAdvance
+      y += 44;                                    // LockedCostAdvance
+      return y + 44;                              // UnlockCtaHeight
+    }
+    y += 32;                                      // LevelBadgeAdvance
+    y += 28;                                      // LevelBarAdvance
+    y += 30;                                      // StatAdvance (데미지)
+    y += 40;                                      // SocketLineAdvance
+    if(state === 'max') return y + 24;            // LevelBadgeHeight(최대 레벨 라벨)
+    y += 50;                                      // EquipCtaAdvance (미장착)
+    y += 36;                                      // LevelUpCostAdvance
+    return y + 44;                                // LevelUpCtaHeight
+  }
+
+  /* 카드 안 행 목록 — [라벨, 높이, 진행량, 종류, 폭모드] */
+  function cardRows(state){
+    if(state === 'locked') return [
+      ['🔒 제목', 32, 44, 'row', 'text'],
+      ['미해금 설명 2줄', 40, 50, 'row', 'text'],
+      ['해금 비용', 24, 44, 'row', 'text'],
+      ['해금하기 CTA', 44, 0, 'cta', 'cta']
+    ];
+    var base = [
+      ['⚔ 제목', 32, 44, 'row', 'text'],
+      ['Lv. n / 8', 24, 32, 'row', 'text'],
+      ['레벨 바', 10, 28, 'bar', 'bar'],
+      ['데미지 기여', 22, 30, 'row', 'text'],
+      ['소켓 n / m 해금됨', 22, 40, 'row', 'text']
+    ];
+    if(state === 'max') return base.concat([['최대 레벨입니다.', 24, 0, 'gold', 'text']]);
+    return base.concat([
+      ['장착하기 CTA', 40, 50, 'cta', 'cta'],
+      ['레벨업 비용', 22, 36, 'row', 'text'],
+      ['레벨업 CTA', 44, 0, 'cta', 'cta']
+    ]);
+  }
+
+  /* ── DOM 헬퍼 ── */
+  function el(cls, style, html){
+    var d = document.createElement('div');
+    if(cls) d.className = cls;
+    if(style) d.setAttribute('style', style);
+    if(html != null) d.innerHTML = html;
+    return d;
+  }
+  function box(parent, cls, k, x, y, w, h, extra){
+    var s = 'left:' + (x*k).toFixed(2) + 'px;top:' + (y*k).toFixed(2) + 'px;'
+          + 'width:' + Math.max(1, w*k).toFixed(2) + 'px;height:' + Math.max(1, h*k).toFixed(2) + 'px;'
+          + (extra || '');
+    var d = el('blk ' + cls, s); parent.appendChild(d); return d;
+  }
+  /* 라벨은 글자 크기가 비례하지 않으므로 y = "가상좌표 앵커 × k + 픽셀 오프셋" 으로 쌓는다.
+     (앵커만 쓰면 축소 배율에서 줄끼리 겹친다 — 렌더 검증에서 실제로 겹쳤다.) */
+  function tx(parent, cls, k, x, y, html, dy){
+    var d = el('txt ' + cls, 'left:' + (x*k).toFixed(2) + 'px;top:' + (y*k + (dy||0)).toFixed(2) + 'px;', html);
+    parent.appendChild(d); return d;
+  }
+
+  /* ══ 본문 도해 ══
+     spec: { blockW, cardW, gap, artW, state, fitCard(bool), plate:'full'|'fit'|'none',
+             absorb(bool), labels(bool) } */
+  function draw(spec, k){
+    var blockW  = spec.blockW  || BODY_W;
+    var cardW   = spec.cardW   || CARD_W_NOW;
+    var gap     = spec.gap     || GAP_UNITY;
+    var aw      = spec.artW    || 480;
+    var ah      = artH(aw);
+    var state   = spec.state   || 'max';
+    var big     = k >= 0.30;
+
+    var blockX  = (BODY_W - blockW) / 2;      // 중앙 정렬 (블록이 본문보다 좁을 때만 의미)
+    var listX   = blockX;
+    var cardX   = blockX + LIST_W + gap;
+    var contentH = cardContentH(aw, state);
+    var cardH   = spec.fitCard ? Math.min(BODY_H, contentH + CARD_PAD_X) : BODY_H;
+    var listH   = spec.fitCard ? Math.min(BODY_H, LIST_CONTENT_H + 10) : BODY_H;
+
+    var hud = el('hud', 'width:' + (BODY_W*k).toFixed(1) + 'px;height:' + (BODY_H*k).toFixed(1) + 'px;');
+
+    /* 배경판 */
+    var plate = spec.plate || 'full';
+    if(plate === 'full'){
+      box(hud, 'plate', k, 0, 0, BODY_W, BODY_H);
+    } else if(plate === 'fit' || plate === 'fitonly'){
+      var ph = Math.max(cardH, listH) + 8;
+      box(hud, 'plate', k, blockX - 8, 0, blockW + 16, ph);
+      // a-ii 만 `_panel` rect(1872×968)이 그대로 남는다 — 점선으로 표시한다.
+      // a-i(fitonly)은 rect 자체가 줄어들므로 점선도 없어야 셋이 실제로 달라 보인다.
+      if(plate === 'fit') box(hud, 'plate ghost', k, 0, 0, BODY_W, BODY_H);
+    } else {
+      box(hud, 'plate ghost', k, 0, 0, BODY_W, BODY_H);
+    }
+
+    /* 블록이 좁을 때 좌우 신설 공백 */
+    if(blockW < BODY_W - 4){
+      var sw = (BODY_W - blockW) / 2;
+      box(hud, 'side', k, 0, 0, sw, BODY_H);
+      box(hud, 'side', k, BODY_W - sw, 0, sw, BODY_H);
+      if(big){
+        tx(hud, 'epic sm b', k, 6, 0, Math.round(sw) + ' × 968', 6);
+        tx(hud, 'epic sm', k, 6, 0, '신설 공백', 18);
+      }
+    }
+
+    /* 좌측 리스트 */
+    box(hud, 'list', k, listX, 0, LIST_W, listH);
+    for(var i = 0; i < 10; i++){
+      box(hud, 'listrow' + (i === 1 ? ' eq' : ''), k, listX + 8, 10 + i*52, LIST_W - 16, 46);
+    }
+    if(big) tx(hud, 'mut sm', k, listX + 8, LIST_CONTENT_H, '리스트 콘텐츠 524', 4);
+
+    /* 우측 카드 */
+    box(hud, 'card', k, cardX, 0, cardW, cardH);
+
+    /* 아트 */
+    var artX = cardX + cardW/2 - aw/2;
+    var artY = CARD_TOP + ART_TOP_PAD;
+    box(hud, 'art' + (aw >= 900 ? ' big' : ''), k, artX, artY, aw, ah);
+    if(big){
+      tx(hud, 'teal sm b', k, artX + 6, artY, '⌨ ' + Math.round(aw) + ' × ' + Math.round(ah), 6);
+      tx(hud, 'mut sm', k, artX + 6, artY, '화면의 ' + f1(aw/1920*100) + '%', 18);
+    }
+
+    /* 카드 행 */
+    var y = artY + ah;
+    var rows = cardRows(state);
+    for(var r = 0; r < rows.length; r++){
+      var row = rows[r], h = row[1], mode = row[4];
+      var rx, rw;
+      if(mode === 'cta'){ rx = cardX + cardW/2 - CTA_W/2; rw = CTA_W; }
+      else if(mode === 'bar'){ var bw = Math.min(LEVELBAR_W, cardW - CARD_PAD_X*2); rx = cardX + cardW/2 - bw/2; rw = bw; }
+      else { rx = cardX + CARD_PAD_X; rw = cardW - CARD_PAD_X*2; }
+      box(hud, 'row ' + (row[3] === 'row' ? '' : row[3]), k, rx, y, rw, h);
+      if(big && k >= 0.34) tx(hud, 'mut sm', k, rx + 4, y, row[0], 1);
+      y += row[2] || h;
+    }
+    var bottom = artY + ah + rows.reduce(function(s, rr, idx){ return s + (idx === rows.length-1 ? rr[1] : rr[2]); }, 0);
+
+    /* 하단 공백 */
+    var gapH = cardH - bottom;
+    if(gapH > 6){
+      var cls = (plate === 'full') ? 'empty' : 'mat';
+      box(hud, cls, k, cardX + 4, bottom + 4, cardW - 8, gapH - 8);
+      if(big){
+        tx(hud, (plate === 'full' ? 'red' : 'mut') + ' b' + (k >= 0.34 ? ' md' : ' sm'),
+           k, cardX + 12, bottom, Math.round(gapH) + ' px', 8);
+        if(k >= 0.30)
+          tx(hud, 'mut sm', k, cardX + 12, bottom, '카드의 ' + f1(gapH/BODY_H*100) + '% · 화면의 ' + f1(gapH/1080*100) + '%', 22);
+      }
+    }
+    /* 판이 카드보다 큰 경우(a-iii) — 카드 아래 남은 판을 따로 표시 */
+    if(spec.fitCard && plate === 'full' && cardH < BODY_H - 6){
+      box(hud, 'empty', k, blockX + 4, cardH + 6, blockW - 8, BODY_H - cardH - 12);
+      if(big){
+        tx(hud, 'red b sm', k, blockX + 14, cardH, '공백이 카드 밖 배경판으로 이동 — ' + Math.round(BODY_H - cardH) + ' px', 12);
+      }
+    }
+    return { node: hud, cardH: cardH, contentH: contentH, gapH: gapH,
+             occ: blockW * Math.max(LIST_CONTENT_H, contentH) / DEN * 100 };
+  }
+
+  function mount(id, spec, k){
+    var host = document.getElementById(id);
+    if(!host) return null;
+    var r = draw(spec, k);
+    host.appendChild(r.node);
+    return r;
+  }
+  function fig(host, title, spec, k, capHtml, badges){
+    var wrapEl = el('card2' + (spec.tone ? ' ' + spec.tone : ''));
+    wrapEl.appendChild(el('h5', null, title));
+    if(spec.kicker) wrapEl.appendChild(el('k', null, spec.kicker));
+    var r = draw(spec, k);
+    wrapEl.appendChild(r.node);
+    if(badges && badges.length){
+      var b = el('badges');
+      badges.forEach(function(bb){ b.appendChild(el('badge ' + bb[0], null, bb[1])); });
+      wrapEl.appendChild(b);
+    }
+    if(capHtml) wrapEl.appendChild(el('figcap', null, capHtml));
+    host.appendChild(wrapEl);
+    return r;
+  }
+
+  /* ══ A. 현재 (히어로) ══ */
+  var hero = mount('fig-now-hero', { state:'max', plate:'full' }, 0.36);
+  if(hero){
+    var h = document.getElementById('fig-now-hero');
+    h.appendChild(el('figcap', null,
+      '<b>현재 · 만렙 · 장착 상태</b> — 카드 <b>1532</b> 는 목업(592)의 <b>2.6배</b>인데, ' +
+      '키보드는 <b>480</b>(화면의 25.0 %)에 상수 캡으로 묶여 있습니다. ' +
+      '아래 붉은 빗금이 owner 가 “화면 절반”이라고 부른 <b>541 px</b> 입니다. ' +
+      '콘텐츠 점유율 <span class="pct">' + f1(hero.occ) + ' %</span> (§E 정의).'));
+  }
+
+  /* ══ A-2. 3상태 ══ */
+  var host3 = document.getElementById('fig-now-3');
+  [['만렙 · 장착', 'max', '541 px'], ['비만렙 · 미장착', 'lv', '435 px'], ['미해금', 'locked', '557 px']]
+    .forEach(function(s){
+      fig(host3, s[0], { state:s[1], plate:'full', kicker:'현행 — 아트 480 · 카드 968', tone:'risk' }, 0.245,
+        '콘텐츠 바닥 <b>' + Math.round(cardContentH(480, s[1])) + '</b> → 하단 공백 <b style="color:var(--red)">' + s[2] + '</b>',
+        [['red', '공백 ' + s[2]]]);
+    });
+
+  /* ══ B. 목업 오버레이 자 ══ */
+  (function(){
+    var host = document.getElementById('fig-mock-overlay');
+    if(!host) return;
+    var kk = 0.30;
+    var rows = [
+      ['현행 Unity 카드', 1532, 'now', '카드 1532'],
+      ['현행 Unity 아트', 480, 'now', '480 · 화면 25.0 %'],
+      ['목업 카드 (DOM 실측)', 592, 'mock', '카드 592'],
+      ['목업 아트 (DOM 실측)', 542, 'mock', '542 · 화면 28.2 %']
+    ];
+    var w = el('ruler');
+    rows.forEach(function(r){
+      var line = el('rline');
+      line.appendChild(el('nm', null, '<b>' + r[0] + '</b>'));
+      var barH = (r[0].indexOf('아트') >= 0) ? Math.max(14, artH(r[1])*kk) : 18;
+      var bar = el('rbar ' + r[2], 'width:' + (r[1]*kk).toFixed(1) + 'px;height:' + barH.toFixed(1) + 'px;');
+      bar.appendChild(el('v', null, r[3]));
+      line.appendChild(bar);
+      w.appendChild(line);
+    });
+    host.appendChild(w);
+    host.appendChild(el('figcap', null,
+      '두 <b>아트</b> 막대의 길이 차이가 <b>62 px</b> 뿐인 것에 주목하세요. ' +
+      '“목업 91.6 % vs 현행 31.3 %” 는 <b>분모 차이</b>였습니다.'));
+  })();
+
+  /* ══ C-1. 아트 절대폭 자 ══ */
+  (function(){
+    var host = document.getElementById('ruler-art');
+    if(!host) return;
+    var kk = 0.30;
+    var rows = [
+      ['현행', 480, 'now', '480 · 25.0 % · 소켓 15.55', ''],
+      ['목업 정본(참고)', 542, 'mock', '542 · 28.2 %', ''],
+      ['(c) 목업 이식', 544, '', '544 · 28.3 % · 소켓 17.63', '+13.3 % ← “크게 보이지 않을 수 있음”'],
+      ['(a) 캡 960', 960, '', '960 · 50.0 % · 소켓 31.10', '+100 % · ⚠ 젬 탭 900 역전'],
+      ['(b) 카드−48', 1484, '', '1484 · 77.3 % · 소켓 48.08', '+209 % · ⚠ 젬 탭 900 역전'],
+      ['젬 장착 탭 아트(기준선)', 900, 'mock', '900 — 이 선을 넘으면 역전', '']
+    ];
+    var w = el('ruler');
+    rows.forEach(function(r){
+      var line = el('rline');
+      line.appendChild(el('nm', null, '<b>' + r[0] + '</b>'));
+      var bar = el('rbar ' + r[2],
+        'width:' + (r[1]*kk).toFixed(1) + 'px;height:' + Math.max(16, artH(r[1])*kk*0.55).toFixed(1) + 'px;');
+      bar.appendChild(el('v', null, r[3]));
+      line.appendChild(bar);
+      if(r[4]) line.appendChild(el('after', null, r[4]));
+      w.appendChild(line);
+    });
+    host.appendChild(w);
+    host.appendChild(el('figcap', null,
+      '축척 1 : 0.30. 막대 높이는 아트 실비율(208/512)의 절반으로 눌러 그렸습니다(가로 비교 전용). ' +
+      '<b>(c) 와 현행의 막대 차이가 이 결정의 핵심</b>입니다 — 눈으로 확인해 주세요.'));
+  })();
+
+  /* ══ C-3. G1 안별 도해 ══ */
+  (function(){
+    var host = document.getElementById('fig-g1');
+    if(!host) return;
+    fig(host, '(a) 캡 상향 960', { state:'max', artW:960, plate:'full', kicker:'카드 1532 유지 · 아트 960 × 390', tone:'pick' }, 0.245,
+      '아트가 <b>화면의 50 %</b>. 하단 공백 <b>' + Math.round(BODY_H - cardContentH(960,'max')) + ' px</b> 로 축소. ' +
+      '콘텐츠 점유율 <span class="pct">64.3 %</span>.',
+      [['ok','“작다” 확실 해소'], ['red','⚠ 젬 장착 탭 900 역전'], ['amber','변경 1줄']]);
+    fig(host, '(b) 카드 콘텐츠 꽉 채움 1484', { state:'max', artW:1484, plate:'full', kicker:'목업 규칙의 실체 = cardWidth − 48', tone:'pick' }, 0.245,
+      '아트가 <b>화면의 77.3 %</b>. 하단 공백 <b>' + Math.round(BODY_H - cardContentH(1484,'max')) + ' px</b>. ' +
+      '콘텐츠 점유율 <span class="pct">86.3 %</span>.',
+      [['ok','두 증상 수치상 동시 해소'], ['red','⚠ 젬 장착 탭 900 역전(폭 더 큼)'], ['red','소켓 링 둥긂 −71 %']]);
+    fig(host, '(c) 목업 이식 — 블록 930 중앙', { state:'max', blockW:930, cardW:592, gap:GAP_MOCK, artW:544, plate:'full', kicker:'320 + 18 + 592 = 930 · 아트 544', tone:'risk' }, 0.245,
+      '아트 <b>544</b>(+13 %)뿐이고, 좌우에 <b>471 × 968 씩</b> 보라 빗금 공백이 <b>새로</b> 생깁니다. ' +
+      '콘텐츠 점유율 <span class="pct" style="color:var(--red)">26.9 %</span> — 현행 54.1 % 의 <b>절반</b>.',
+      [['red','+13 % — “작다” 미해결 가능'], ['ok','젬 탭 900 관계 유지'], ['red','좌우 공백 신설 942 px']]);
+  })();
+
+  /* ══ D-1. G2(a) × 배경판 3안 ══ */
+  (function(){
+    var host = document.getElementById('fig-g2a');
+    if(!host) return;
+    var base = { state:'max', blockW:930, cardW:592, gap:GAP_MOCK, artW:544, fitCard:true };
+    function mk(o){ var c = {}; for(var kk in base) c[kk] = base[kk]; for(var k2 in o) c[k2] = o[k2]; return c; }
+    fig(host, '(a-i) _panel 자체 축소', mk({ plate:'fitonly', kicker:'판 = 콘텐츠 크기 · rect 도 함께 축소', tone:'pick' }), 0.245,
+      '어두운 판이 <b>28.1 %</b> 로 줄어 “빈 검정”이 <b>실제로 사라집니다</b>. ' +
+      '<b>점선(원래 rect)이 없다는 것</b>이 a-ii 와의 차이입니다 — <code>_panel</code> 은 레이아웃 부모라 ' +
+      '<code>_cardWidth</code>(<code>:247</code>) 재계산과 히트 영역 축소가 함께 따라옵니다.',
+      [['ok','공백이 이동하지 않고 사라짐'], ['amber','레이아웃 부모 변경 — 손잡이 :238-245'], ['amber','히트 영역도 축소']]);
+    fig(host, '(a-ii) PanelBackground 만 축소', mk({ plate:'fit', kicker:'배경 이미지만 Place · rect 는 1872×968 유지', tone:'pick' }), 0.245,
+      '칠해지는 판은 a-i 과 <b>같습니다</b>(28.1 %). 다른 점은 <b>바깥 점선</b> — ' +
+      '<code>_panel</code> rect 가 1872×968 로 남아 <b>레이아웃·히트 영역이 무변경</b>입니다. ' +
+      '손대는 곳은 <code>:230-235</code> 한 곳.',
+      [['ok','가장 안전 — 레이아웃 무변경'], ['muted','칠해지는 그림은 a-i 과 동일'], ['muted','히트 영역 1872×968 유지']]);
+    fig(host, '(a-iii) 배경판 유지 + 여백 매트', mk({ plate:'full', kicker:'1872 × 968 판 그대로 · 여백을 의도로 선언', tone:'risk' }), 0.245,
+      '어두운 판이 <b class="pct" style="color:var(--red)">100 % 그대로</b>입니다. ' +
+      '카드 테두리 위치만 바뀌고 <b>owner 가 본 화면은 거의 변하지 않습니다</b> — ' +
+      '공백은 카드 안에서 <b>카드 밖으로 이동</b>했을 뿐입니다.',
+      [['red','⚠ “빈 검정”이 그대로 남음'], ['muted','배경 코드 무변경'], ['red','증상 ② 실질 미해결']]);
+  })();
+
+  /* ══ D-2. G2(c) ══ */
+  (function(){
+    var host = document.getElementById('fig-g2c');
+    if(!host) return;
+    var r = draw({ state:'max', artW:1484, plate:'full', absorb:true }, 0.30);
+    host.appendChild(r.node);
+    host.appendChild(el('figcap', null,
+      '<b>G2=(c) 의 실현 최대치</b> — 아트를 상한(<code>cardWidth − 48 = 1484</code>)까지 키운 상태입니다. ' +
+      '그래도 만렙·장착에서 <b style="color:var(--red)">' + Math.round(r.gapH) + ' px</b> 가 남습니다. ' +
+      '968 을 다 채우려면 아트 폭 <b>1812</b> 가 필요한데, 그건 카드 폭을 넘습니다.'));
+  })();
+
+})();
+</script>
+</body>
+</html>

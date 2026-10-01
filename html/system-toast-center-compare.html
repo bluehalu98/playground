@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시스템 알림 — 현재(상단 토스트) vs V2(화면 중앙) 비교본</title>
+<!--
+  system-toast-center-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : owner Play QA 2026-08-28 — "'젬 뽑기를 열었습니다.' 이런 항목도 탑이 아니고
+          가운데 시스템 알림이 떠야하고 굳이 필요없는건 뜰 필요없음" 에 대한 **판단 재료**.
+          정적 비교본이고 실조작 없음.
+  소유  : docs/plans/01-defined/phase-1/system-toast-policy-plan.md T2
+          (게이트1 APPROVE(R3) — docs/reviews/2026-08-29-system-toast-policy-plan.md)
+  짝    : docs/resources/system-toast-classification-2026-08-29.md (T1 전수 분류표)
+  정본  : html/ui-prototype.html 은 **무수정**. 리뷰 검증 E-2 실측대로 그 목업에는
+          토스트/상태 메시지 섹션이 0건이라 **"현재" 쪽도 여기서 신규 제작**했다.
+          html/armament-menu.html 도 읽기만 했고 수정하지 않았다.
+  팔레트: ui-prototype.html :49-85 토큰을 그대로 복사(raw 색 신설 0).
+          토스트 고유 색 3종은 발명이 아니라 **런타임 UiTheme 실제값**이다 —
+            UiTheme.cs:70  PanelBackgroundColor      (0.08,0.11,0.15,0.94) → #141C26 @.94
+            UiTheme.cs:104 OverlayShellHeaderColor   (0.05,0.09,0.12,0.96) → #0D171F @.96
+            UiTheme.cs:113 ArmamentGemPickableColor  (0.34,0.82,0.72,0.95) → #57D1B8  = --teal
+            UiTheme.cs:130 AchievementAccentColor    (0.34,0.82,0.72,1.00) → #57D1B8  = --teal
+            UiTheme.cs:97  TextTitleColor            (0.918,0.953,0.949)   → #EAF3F2  = --text-title
+  좌표  : 가상 해상도 1920×1080(ScreenHost.cs:114-116). 위치 비교 무대는 그 캔버스를
+          그대로 축소한 것이라 좌표·크기가 코드값과 1:1 대응한다. 글자 크기는
+          §B 의 1:1 확대에서 확인한다.
+-->
+<style>
+:root{
+  /* ── ui-prototype.html :49-85 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --btn-gold-border:#7a6420; --btn-gold-fill-a:#2a2008; --btn-gold-fill-b:#1a1505;
+  --bg-deep:#070c11; --bg-mid:#0b1218; --bg-rise:#12202c;
+  --field-surface:#0c1621; --field-grid:rgba(87,209,184,.11);
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+
+  /* ── 토스트 고유 = 런타임 UiTheme 실제값(신규 색 0) ── */
+  --toast-panel:rgba(20,28,38,.94);      /* PanelBackgroundColor  UiTheme.cs:70  */
+  --toast-header:rgba(13,23,31,.96);     /* OverlayShellHeaderColor UiTheme.cs:104 */
+  --toast-ring:#57d1b8;                  /* Achievement/GemPickable = --teal */
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 64px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1280px; margin:0 auto;}
+h1{font-size:20px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em; color:var(--text-title);}
+h3{font-size:13px; margin:26px 0 10px; letter-spacing:.06em; color:var(--text-title);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 18px;}
+code{font-family:ui-monospace,'Cascadia Mono',Consolas,monospace; font-size:12px; color:var(--text-caption);}
+
+.quote{
+  border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:12px 16px; margin:0 0 22px; border-radius:0 5px 5px 0;
+  color:var(--text-caption); font-size:13px;
+}
+.quote b{color:var(--amber);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.secbar{
+  margin:34px 0 14px; padding:7px 0 0; border-top:1px solid var(--hairline);
+  color:var(--muted); font-size:11px; letter-spacing:.12em;
+}
+
+.compare{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+@media(max-width:1080px){.compare{grid-template-columns:1fr;}}
+.pane{min-width:0;}
+.pane h2 .tagnow{color:var(--red);}
+.pane h2 .tagv2{color:var(--teal);}
+.badge-h{display:inline-block; font-size:10px; letter-spacing:.1em; padding:2px 8px;
+  border-radius:3px; margin-left:8px; vertical-align:2px;}
+.badge-now{background:rgba(255,107,107,.12); color:var(--red); border:1px solid rgba(255,107,107,.3);}
+.badge-v2{background:rgba(87,209,184,.12); color:var(--teal); border:1px solid rgba(87,209,184,.3);}
+
+/* ══════════ 위치 비교 무대 — 1920×1080 을 통째로 축소 ══════════ */
+.screenbox{width:100%; aspect-ratio:16/9; position:relative; overflow:hidden;
+  border-radius:8px; border:1px solid var(--hairline); background:#000;}
+.canvas{position:absolute; left:0; top:0; width:1920px; height:1080px;
+  transform-origin:0 0; }
+.lay{position:absolute; inset:0;}
+.l-deep{background:radial-gradient(ellipse at 50% 38%,#12202c 0%,#0b1218 55%,#070c11 100%);}
+.l-circuit{opacity:.055; background-image:
+  repeating-linear-gradient(0deg,var(--teal) 0 1px,transparent 1px 40px),
+  repeating-linear-gradient(90deg,var(--teal) 0 1px,transparent 1px 40px);}
+.l-vignette{background:radial-gradient(ellipse at center,transparent 46%,rgba(4,8,12,.82) 100%);}
+
+/* 연구소 셸 약식 배경 — 토스트가 무엇을 가리는지 보이라고 둔다(디자인 제안 아님) */
+.lab-tabs{position:absolute; left:120px; top:120px; display:flex; gap:14px;}
+.lab-tab{padding:12px 26px; border-radius:11px; font-size:22px; letter-spacing:.04em;
+  background:linear-gradient(175deg,var(--surface-raised-a),var(--surface-raised-b));
+  border:1px solid var(--btn-border); color:var(--text-btn);}
+.lab-tab.on{border-color:var(--teal); color:var(--teal);}
+.lab-grid{position:absolute; left:120px; top:220px; width:1680px;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:26px;}
+.lab-card{height:230px; border-radius:14px; background:var(--surface-card);
+  border:1px solid var(--hairline); padding:24px 26px;}
+.lab-card .t{color:var(--text-title); font-size:26px; font-weight:700;}
+.lab-card .d{color:var(--muted); font-size:19px; margin-top:12px; line-height:1.45;}
+.lab-card .v{color:var(--gold); font-size:22px; margin-top:18px;}
+
+/* ── 현재: LabShellView.cs:417-418 토스트 (760×44 @ x=580,y=28, TopLeft, 18px) ── */
+.toast-now{
+  position:absolute; left:580px; top:28px; width:760px; height:44px;
+  background:var(--toast-panel); border:1px solid rgba(87,209,184,.55);
+  border-radius:11px; padding:8px 16px;
+  color:var(--text-title); font-size:18px; line-height:26px;
+  text-align:left; white-space:nowrap; overflow:hidden;
+}
+/* ── V2: AchievementToasts 템플릿(480×56, 중앙 정렬, 18px bold, 링 1.6px, r14) ── */
+.toast-v2{
+  position:absolute; width:480px; min-height:56px;
+  left:720px; top:512px;
+  background:var(--toast-header); border:1.6px solid var(--toast-ring);
+  border-radius:14px; padding:14px 20px;
+  color:var(--text-title); font-size:18px; font-weight:700; line-height:1.45;
+  text-align:center;
+}
+
+/* 좌표 주석선 */
+.dim{position:absolute; color:var(--amber); font-size:17px; letter-spacing:.03em;}
+.dimline{position:absolute; background:rgba(251,176,59,.55);}
+.axis-h{position:absolute; left:0; right:0; height:1px; background:rgba(87,209,184,.35);}
+.axis-v{position:absolute; top:0; bottom:0; width:1px; background:rgba(87,209,184,.35);}
+
+/* 캡션 */
+.cap{color:var(--muted); font-size:11px; margin-top:8px; letter-spacing:.02em;}
+.notes{margin:12px 0 0; padding-left:18px; font-size:12.5px; color:var(--text-caption);}
+.notes li{margin:5px 0;}
+.notes.bad li::marker{color:var(--red);}
+.notes.good li::marker{color:var(--teal);}
+.notes b{color:var(--text-title);}
+
+/* ══════════ 1:1 디테일 ══════════ */
+.oneone{background:var(--field-surface); border:1px solid var(--hairline); border-radius:8px;
+  padding:26px 20px; overflow-x:auto;}
+.oneone .rowlab{color:var(--muted); font-size:11px; letter-spacing:.1em; margin:0 0 8px;}
+.oneone + .oneone{margin-top:14px;}
+.t1-now{width:760px; height:44px; background:var(--toast-panel);
+  border:1px solid rgba(87,209,184,.55); border-radius:11px; padding:8px 16px;
+  color:var(--text-title); font-size:18px; line-height:26px; white-space:nowrap; overflow:hidden;}
+.t1-v2{width:480px; min-height:56px; background:var(--toast-header);
+  border:1.6px solid var(--toast-ring); border-radius:14px; padding:14px 20px;
+  color:var(--text-title); font-size:18px; font-weight:700; line-height:1.45; text-align:center;}
+.t1-v2.wide{width:640px;}
+.stack{display:flex; flex-direction:column; gap:16px; align-items:flex-start;}
+
+/* ══════════ 수명 타임라인 ══════════ */
+.tl{display:grid; grid-template-columns:150px 1fr; gap:10px 14px; align-items:center;
+  background:var(--field-surface); border:1px solid var(--hairline);
+  border-radius:8px; padding:18px 20px;}
+.tl .name{font-size:12px; color:var(--text-caption); text-align:right;}
+.tl .name em{display:block; font-style:normal; color:var(--muted); font-size:10.5px;}
+.track{position:relative; height:34px; background:rgba(11,18,24,.8);
+  border:1px solid var(--hairline); border-radius:4px; overflow:hidden;}
+.env{position:absolute; top:0; bottom:0; background:rgba(87,209,184,.30);}
+.env.solid{background:rgba(87,209,184,.45);}
+.env.red{background:rgba(255,107,107,.26);}
+.env.redsolid{background:rgba(255,107,107,.40);}
+.tick{position:absolute; top:0; bottom:0; width:1px; background:rgba(140,153,173,.35);}
+.tlabel{position:absolute; top:9px; font-size:10.5px; color:var(--text-caption); letter-spacing:.04em;}
+.scalerow{grid-column:2; position:relative; height:16px; color:var(--muted); font-size:10px;}
+.scalerow span{position:absolute; transform:translateX(-50%);}
+
+/* ══════════ 표 ══════════ */
+table{width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px;}
+th,td{border:1px solid var(--hairline); padding:7px 10px; text-align:left; vertical-align:top;}
+th{background:var(--surface-raised-b); color:var(--text-caption); font-weight:600; letter-spacing:.04em;}
+td b{color:var(--text-title);}
+.spec{margin-top:34px; background:var(--surface-card); border:1px solid var(--hairline);
+  border-radius:8px; padding:22px 24px;}
+.warn{color:var(--amber); font-size:12px;}
+.pill{display:inline-block; font-size:10px; letter-spacing:.08em; padding:1px 7px;
+  border-radius:3px; border:1px solid var(--btn-border); color:var(--muted);}
+.pill.sys{border-color:rgba(87,209,184,.4); color:var(--teal);}
+.pill.amb{border-color:rgba(140,153,173,.5); color:var(--muted);}
+.pill.drop{border-color:rgba(255,107,107,.4); color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>시스템 알림 — 현재(상단 토스트) vs V2(화면 중앙) 비교본</h1>
+  <p class="sub">
+    소유: <code>docs/plans/01-defined/phase-1/system-toast-policy-plan.md</code> <b>T2</b> ·
+    짝 문서: <code>docs/resources/system-toast-classification-2026-08-29.md</code>(T1 전수 분류표) ·
+    2026-08-29 · 정적 비교본(실조작 없음)
+  </p>
+
+  <div class="quote">
+    <b>“‘젬 뽑기를 열었습니다.’ 이런 항목도 탑이 아니고 가운데 시스템 알림이 떠야하고 굳이 필요없는건 뜰 필요없음”</b>
+    <span class="who">owner Play QA — 2026-08-28</span>
+  </div>
+
+  <p style="font-size:12.5px; color:var(--text-caption); margin:0 0 4px;">
+    이 문서가 답하는 것은 <b>두 가지</b>다 — ① <b>어디에 뜨는가</b>(상단 28px → 화면 중앙) ·
+    ② <b>어떤 모양·수명인가</b>(연구소 토스트 4초 → 도전과제 채널 템플릿 2초, 저모션 변형 포함).
+    <b>무엇을 안 띄울 것인가</b>(Drop 목록)는 이 문서가 아니라 T1 분류표가 다룬다.
+  </p>
+  <p class="warn" style="margin:6px 0 0;">
+    ⚠ <code>html/ui-prototype.html</code> 에는 토스트/상태 메시지 섹션이 <b>0건</b>이다(교차 리뷰 검증 E-2 실측).
+    그래서 아래 “현재” 쪽도 목업 사본이 아니라 <b>런타임 코드값으로 새로 재현한 것</b>이다.
+  </p>
+
+  <!-- ═══════════════════════════ A. 위치 비교 ═══════════════════════════ -->
+  <div class="secbar">A · 위치 비교 — 가상 캔버스 1920×1080 을 통째로 축소</div>
+
+  <div class="compare">
+
+    <!-- ─────────── 좌 : 현재 ─────────── -->
+    <section class="pane">
+      <h2><span class="tagnow">현재</span> — 상단 중앙 y=28 토스트<span class="badge-h badge-now">AS-IS</span></h2>
+
+      <div class="screenbox" id="box-now">
+        <div class="canvas" id="cv-now">
+          <div class="lay l-deep"></div>
+          <div class="lay l-circuit"></div>
+          <div class="lay l-vignette"></div>
+
+          <!-- 연구소 셸 약식 배경 -->
+          <div class="lab-tabs">
+            <div class="lab-tab">개요</div>
+            <div class="lab-tab on">뽑기</div>
+            <div class="lab-tab">무기</div>
+            <div class="lab-tab">장비</div>
+            <div class="lab-tab">합성</div>
+          </div>
+          <div class="lab-grid">
+            <div class="lab-card"><div class="t">젬 뽑기</div><div class="d">커밋을 써서 젬을 뽑는다.</div><div class="v">비용 120</div></div>
+            <div class="lab-card"><div class="t">젬 합성</div><div class="d">같은 등급 3개 → 상위 1개.</div><div class="v">재료 3</div></div>
+            <div class="lab-card"><div class="t">보유 젬</div><div class="d">인벤토리에서 소켓으로.</div><div class="v">27개</div></div>
+          </div>
+
+          <!-- 화면 중앙축(참고선) -->
+          <div class="axis-h" style="top:540px;"></div>
+
+          <!-- ★ 현재 토스트 ★ -->
+          <div class="toast-now">젬 뽑기를 열었습니다.</div>
+
+          <!-- 좌표 주석 -->
+          <div class="dimline" style="left:560px; top:0; width:1px; height:28px;"></div>
+          <div class="dim" style="left:1360px; top:34px;">← 760×44 · x=(1920−760)/2=580 · y=28</div>
+          <div class="dim" style="left:1360px; top:520px;">화면 중앙(y=540) — 지금은 아무것도 없다</div>
+        </div>
+      </div>
+      <p class="cap">
+        재현 근거 — <code>LabShellView.cs:417-418</code>(좌표·크기) · <code>:150</code>(FontToast 18) ·
+        <code>:155</code>(ToastTopMargin 28) · <code>:733</code>(<code>TopLeft</code>, <code>timed:false</code>) ·
+        <code>MvpGameController.UI.cs:1956-1957</code>(4초 · 마지막 0.8초 페이드).
+      </p>
+
+      <ul class="notes bad">
+        <li><b>화면 전환 통지가 시야 밖에 있다.</b> 클릭한 곳(메뉴 행)과 알림이 뜨는 곳(화면 꼭대기)이 900px 떨어져 있어 눈이 따라가지 않는다.</li>
+        <li><b>중요도 구분이 없다.</b> <span class="pill drop">Drop</span> “…를 열었습니다”와 <span class="pill sys">System</span> “재화가 부족합니다”가 <b>같은 줄·같은 모양·같은 4초</b>다. T1 실측 91곳이 전부 이 한 채널을 쓴다.</li>
+        <li><b>좌표를 화면이 소유한다.</b> <code>StatusMessage</code> 채널은 청구자 앵커 밑으로 매 프레임 리페어런트된다(<code>MainMenuOverlayViews.cs:1202-1205</code>) — 연구소 28px · 설정 패널 안 · 런 76px 로 <b>제각각</b>이다.</li>
+        <li>4초는 <b>길다</b> — 다음 알림이 오면 이전 것이 그대로 덮이고, 저모션 설정(<code>_queueLowMotion</code>)은 <b>토스트에 배선돼 있지 않다</b>.</li>
+      </ul>
+    </section>
+
+    <!-- ─────────── 우 : V2 ─────────── -->
+    <section class="pane">
+      <h2><span class="tagv2">V2</span> — 화면 중앙 시스템 알림<span class="badge-h badge-v2">TO-BE</span></h2>
+
+      <div class="screenbox" id="box-v2">
+        <div class="canvas" id="cv-v2">
+          <div class="lay l-deep"></div>
+          <div class="lay l-circuit"></div>
+          <div class="lay l-vignette"></div>
+
+          <div class="lab-tabs">
+            <div class="lab-tab">개요</div>
+            <div class="lab-tab on">뽑기</div>
+            <div class="lab-tab">무기</div>
+            <div class="lab-tab">장비</div>
+            <div class="lab-tab">합성</div>
+          </div>
+          <div class="lab-grid">
+            <div class="lab-card"><div class="t">젬 뽑기</div><div class="d">커밋을 써서 젬을 뽑는다.</div><div class="v">비용 120</div></div>
+            <div class="lab-card"><div class="t">젬 합성</div><div class="d">같은 등급 3개 → 상위 1개.</div><div class="v">재료 3</div></div>
+            <div class="lab-card"><div class="t">보유 젬</div><div class="d">인벤토리에서 소켓으로.</div><div class="v">27개</div></div>
+          </div>
+
+          <div class="axis-h" style="top:540px;"></div>
+          <div class="axis-v" style="left:960px;"></div>
+
+          <!-- ★ V2 중앙 알림 ★ -->
+          <div class="toast-v2">젬 뽑기 재화가 부족합니다. 필요 120</div>
+
+          <!-- 상단은 비었다 -->
+          <div class="dim" style="left:600px; top:30px; color:var(--muted);">— 상단 28px : 비어 있다 —</div>
+          <div class="dim" style="left:1230px; top:590px;">← 480×56 · 중앙 고정 · 리페어런트 없음</div>
+        </div>
+      </div>
+      <p class="cap">
+        템플릿 근거 — 플랜 §3 정정 (2) 대로 <b><code>AchievementToasts</code> 채널</b>을 본떴다
+        (<code>MainMenuOverlayViews.cs</code> <code>ToastLayer</code>, 클래스 <code>:1057</code>):
+        <code>:1059-1063</code>(480×56 · Font 18) ·
+        <code>:1101-1109</code>(<code>OverlayShellHeaderColor</code> 채움 + <code>AchievementAccentColor</code> 링 1.6px + <code>PanelCornerRadius</code> 14 · <code>Center</code> · bold) ·
+        <code>MvpGameController.cs:1009</code>(Lifetime 2초) · <code>:1165-1169</code>(페이드 곡선).
+        <b>좌표만 상단 28px → 화면 중앙</b>으로 바꾼다.
+      </p>
+
+      <ul class="notes good">
+        <li><b>“열었습니다”가 사라졌다.</b> 중앙에 남는 건 <span class="pill sys">System</span> 등급뿐 — 실패·차단·해금·보상. <span class="pill drop">Drop</span> 은 호출부에서 제거하고, <span class="pill amb">Ambient</span> 는 기존 상단 채널에 그대로 둔다.</li>
+        <li><b>z-순서가 구조적으로 보장된다.</b> 단위 루트 10개는 <code>Awake</code> 의 <code>BuildUnitRoots</code>(<code>ScreenHost.cs:276-289</code>)에서 먼저 만들어지고 <code>ToastLayer</code> 는 첫 <code>LateUpdate</code> 에 나중에 생긴다 — 어느 화면이 활성이든 항상 맨 위다.</li>
+        <li><b>리페어런트하지 않는다.</b> <code>StatusMessage</code> 채널의 “좌표는 화면이 소유” 계약을 안 쓰고, <code>AchievementToasts</code>처럼 <b>루트 고정 좌표</b>다 — 그래서 연구소·런·설정 어디서든 같은 자리다.</li>
+        <li><b>신규 GameObject 계층 0.</b> <code>ToastLayer</code> 에 <b>3번째 채널</b>을 더하는 것뿐이라 새 색·새 위젯·새 z-순서 설계가 없다.</li>
+        <li><b>수명 2초</b>(도전과제 채널과 동일) — 현재 4초의 절반. 저모션 변형은 §C.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ═══════════════════════════ B. 1:1 디테일 ═══════════════════════════ -->
+  <div class="secbar">B · 1:1 디테일 — 위 무대는 축소본이라 글자 크기는 여기서 본다</div>
+
+  <div class="oneone">
+    <p class="rowlab">현재 · <code>LabStatusToast</code> 760×44 · 18px · TopLeft · 패딩 16/8 · 라운드 11 · 링 <code>#57D1B8</code> @55%</p>
+    <div class="stack">
+      <div class="t1-now">젬 뽑기를 열었습니다.</div>
+      <div class="t1-now">젬 뽑기 재화가 부족합니다. 필요 120</div>
+      <div class="t1-now">엔드게임 프리셋 ON — 노드 42개 최대화, 무기 전부 해금+최대레벨, 재화 대량 지급. 다시 누르면 OFF 됩니다.</div>
+    </div>
+    <p class="cap">
+      ⚠ 3번째 줄이 현재의 실제 한계다 — 폭 760 · 높이 44 · <code>white-space:nowrap</code> 상당이라
+      <code>Armament.cs:1568</code> 같은 긴 System 문구가 <b>잘린다</b>. Drop 문구와 잘리는 System 문구가 같은 상자를 쓴다.
+    </p>
+  </div>
+
+  <div class="oneone">
+    <p class="rowlab">V2 · 중앙 시스템 알림 480×56(기본) · 18px <b>bold</b> · Center · 패딩 20/14 · 라운드 14 · 링 <code>#57D1B8</code> 1.6px</p>
+    <div class="stack">
+      <div class="t1-v2">젬 뽑기 재화가 부족합니다. 필요 120</div>
+      <div class="t1-v2">노드를 활성화했습니다.<br>다음 런부터 능력치가 반영됩니다.</div>
+      <div class="t1-v2 wide">엔드게임 프리셋 ON — 노드 42개 최대화, 무기 전부 해금+최대레벨, 재화 대량 지급. 다시 누르면 OFF 됩니다.</div>
+    </div>
+    <p class="cap">
+      1·2번째 = 폭 480 (도전과제 채널과 같은 값). 3번째 = <b>폭 640 변형</b> — 긴 dev/시스템 문구는 480 에서 4줄이 된다.
+      폭을 480 으로 고정할지 640 까지 늘릴지는 §E Q3.
+      높이는 <code>min-height:56</code> 로 두고 <b>줄 수에 따라 자란다</b>(도전과제 채널은 1줄 고정 56 이었다).
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════ C. 수명 · 저모션 ═══════════════════════════ -->
+  <div class="secbar">C · 수명 타임라인 — 저모션(즉시 표시/즉시 소멸) 변형 포함</div>
+
+  <div class="tl">
+    <div class="name">현재<em>LabShellView 토스트</em></div>
+    <div class="track">
+      <!-- 4.0s 를 100% 로. 0~3.2s 불투명, 3.2~4.0s 페이드아웃 -->
+      <div class="env redsolid" style="left:0; width:80%;"></div>
+      <div class="env red" style="left:80%; width:20%;"></div>
+      <div class="tick" style="left:80%;"></div>
+      <div class="tlabel" style="left:10px;">즉시 표시(페이드인 없음)</div>
+      <div class="tlabel" style="right:10px;">0.8s 페이드아웃</div>
+    </div>
+
+    <div class="name">V2 기본<em>도전과제 채널 곡선</em></div>
+    <div class="track">
+      <!-- 2.0s 를 50% 로 그려 현재와 같은 시간축을 쓴다: 0~0.3 인, 0.3~1.5 유지, 1.5~2.0 아웃 -->
+      <div class="env" style="left:0; width:7.5%;"></div>
+      <div class="env solid" style="left:7.5%; width:30%;"></div>
+      <div class="env" style="left:37.5%; width:12.5%;"></div>
+      <div class="tick" style="left:7.5%;"></div>
+      <div class="tick" style="left:37.5%;"></div>
+      <div class="tick" style="left:50%;"></div>
+      <div class="tlabel" style="left:10px;">0.3s 인 · 1.2s 유지 · 0.5s 아웃</div>
+      <div class="tlabel" style="left:52%; color:var(--muted);">← 여기서 이미 끝난다(2.0s)</div>
+    </div>
+
+    <div class="name">V2 저모션<em><code>_queueLowMotion</code> ON</em></div>
+    <div class="track">
+      <div class="env solid" style="left:0; width:50%;"></div>
+      <div class="tick" style="left:50%;"></div>
+      <div class="tlabel" style="left:10px;">즉시 표시 · 알파 보간 0 · 즉시 소멸</div>
+      <div class="tlabel" style="left:52%; color:var(--muted);">← 2.0s 에 한 프레임에 사라진다</div>
+    </div>
+
+    <div class="scalerow">
+      <span style="left:0;">0s</span><span style="left:12.5%;">0.5</span><span style="left:25%;">1.0</span>
+      <span style="left:37.5%;">1.5</span><span style="left:50%;">2.0</span><span style="left:75%;">3.0</span>
+      <span style="left:99%;">4.0s</span>
+    </div>
+  </div>
+
+  <ul class="notes" style="margin-top:12px;">
+    <li><b>세 트랙은 같은 시간축</b>이다(전체 폭 = 4.0초). 진한 구간 = 알파 1, 옅은 구간 = 페이드.</li>
+    <li>현재는 <b>페이드인이 아예 없다</b>(<code>alpha = (4−age)/0.8</code> 을 <code>Clamp01</code> — 초반은 항상 1). 즉 “툭” 나타나 “스르륵” 사라진다.</li>
+    <li>V2 기본은 <b>도전과제 채널의 곡선을 그대로</b> 쓴다(<code>t&lt;0.15 → 페이드인 · t&gt;0.75 → 페이드아웃</code>, <code>MainMenuOverlayViews.cs:1165-1169</code>). 새 이징을 만들지 않는다.</li>
+    <li><b>저모션은 곡선만 끈다 — 수명은 그대로 2.0초</b>다. “짧게 뜨고 사라진다”는 요구는 유지하면서 움직임만 없앤다(§E Q5 에서 지속시간 단축안도 물어본다).</li>
+    <li>⚠ 현재 <code>_queueLowMotion</code>(<code>MvpGameController.Queue.cs:52</code>)은 설정·런 pause 양쪽에서 토글되지만 <b>토스트 코드 어디도 읽지 않는다</b> — T3 의 신규 배선이다(리뷰 Low #6).</li>
+  </ul>
+
+  <!-- ═══════════════════════════ D. 사양 ═══════════════════════════ -->
+  <div class="spec">
+    <h2>1. 두 채널 대조 — 무엇이 바뀌고 무엇이 그대로인가</h2>
+    <table>
+      <tr><th>항목</th><th>현재 <code>StatusMessage</code> 채널</th><th>V2 중앙 System 채널(신설)</th><th>바뀌나</th></tr>
+      <tr><td>좌표 소유</td><td>청구 화면이 매 프레임 결정 → 채널을 <b>리페어런트</b><br><code>MainMenuOverlayViews.cs:1202-1205</code></td><td><b>루트 고정</b>, 리페어런트 없음<br>(<code>AchievementToasts</code> 패턴)</td><td><b>바뀐다</b></td></tr>
+      <tr><td>위치</td><td>연구소 y=28 · 설정 패널 안 · 런 y=76</td><td>화면 중앙(1920×1080 기준 x=720 · y=512)</td><td><b>바뀐다</b></td></tr>
+      <tr><td>크기</td><td>760×44 (연구소 기준)</td><td>480×56 기본, 높이는 줄 수만큼 자람</td><td><b>바뀐다</b></td></tr>
+      <tr><td>정렬 / 굵기</td><td><code>TopLeft</code> · 보통</td><td><code>Center</code> · <b>bold</b></td><td><b>바뀐다</b></td></tr>
+      <tr><td>폰트 크기</td><td>18 (<code>LabShellView.cs:150</code>)</td><td>18 (<code>MainMenuOverlayViews.cs:1059</code>)</td><td>그대로</td></tr>
+      <tr><td>채움 색</td><td><code>PanelBackgroundColor</code> #141C26 @.94</td><td><code>OverlayShellHeaderColor</code> #0D171F @.96</td><td>토큰 교체(신규 색 0)</td></tr>
+      <tr><td>링 색</td><td><code>ArmamentGemPickableColor</code> @55% = <code>--teal</code></td><td><code>AchievementAccentColor</code> = <code>--teal</code></td><td>같은 색</td></tr>
+      <tr><td>라운드</td><td>11 (<code>ButtonCornerRadius</code>)</td><td>14 (<code>PanelCornerRadius</code>)</td><td>기존 상수 교체</td></tr>
+      <tr><td>수명</td><td>4.0s · 마지막 0.8s 페이드아웃</td><td>2.0s · 0.3s 인 / 0.5s 아웃</td><td><b>바뀐다</b></td></tr>
+      <tr><td>저모션</td><td><b>미배선</b></td><td><code>_c._queueLowMotion</code> 을 읽어 보간 생략</td><td><b>신규</b></td></tr>
+      <tr><td>온보딩 <code>overrideMessage</code></td><td><code>RunHudView.cs:694</code> 계약</td><td>건드리지 않는다(하드 제약 #3)</td><td>그대로</td></tr>
+      <tr><td>공유 <code>_statusMessage</code> 필드</td><td>91곳(대입 90 + 덧붙임 1)</td><td>필드는 유지 — 등급 API 를 그 위에 얹는다(하드 제약 #2)</td><td>그대로</td></tr>
+    </table>
+
+    <h2 style="margin-top:26px;">2. 등급별 최종 표시 — T1 분류표와의 접속</h2>
+    <table>
+      <tr><th>등급</th><th>표시</th><th>T1 제안 건수</th><th>예</th></tr>
+      <tr><td><span class="pill sys">System</span></td><td><b>화면 중앙</b>(이 문서의 V2)</td><td>66</td><td>“젬 뽑기 재화가 부족합니다. 필요 120” · “노드를 활성화했습니다. 다음 런부터 반영됩니다.”</td></tr>
+      <tr><td><span class="pill amb">Ambient</span></td><td>기존 상단/토스트 채널 유지(이 문서의 “현재”)</td><td>13</td><td>“젬을 장착했습니다.” · “채굴 지대를 스캔 중입니다…”</td></tr>
+      <tr><td><span class="pill drop">Drop</span></td><td><b>안 띄운다</b>(호출부 제거)</td><td>3 + 부록 A 6</td><td>“젬 뽑기를 열었습니다.” · “장비 메뉴를 열었습니다.”</td></tr>
+      <tr><td>애매</td><td>owner 확정 대기</td><td>9</td><td>레벨 수치 readout 2 · pass-through 3 · 그 외 4</td></tr>
+    </table>
+    <p style="margin-top:8px; font-size:12.5px; color:var(--text-caption);">
+      건수는 <code>docs/resources/system-toast-classification-2026-08-29.md</code> §0 총계
+      (기준 리비전 <code>7ffeaae1</code>, 대입 90 + 덧붙임 1 = <b>91</b>)와 같다.
+      <b>이 html 은 Drop 목록을 정하지 않는다</b> — 그건 T1 표의 owner 체크박스다.
+    </p>
+
+    <h2 style="margin-top:26px;">3. 신규 색 0 — 이 문서가 쓴 색의 출처</h2>
+    <table>
+      <tr><th>쓰임</th><th>값</th><th>출처</th></tr>
+      <tr><td>배경 3겹 · 카드 · 버튼 · 텍스트 램프</td><td><code>--bg-deep</code> … <code>--text-caption</code></td><td><code>html/ui-prototype.html</code> :49-85 토큰 복사</td></tr>
+      <tr><td>현재 토스트 채움</td><td><code>rgba(20,28,38,.94)</code></td><td><code>UiTheme.cs:70</code> <code>PanelBackgroundColor</code>(0.08,0.11,0.15,0.94)</td></tr>
+      <tr><td>V2 알림 채움</td><td><code>rgba(13,23,31,.96)</code></td><td><code>UiTheme.cs:104</code> <code>OverlayShellHeaderColor</code>(0.05,0.09,0.12,0.96)</td></tr>
+      <tr><td>양쪽 링</td><td><code>#57D1B8</code></td><td><code>UiTheme.cs:113/130</code> — <code>--teal</code> 과 <b>같은 값</b></td></tr>
+      <tr><td>본문 글자</td><td><code>#EAF3F2</code></td><td><code>UiTheme.cs:97</code> <code>TextTitleColor</code> — <code>--text-title</code> 과 <b>같은 값</b></td></tr>
+      <tr><td>주석선 · 경고</td><td><code>--amber</code> / <code>--red</code> / <code>--muted</code></td><td>목업 토큰(문서용 주석이며 게임 UI 아님)</td></tr>
+    </table>
+
+    <!-- ═══════════════════════════ E. 결정 박스 ═══════════════════════════ -->
+    <h2 style="margin-top:30px;">4. owner 결정 항목 <span class="badge-h badge-v2">이 비교본의 승인 지점</span></h2>
+    <table>
+      <tr><th>#</th><th>물어보는 것</th><th>대안</th></tr>
+      <tr><td>Q1</td><td><b>V2 방향 자체를 채택하나?</b> System 등급만 화면 중앙으로 올리고 Ambient 는 상단에 남긴다</td><td>(a) 채택 / (b) 전부 중앙으로(상단 채널 폐지) / (c) 현행 유지 <b>→ ✅ 확정 (a) 채택 — System 등급만 중앙, Ambient 는 상단</b> <span style="color:var(--muted)">(2026-09-29 owner·쿠키네모 결정판)</span></td></tr>
+      <tr><td>Q2</td><td><b>세로 위치</b> — 정중앙(y=540)인가, 살짝 위(y≈475, 화면 44%)인가</td><td>(a) 정중앙(위 목업) / (b) 살짝 위 — 중앙 콘텐츠(카드·노드)를 덜 가린다</td></tr>
+      <tr><td>Q3</td><td><b>폭</b> — 도전과제 채널과 같은 480 고정인가, 긴 문구를 위해 640 인가</td><td>(a) 480 고정(§B 2번째처럼 2줄 허용) / (b) 640 (§B 3번째) / (c) 480 기본 + 넘치면 640 까지 자동</td></tr>
+      <tr><td>Q4</td><td><b>도전과제 토스트와 겹치면?</b> 둘 다 같은 <code>ToastLayer</code> 이고 도전과제는 상단, System 은 중앙이라 물리적으로는 안 겹친다</td><td>(a) 그대로 둘 다 뜬다 / (b) System 이 뜨는 동안 도전과제는 대기 <b>→ ✅ 확정 (a) 둘 다 그대로</b> <span style="color:var(--muted)">(2026-09-29 owner·쿠키네모 결정판)</span></td></tr>
+      <tr><td>Q5</td><td><b>저모션에서 지속시간도 줄이나?</b> 기본안은 곡선만 끄고 2.0초 유지</td><td>(a) 2.0초 유지(위 목업) / (b) 1.2초로 단축</td></tr>
+      <tr><td>Q6</td><td><b>System 이 연달아 뜨면?</b> 도전과제 채널은 6줄까지 세로로 쌓는다(<code>MaxToastRows</code>)</td><td>(a) 1개만 — 새 알림이 이전 것을 즉시 교체 / (b) 최대 3개까지 세로 스택 <b>→ ✅ 확정 (b) 최대 3개 세로 스택</b> <span style="color:var(--muted)">(2026-09-29 owner·쿠키네모 결정판)</span></td></tr>
+      <tr><td>Q7</td><td><b>dev 전용 문구 12건</b>도 중앙 System 으로 띄우나(T1 §5 Q7 과 같은 질문)</td><td>(a) 동일 취급 / (b) dev 는 상단 Ambient 고정 <b>→ ✅ 확정 (b) dev 는 상단 Ambient 고정</b> <span style="color:var(--muted)">(2026-09-29 owner·쿠키네모 결정판)</span></td></tr>
+    </table>
+
+    <p class="warn" style="margin-top:12px;">
+      ⚠ 이 파일은 판단 재료다. 정본 <code>html/ui-prototype.html</code> 과 <code>html/armament-menu.html</code> 은 <b>건드리지 않았고</b>,
+      게임 코드(<code>Assets/**</code>)도 한 줄도 바뀌지 않았다. owner 가 Q1~Q7 을 정한 뒤에 T3(표시부 신설)가 착수한다.<br>
+      ✅ <b>2026-09-29 owner·쿠키네모 결정판으로 Q1·Q4·Q6·Q7 확정</b>(Q2·Q3·Q5 는 09-01 일괄 채택분 = 위 목업 기본안) — T3 착수 가능. 기록 <code>docs/reviews/2026-09-29-owner-decision-board.md</code>
+    </p>
+  </div>
+
+</div>
+
+<script>
+// 위치 비교 무대 — 1920×1080 캔버스를 상자 폭에 맞춰 축소한다(좌표가 코드값과 1:1 대응하도록).
+function fit(){
+  document.querySelectorAll('.screenbox').forEach(function(box){
+    var cv = box.querySelector('.canvas');
+    if (!cv) return;
+    cv.style.transform = 'scale(' + (box.clientWidth / 1920) + ')';
+  });
+}
+window.addEventListener('resize', fit);
+window.addEventListener('load', fit);
+fit();
+</script>
+</body>
+</html>

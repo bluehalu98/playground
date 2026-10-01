@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>런당 마이크로 목표 1개 — 현재 vs V2 비교본</title>
+<!--
+  run-micro-goal-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : run-micro-goal-plan T8-4 산출물. 표시 3곳(런 시작 배너 · 런 HUD DPS 패널 ·
+          결과 오버레이)에 목표 줄이 들어갔을 때의 **정적 비교본**이다. 실조작 없음.
+  소유  : docs/plans/01-defined/phase-1/run-micro-goal-plan.md T8
+  정본  : html/ui-prototype.html 은 **무수정**. #game(:1521) · #result(:3568) 어느 것도
+          건드리지 않았다. 여기는 사본이 아니라 "현재 vs V2" 비교 전용 별도 파일이다.
+  팔레트: ui-prototype.html :50-85 토큰 그대로 복사(raw 색 신설 0).
+          목표 달성 강조는 기존 --gold(코드 UiTheme.kGoldenNodeTint) 재사용 — 신규 색 0.
+
+  ⚠ 이 비교본이 지키는 하드 제약 2건
+     1) 확률·가중치 수치를 **어디에도 표시하지 않는다**(사행성 회피 규약). 아래 목표 풀
+        표에도 난이도 서술만 있고 % 수치는 없다.
+     2) 달성 표기에 U+2713(✓)을 쓰지 않는다. TMP 폰트 에셋이 동적 아틀라스라 실제 렌더
+        가능 여부를 Unity 없이 실측할 수 없어, 플랜 T6 이 명시한 폴백 「달성!」을 채택했다.
+-->
+<style>
+:root{
+  /* ── ui-prototype.html :50-85 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --bg-deep:#070c11;
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 60px; background:var(--bg-deep); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1180px; margin:0 auto;}
+h1{font-size:20px; margin:0 0 6px; color:var(--text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em; color:var(--teal);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 22px;}
+.label-xs{font-size:11px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase;}
+
+.quote{
+  border-left:3px solid var(--amber); background:rgba(251,176,59,.06);
+  padding:12px 16px; margin:0 0 22px; border-radius:0 5px 5px 0;
+  color:var(--text-caption); font-size:13px;
+}
+.quote b{color:var(--amber);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.block{margin:0 0 34px;}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+@media (max-width:900px){ .pair{grid-template-columns:1fr;} }
+.col{border:1px solid var(--hairline); border-radius:8px; background:var(--surface-card); padding:14px;}
+.col.now{border-color:var(--btn-border);}
+.col.v2{border-color:var(--teal);}
+.col h3{font-size:11px; letter-spacing:.1em; margin:0 0 12px; text-transform:uppercase; color:var(--muted);}
+.col.v2 h3{color:var(--teal);}
+.note{font-size:11px; color:var(--muted); margin-top:12px; line-height:1.7;}
+.note b{color:var(--text-caption);}
+.new{color:var(--gold);}
+
+/* ── 런 HUD 우측 DPS 패널 (ui-prototype #game :1730-1738 어휘) ── */
+.rl-side-half{
+  background:var(--surface-raised-b); border:1px solid var(--hairline);
+  border-radius:6px; padding:12px 12px 14px; width:230px;
+}
+#rl-pipe-title{ font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.rl-dps-value{ font-size:26px; font-weight:bold; color:var(--teal); font-variant-numeric:tabular-nums; line-height:1.1; }
+.rl-divider{ height:1px; background:var(--hairline); margin:10px 0 8px; }
+.rl-stat-row{ display:flex; justify-content:space-between; font-size:9px; color:#6b7f92; padding:2px 0; }
+.rl-stat-row strong{ color:var(--text-btn); }
+.rl-stat-row.goal strong{ color:var(--text-btn); }
+.rl-stat-row.goal.done span, .rl-stat-row.goal.done strong{ color:var(--gold); }
+.ghost{ opacity:.35; }
+
+/* ── 런 시작 배너 (RunHudView.SyncIntro) ── */
+.field{
+  position:relative; height:190px; border-radius:8px; overflow:hidden;
+  background:
+    radial-gradient(120% 90% at 50% 40%, rgba(87,209,184,.05), transparent 70%),
+    var(--bg);
+  border:1px solid var(--hairline); display:flex; align-items:center; justify-content:center;
+}
+.banner{
+  width:68%; background:rgba(17,27,36,.76); border:1.5px solid rgba(87,209,184,.5);
+  border-radius:4px; padding:12px 18px;
+}
+.banner .l1{ color:var(--text-title); font-size:22px; font-weight:bold; line-height:1.25; }
+.banner .l2{ color:var(--text-caption); font-size:13px; margin-top:6px; }
+.dim{ position:absolute; left:10px; top:8px; font-size:9px; color:var(--muted); letter-spacing:.08em; }
+
+/* ── 결과 오버레이 (ui-prototype #result :3568) ── */
+.result-panel{
+  background:var(--surface-card); border:1px solid var(--hairline);
+  border-radius:10px; padding:20px 22px;
+}
+.result-panel .title{ color:var(--text-title); font-size:18px; font-weight:bold; }
+.result-panel .row{ color:var(--text-num); margin-top:6px; font-size:13px; }
+.result-panel .row.first{ margin-top:12px; }
+.result-panel .foot{ color:var(--text-caption); font-size:11px; margin-top:10px; }
+.result-panel .goal-done{ color:var(--gold); }
+.result-panel .goal-miss{ color:var(--text-caption); }
+
+table{ border-collapse:collapse; width:100%; font-size:12px; margin-top:6px; }
+th,td{ border:1px solid var(--hairline); padding:7px 10px; text-align:left; vertical-align:top; }
+th{ color:var(--teal); font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+td{ color:var(--text-caption); }
+td code{ color:var(--text-num); font-size:11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>런당 마이크로 목표 1개 — 현재 vs V2 비교본</h1>
+  <p class="sub">
+    <code>run-micro-goal-plan</code> T8-4 · 표시 3곳(런 시작 배너 / 런 HUD DPS 패널 / 결과 오버레이) ·
+    정본 <code>html/ui-prototype.html</code> 무수정 · raw 색 신설 0
+  </p>
+
+  <div class="quote">
+    런은 30초짜리인데 <b>"이번 런에 뭘 해야 하는지"</b>가 화면 어디에도 없다. 목표를 하나만 걸어
+    <b>경사(축④)</b>를 만든다 — 런마다 달라지고, 달성하면 확정 보상 1개, 못 해도 패널티는 0이다.
+    <span class="who">— 플랜 §0 / 탐색 문서 §3 Tier 2 제안 F</span>
+  </div>
+
+  <!-- ══════ 1. 런 HUD 우측 DPS 패널 ══════ -->
+  <div class="block">
+    <h2>1. 런 HUD — 우측 DPS 패널 마지막 줄</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재</h3>
+        <div class="rl-side-half">
+          <div id="rl-pipe-title" style="margin-bottom:4px;">Damage / sec</div>
+          <div class="rl-dps-value">312</div>
+          <div class="rl-divider"></div>
+          <div class="rl-stat-row"><span>처치</span><strong>31</strong></div>
+          <div class="rl-stat-row"><span>최고 DPS</span><strong>498</strong></div>
+          <div class="rl-stat-row"><span>피버 게이지</span><strong>62%</strong></div>
+        </div>
+        <p class="note">
+          마지막 줄이 <b>피버 게이지</b>에서 끝난다. 패널 세로 여유는 남아 있다.
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 목표 줄 1개 추가</h3>
+        <div class="rl-side-half">
+          <div id="rl-pipe-title" style="margin-bottom:4px;">Damage / sec</div>
+          <div class="rl-dps-value">312</div>
+          <div class="rl-divider"></div>
+          <div class="rl-stat-row"><span>처치</span><strong>31</strong></div>
+          <div class="rl-stat-row"><span>최고 DPS</span><strong>498</strong></div>
+          <div class="rl-stat-row"><span>피버 게이지</span><strong>62%</strong></div>
+          <div class="rl-stat-row goal"><span>목표 &nbsp;클리어 44</span><strong>31/44</strong></div>
+        </div>
+        <div style="height:14px;"></div>
+        <div class="rl-side-half">
+          <div id="rl-pipe-title" style="margin-bottom:4px;">Damage / sec</div>
+          <div class="rl-dps-value">476</div>
+          <div class="rl-divider"></div>
+          <div class="rl-stat-row"><span>처치</span><strong>44</strong></div>
+          <div class="rl-stat-row"><span>최고 DPS</span><strong>612</strong></div>
+          <div class="rl-stat-row"><span>피버 게이지</span><strong>88%</strong></div>
+          <div class="rl-stat-row goal done"><span>목표 &nbsp;클리어 44</span><strong>달성!</strong></div>
+        </div>
+        <p class="note">
+          기존 마지막 줄 바로 아래 한 줄(<b>18px</b>)만 붙는다 — 패널 내부라
+          런 HUD 상단·하단 중앙·좌상단의 <b>겹침 3건과 rect 교집합이 없다</b>.
+          달성하면 문자열이 <span class="new">달성!</span> 로 바뀌고 색이 <b>기존 골드 토큰</b>으로 간다(신규 색 0).
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 2. 런 시작 배너 ══════ -->
+  <div class="block">
+    <h2>2. 런 시작 배너 — 1행 → 2행</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재 — 1행 (높이 60)</h3>
+        <div class="field">
+          <span class="dim">와이프 후 0.75s</span>
+          <div class="banner">
+            <div class="l1">채굴 시작!</div>
+          </div>
+        </div>
+        <p class="note">
+          정적 리터럴 한 줄. 이번 런이 직전 런과 <b>무엇이 다른지</b>를 알려주지 않는다.
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 2행 (높이 84)</h3>
+        <div class="field">
+          <span class="dim">와이프 후 0.75s — 지속시간 무변경</span>
+          <div class="banner">
+            <div class="l1">채굴 시작!</div>
+            <div class="l2 new">목표 — 골든 노드 1 처치</div>
+          </div>
+        </div>
+        <p class="note">
+          1행 리터럴은 <b>그대로 두고</b> 2행만 얹는다. 높이 60→84, 중심 유지.
+          알파는 <b>기존 배너 페이드를 그대로 곱한다</b>(신규 트윈 0).
+          지속시간 상수는 IMGUI 판과 공유하므로 <b>건드리지 않는다</b> — 목표는 HUD 줄이 런 내내
+          상시 표시하므로 배너는 "알림"이지 "읽어야 하는 정보"가 아니다.
+          <br>⚠ 이 배너는 <b>캡처 하네스 freeze</b> 때문에 스크린샷에 절대 안 찍힌다 — owner 육안 전용.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 3. 결과 오버레이 ══════ -->
+  <div class="block">
+    <h2>3. 결과 오버레이 — <code>Goal</code> 줄 (슬롯은 P2 소유)</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재</h3>
+        <div class="result-panel">
+          <div class="title">런 결과</div>
+          <div class="row first">획득 골드: <b style="color:var(--gold)">+1,240</b></div>
+          <div class="row">획득 커밋: +18 &nbsp; B코인: +4 &nbsp; 아키텍트: +2</div>
+          <div class="row">정산 후 지갑: 골드 24,180 · 아키텍트 37</div>
+          <div class="row">처리한 리소스 수: 44</div>
+          <div class="foot">정산 결과가 영구 지갑에 반영되었습니다.</div>
+        </div>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 달성 / 미달성 두 변형</h3>
+        <div class="result-panel">
+          <div class="title">런 결과</div>
+          <div class="row first">획득 골드: <b style="color:var(--gold)">+1,240</b></div>
+          <div class="row">획득 커밋: +18 &nbsp; B코인: +4 &nbsp; 아키텍트: <b style="color:var(--gold)">+3</b></div>
+          <div class="row">정산 후 지갑: 골드 24,180 · 아키텍트 38</div>
+          <div class="row">처리한 리소스 수: 44</div>
+          <div class="row goal-done">목표: 클리어 44 — 달성!&nbsp; (+아키텍트 1)</div>
+          <div class="foot">정산 결과가 영구 지갑에 반영되었습니다.</div>
+        </div>
+        <div style="height:14px;"></div>
+        <div class="result-panel">
+          <div class="title">런 결과</div>
+          <div class="row first">획득 골드: <b style="color:var(--gold)">+980</b></div>
+          <div class="row">획득 커밋: +14 &nbsp; B코인: +3 &nbsp; 아키텍트: +1</div>
+          <div class="row">정산 후 지갑: 골드 22,900 · 아키텍트 36</div>
+          <div class="row">처리한 리소스 수: 2</div>
+          <div class="row goal-miss">목표: 콤보 ×3 — 미달성 (2/3)</div>
+          <div class="foot">정산 결과가 영구 지갑에 반영되었습니다.</div>
+        </div>
+        <p class="note">
+          <b>미달성은 근접(near-miss) 수치만 보여주고 패널티가 0이다</b> — 이월·재도전 강제·연속 실패 보정 전부 없음.
+          「아깝다」가 다음 런을 부르게 하는 것이 이 줄의 전부다.
+          <br>⚠ <b>슬롯 소유는 P2</b>(<code>run-result-launchpad</code>)다. 본 플랜은 문자열 공급자
+          <code>DescribeRunGoalResult()</code> 까지만 만들고 배선은 예약해 뒀다.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 4. 목표 풀 ══════ -->
+  <div class="block">
+    <h2>4. 목표 풀 5종 — 런 시작 시 가중 랜덤 1개</h2>
+    <table>
+      <tr><th>표시 라벨</th><th>목표치</th><th>판정 소스(런 스코프)</th><th>성격</th></tr>
+      <tr><td>클리어 {N}</td><td><code>max(하한, ceil(직전 런 × 성장률))</code></td><td>이번 런 클리어 수</td><td>직전 런 기준 <b>자기보정</b> — 항상 달성 가능한 기본 목표</td></tr>
+      <tr><td>피버 1회</td><td>1</td><td>이번 런 피버 발동 수</td><td>중반 이후 흔해짐 — 성장에 따라 쉬워진다</td></tr>
+      <tr><td>파이프라인 1회</td><td>1</td><td>이번 런 파이프라인 실행 수</td><td>상자 스폰 → 토큰 드랍 2단이라 중간 난도</td></tr>
+      <tr><td>골든 노드 1 처치</td><td>1</td><td>이번 런 골든 처치 수</td><td>파이프라인보다 낮은 등장 빈도</td></tr>
+      <tr><td>콤보 ×{N}</td><td>튜닝 상수</td><td>이번 런 최대 콤보</td><td><b>가장 어렵다</b> — owner QA 실측 반영해 목표치를 낮춰 잡았다</td></tr>
+    </table>
+    <p class="note">
+      ⚠ <b>가중치·확률 수치는 이 표에도, 게임 화면 어디에도 표시하지 않는다</b>(사행성 회피 규약).
+      <b>직전 런과 같은 목표는 연속으로 나오지 않는다</b> — 후보에서 빼고 뽑으므로 난수 호출 수가 늘지 않는다.
+      pity·보정·스트릭 없음. 목표와 판정 카운터는 전부 <b>런 스코프 인메모리</b>라
+      <b>세이브에 키가 하나도 늘지 않는다</b>.
+      <br>보상은 런 누적기를 거쳐 <b>기존 런 정산 1회</b>가 지갑에 반영한다 — 런 도중 지갑을 직접 건드리지 않는다.
+    </p>
+  </div>
+
+  <p class="note" style="border-top:1px solid var(--hairline); padding-top:14px;">
+    표시 3곳은 전부 <b>Canvas 판</b>이라 <code>UseCanvas.Run</code> 플래그가 켜져야 보인다.
+    <b>판정·보상은 플래그와 무관하게 동작한다</b>(플래그가 꺼지면 표시만 감춰진다) — owner 육안 QA 시 플래그를 켠다.
+  </p>
+
+</div>
+</body>
+</html>

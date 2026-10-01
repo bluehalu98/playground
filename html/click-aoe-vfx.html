@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Click AOE VFX — Click to Commit</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#060b14;
+  color:#c8d0e0;
+  font-family:'Courier New',monospace;
+  padding:32px;
+  user-select:none;
+}
+
+h1   { font-size:13px; letter-spacing:3px; color:#57d1b8; text-transform:uppercase; margin-bottom:4px; }
+.desc { font-size:10px; color:#2a4a6a; letter-spacing:1px; margin-bottom:28px; }
+
+/* ── Layout ─────────────────────────────── */
+.scene-wrap { display:flex; gap:24px; align-items:flex-start; }
+
+/* ── Field ───────────────────────────────── */
+.field-area { position:relative; flex-shrink:0; }
+.field {
+  width:580px; height:360px;
+  background:#0b1218;
+  border:1px solid #0f2030;
+  border-radius:4px;
+  position:relative;
+  overflow:hidden;
+  cursor:none;
+}
+.field canvas { display:block; }
+.field-label {
+  font-size:8px; letter-spacing:2px; text-transform:uppercase;
+  color:#1a3040; position:absolute; bottom:6px; right:10px;
+  pointer-events:none;
+}
+
+/* ── Controls panel ─────────────────────── */
+.panel {
+  width:180px; flex-shrink:0;
+  background:#090e1a;
+  border:1px solid #0f2030;
+  border-radius:4px;
+  overflow:hidden;
+}
+.panel-section {
+  padding:11px 13px;
+  border-bottom:1px solid #0a1828;
+}
+.panel-section:last-child { border-bottom:none; }
+.panel-title {
+  font-size:8px; letter-spacing:2px; text-transform:uppercase;
+  color:#2a5060; margin-bottom:9px;
+}
+
+.ctrl-row {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:9px; letter-spacing:.05em; margin-bottom:4px;
+}
+.ctrl-label { color:#2a4a6a; }
+.ctrl-val   { color:#57d1b8; font-size:10px; }
+.ctrl-val.crit { color:#f5e859; }
+
+input[type=range] {
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%; height:3px;
+  background:#1a3a5a; border-radius:2px;
+  outline:none; cursor:pointer; margin-top:3px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  appearance:none;
+  width:10px; height:10px; border-radius:50%;
+  background:#57d1b8; box-shadow:0 0 4px rgba(87,209,184,0.7);
+  cursor:pointer;
+}
+input[type=range].crit-slider::-webkit-slider-thumb { background:#f5e859; box-shadow:0 0 4px rgba(245,232,89,0.6); }
+
+.toggle-btn {
+  background:#0e1a28; border:1px solid #1a3a5a;
+  color:#4a7a9a; padding:3px 10px;
+  font-family:'Courier New',monospace; font-size:9px;
+  letter-spacing:1px; cursor:pointer;
+  text-transform:uppercase; min-width:46px; text-align:center;
+  transition:color .15s, border-color .15s, box-shadow .15s;
+}
+.toggle-btn.on {
+  border-color:#57d1b8; color:#57d1b8;
+  box-shadow:0 0 6px rgba(87,209,184,0.25);
+}
+.toggle-btn.on.awake {
+  border-color:#f5e859; color:#f5e859;
+  box-shadow:0 0 6px rgba(245,232,89,0.25);
+}
+.toggle-btn:hover { background:#1a2a3a; }
+
+.stat-row { display:flex; justify-content:space-between; font-size:10px; margin-bottom:5px; }
+.stat-key { color:#2a4a6a; font-size:9px; }
+.stat-val { color:#c8d0e0; }
+.stat-val.t { color:#57d1b8; }
+.stat-val.c { color:#ff9f43; }
+.stat-val.g { color:#f5e859; }
+
+/* ── Concept panel ──────────────────────── */
+.concept-panel {
+  width:200px; flex-shrink:0;
+  border-left:1px solid #0e1a28;
+  padding:0 0 0 22px;
+}
+.concept-title {
+  font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  color:#2a4a6a; margin-bottom:14px;
+}
+.concept-block { margin-bottom:18px; }
+.concept-head { font-size:10px; color:#3a7a8a; margin-bottom:5px; }
+.concept-text { font-size:10px; color:#2a4050; line-height:1.8; }
+.concept-text b { color:#3a7080; }
+.concept-sep { border:none; border-top:1px solid #0e1a28; margin:14px 0; }
+</style>
+</head>
+<body>
+
+<h1>Click AOE VFX</h1>
+<p class="desc">Click to Commit — AOE 틱 데미지 이펙트 · 필드 위에서 마우스를 움직이세요</p>
+
+<div class="scene-wrap">
+
+  <!-- Field -->
+  <div class="field-area">
+    <div class="field" id="field">
+      <canvas id="canvas" width="580" height="360"></canvas>
+      <div class="field-label">AOE FIELD · 580 × 360</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="panel">
+
+    <div class="panel-section">
+      <div class="panel-title">Timing</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">tick interval</span>
+        <span class="ctrl-val" id="tick-val">0.50s</span>
+      </div>
+      <input type="range" id="tick-slider" min="10" max="200" value="50" step="5">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Parameters</div>
+
+      <div class="ctrl-row">
+        <span class="ctrl-label">damage</span>
+        <span class="ctrl-val" id="dmg-val">5</span>
+      </div>
+      <input type="range" id="dmg-slider" min="1" max="30" value="5" step="1">
+
+      <div class="ctrl-row" style="margin-top:10px;">
+        <span class="ctrl-label">aoe radius</span>
+        <span class="ctrl-val" id="range-val">80px</span>
+      </div>
+      <input type="range" id="range-slider" min="30" max="200" value="80" step="5">
+
+      <div class="ctrl-row" style="margin-top:10px;">
+        <span class="ctrl-label">crit chance</span>
+        <span class="ctrl-val crit" id="crit-val">5%</span>
+      </div>
+      <input type="range" class="crit-slider" id="crit-slider" min="0" max="60" value="5" step="1">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Modes</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">awaken</span>
+        <button class="toggle-btn" id="awaken-btn" onclick="toggleAwaken()">OFF</button>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px;">
+        <span class="ctrl-label">debug</span>
+        <button class="toggle-btn" id="debug-btn" onclick="toggleDebug()">OFF</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Stats</div>
+      <div class="stat-row"><span class="stat-key">gold</span>   <span class="stat-val g" id="hud-gold">0</span></div>
+      <div class="stat-row"><span class="stat-key">ticks</span>  <span class="stat-val t" id="hud-tick">0</span></div>
+      <div class="stat-row"><span class="stat-key">crits</span>  <span class="stat-val c" id="hud-crit">0</span></div>
+      <div class="stat-row"><span class="stat-key">clears</span> <span class="stat-val t" id="hud-clear">0</span></div>
+    </div>
+
+  </div><!-- /.panel -->
+
+  <!-- Concept notes -->
+  <div class="concept-panel">
+    <div class="concept-title">컨셉 노트</div>
+
+    <div class="concept-block">
+      <div class="concept-head">AOE 클릭 루프</div>
+      <div class="concept-text">
+        마우스 위치 중심 <b>원형 AOE</b>가 tick마다 범위 내 모든 리소스에 자동 데미지.<br>
+        플레이어 입력 = 커서 이동.
+      </div>
+    </div>
+
+    <hr class="concept-sep">
+
+    <div class="concept-block">
+      <div class="concept-head">크리티컬</div>
+      <div class="concept-text">
+        틱 1회에 <b>범위 내 모든 타겟</b>에 동시 적용.<br>
+        AOE 안에 5개면 5개 전부 크리.
+      </div>
+    </div>
+
+    <hr class="concept-sep">
+
+    <div class="concept-block">
+      <div class="concept-head">각성 — 파동 확장</div>
+      <div class="concept-text">
+        클리어 발생 시 AOE가 <b>순간 확장</b>하며 2차 파동 링 방출.<br>
+        크리티컬 확률 +10%, 파티클 강화.
+      </div>
+    </div>
+
+    <hr class="concept-sep">
+
+    <div class="concept-block">
+      <div class="concept-head">debug 모드</div>
+      <div class="concept-text">
+        AOE 반경 수치 표시.<br>
+        범위 내 리소스 수 표시.
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════
+// PARAMS (reactive)
+// ════════════════════════════════════════
+let TICK_INTERVAL = 0.50;
+let BASE_DAMAGE   = 5;
+let AOE_RADIUS    = 80;
+let CRIT_CHANCE   = 0.05;
+const CRIT_MULT   = 2.0;
+const NODE_RADIUS = 22;
+const RESPAWN_DELAY = 1.8;
+const FW = 580, FH = 360;
+
+let awakened = false;
+let debugMode = false;
+
+// ════════════════════════════════════════
+// SLIDER WIRING
+// ════════════════════════════════════════
+document.getElementById('tick-slider').addEventListener('input', e => {
+  TICK_INTERVAL = e.target.value / 100;
+  document.getElementById('tick-val').textContent = TICK_INTERVAL.toFixed(2) + 's';
+});
+document.getElementById('dmg-slider').addEventListener('input', e => {
+  BASE_DAMAGE = +e.target.value;
+  document.getElementById('dmg-val').textContent = BASE_DAMAGE;
+});
+document.getElementById('range-slider').addEventListener('input', e => {
+  AOE_RADIUS = +e.target.value;
+  document.getElementById('range-val').textContent = AOE_RADIUS + 'px';
+});
+document.getElementById('crit-slider').addEventListener('input', e => {
+  CRIT_CHANCE = e.target.value / 100;
+  document.getElementById('crit-val').textContent = e.target.value + '%';
+});
+
+function toggleAwaken() {
+  awakened = !awakened;
+  const btn = document.getElementById('awaken-btn');
+  btn.textContent = awakened ? 'ON' : 'OFF';
+  btn.classList.toggle('on',   awakened);
+  btn.classList.toggle('awake', awakened);
+}
+function toggleDebug() {
+  debugMode = !debugMode;
+  const btn = document.getElementById('debug-btn');
+  btn.textContent = debugMode ? 'ON' : 'OFF';
+  btn.classList.toggle('on', debugMode);
+}
+
+// ════════════════════════════════════════
+// CANVAS SETUP
+// ════════════════════════════════════════
+const field  = document.getElementById('field');
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+
+let mx = -999, my = -999;
+field.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mx = e.clientX - r.left; my = e.clientY - r.top;
+});
+field.addEventListener('mouseleave', () => { mx = -999; my = -999; });
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let totalGold = 0, totalTicks = 0, totalCrits = 0, totalClears = 0;
+const nodes = [], particles = [], damageNums = [], rings = [];
+let aoePulse = 0, aoeCritPulse = 0, aoeExpandPulse = 0;
+let flashAlpha = 0;
+let tickTimer = 0;
+
+const COLORS = { teal:'#57d1b8', gold:'#f5e859', bg:'#0b1218', awake:'#ffbb44' };
+const RESOURCES = [
+  { label:'C#',  color:'#9b59b6', goldPerHit:2 },
+  { label:'JS',  color:'#f1c40f', goldPerHit:2 },
+  { label:'TS',  color:'#3498db', goldPerHit:2 },
+  { label:'PY',  color:'#2ecc71', goldPerHit:2 },
+  { label:'SQL', color:'#e67e22', goldPerHit:3 },
+  { label:'⚛',  color:'#61dafb', goldPerHit:3 },
+  { label:'GIT', color:'#e84393', goldPerHit:2 },
+  { label:'◈',  color:'#57d1b8', goldPerHit:3 },
+  { label:'CI',  color:'#95a5a6', goldPerHit:2 },
+  { label:'GO',  color:'#00add8', goldPerHit:3 },
+  { label:'RS',  color:'#ce422b', goldPerHit:4 },
+  { label:'JV',  color:'#ed8b00', goldPerHit:3 },
+];
+
+// ════════════════════════════════════════
+// NODES
+// ════════════════════════════════════════
+(function spawnNodes() {
+  const m = NODE_RADIUS + 16;
+  [...RESOURCES].sort(() => Math.random()-0.5).slice(0,10).forEach(res => {
+    const maxHp = 40 + Math.floor(Math.random()*50);
+    nodes.push({
+      ...res,
+      x: m + Math.random()*(FW-m*2),
+      y: m + Math.random()*(FH-m*2),
+      maxHp, hp: maxHp,
+      dead:false, respawnTimer:0,
+      hitFlash:0, deathScale:1, deathAlpha:1, spawnAnim:0,
+    });
+  });
+})();
+
+function dist(ax,ay,bx,by) { return Math.hypot(ax-bx,ay-by); }
+
+// ════════════════════════════════════════
+// VFX
+// ════════════════════════════════════════
+function hexRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
+function spawnParticles(x, y, isCrit) {
+  const awakenBoost = awakened ? 1.5 : 1;
+  const count = Math.round((isCrit ? 10 : 5) * awakenBoost);
+  const spd   = (isCrit ? 90 : 45) * awakenBoost;
+  const color = awakened ? COLORS.awake : (isCrit ? COLORS.gold : '#c0d8e8');
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI*2/count)*i + (Math.random()-0.5)*0.4;
+    particles.push({
+      x, y,
+      vx: Math.cos(a)*spd*(0.7+Math.random()*0.6),
+      vy: Math.sin(a)*spd*(0.7+Math.random()*0.6),
+      t:0, dur: isCrit ? 0.45 : 0.28,
+      color, size: isCrit ? 2.5 : 1.5, type:'spark',
+    });
+  }
+  if (isCrit || awakened) {
+    for (let i = 0; i < (awakened ? 4 : 2); i++) {
+      const a = Math.random()*Math.PI*2;
+      particles.push({
+        x, y,
+        vx: Math.cos(a)*(45+Math.random()*45),
+        vy: Math.sin(a)*(45+Math.random()*45)-20,
+        t:0, dur:0.5,
+        color: awakened ? COLORS.awake : COLORS.gold,
+        size:0, type:'bit', text: Math.random()>0.5?'1':'0',
+      });
+    }
+  }
+}
+
+function spawnDmgNum(x, y, dmg, isCrit) {
+  damageNums.push({
+    x, y: y-NODE_RADIUS-6,
+    text: isCrit ? `★${dmg}` : `${dmg}`,
+    color: awakened ? COLORS.awake : (isCrit ? COLORS.gold : '#b8ccd8'),
+    scale: isCrit ? 1.2 : 0.85,
+    t:0, dur: isCrit ? 0.8 : 0.55,
+  });
+}
+
+function spawnRing(x, y, r0, r1, dur, color, width) {
+  rings.push({ x, y, r:r0, maxR:r1, t:0, dur, color, width: width||1.3 });
+}
+
+// ════════════════════════════════════════
+// TICK
+// ════════════════════════════════════════
+function doTick() {
+  const effectiveCrit = CRIT_CHANCE + (awakened ? 0.10 : 0);
+  const inRange = nodes.filter(n => !n.dead && dist(mx,my,n.x,n.y) < AOE_RADIUS+NODE_RADIUS);
+  if (!inRange.length) return;
+
+  totalTicks++;
+  const isCrit = Math.random() < effectiveCrit;
+  const dmg    = Math.round(BASE_DAMAGE * (isCrit ? CRIT_MULT : 1));
+  if (isCrit) { totalCrits++; aoeCritPulse = 1; flashAlpha = 0.03; }
+  aoePulse = 1;
+
+  // AOE ring on tick
+  spawnRing(mx, my,
+    AOE_RADIUS*0.9, AOE_RADIUS*(isCrit ? 1.4 : 1.1),
+    isCrit ? 0.3 : 0.2,
+    awakened ? COLORS.awake : (isCrit ? COLORS.gold : COLORS.teal),
+    isCrit ? 2 : 1.2
+  );
+
+  let didClear = false;
+  inRange.forEach(n => {
+    n.hp -= dmg; n.hitFlash = 1;
+    totalGold += n.goldPerHit * (isCrit ? CRIT_MULT : 1);
+    spawnParticles(n.x, n.y, isCrit);
+    spawnDmgNum(n.x, n.y, dmg, isCrit);
+    if (n.hp <= 0) {
+      n.dead = true; n.respawnTimer = RESPAWN_DELAY;
+      totalClears++; didClear = true; totalGold += 8;
+      spawnRing(n.x, n.y, NODE_RADIUS, NODE_RADIUS*3, 0.5, n.color, 1.4);
+    }
+  });
+
+  // 각성: 클리어 시 AOE 확장 파동
+  if (didClear && awakened) {
+    aoeExpandPulse = 1;
+    spawnRing(mx, my, AOE_RADIUS, AOE_RADIUS*1.8, 0.55, COLORS.awake, 2);
+    spawnRing(mx, my, AOE_RADIUS*0.6, AOE_RADIUS*1.5, 0.4, COLORS.awake, 1);
+  }
+
+  document.getElementById('hud-gold').textContent  = Math.floor(totalGold).toLocaleString();
+  document.getElementById('hud-tick').textContent  = totalTicks;
+  document.getElementById('hud-crit').textContent  = totalCrits;
+  document.getElementById('hud-clear').textContent = totalClears;
+}
+
+// ════════════════════════════════════════
+// DRAW
+// ════════════════════════════════════════
+function drawNode(n) {
+  if (n.dead && n.deathAlpha <= 0) return;
+  const { x, y, color, label, hp, maxHp, hitFlash, spawnAnim, deathScale, deathAlpha, dead } = n;
+  const sc    = dead ? deathScale : (spawnAnim < 1 ? 0.3+spawnAnim*0.7 : 1);
+  const alpha = dead ? deathAlpha : Math.min(1, spawnAnim*3);
+  const [r,g,b] = hexRgb(color);
+  const inRange = !dead && dist(mx,my,x,y) < AOE_RADIUS+NODE_RADIUS;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y); ctx.scale(sc, sc);
+
+  if (inRange) {
+    const g1 = ctx.createRadialGradient(0,0,NODE_RADIUS*0.5,0,0,NODE_RADIUS*2);
+    g1.addColorStop(0, `rgba(${r},${g},${b},0.12)`);
+    g1.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = g1;
+    ctx.beginPath(); ctx.arc(0,0,NODE_RADIUS*2,0,Math.PI*2); ctx.fill();
+  }
+
+  const grad = ctx.createRadialGradient(0,-NODE_RADIUS*0.3,1,0,0,NODE_RADIUS);
+  grad.addColorStop(0, `rgba(${r},${g},${b},0.18)`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0.04)`);
+  ctx.fillStyle = dead ? '#141822' : grad;
+  ctx.beginPath(); ctx.arc(0,0,NODE_RADIUS,0,Math.PI*2); ctx.fill();
+
+  const ba = inRange ? 0.72 : 0.36 + hitFlash*0.15;
+  ctx.strokeStyle = `rgba(${r},${g},${b},${ba})`;
+  ctx.lineWidth   = inRange ? 1.5 : 1;
+  ctx.beginPath(); ctx.arc(0,0,NODE_RADIUS,0,Math.PI*2); ctx.stroke();
+
+  if (!dead) {
+    ctx.fillStyle = `rgba(${r},${g},${b},0.88)`;
+    ctx.font = `bold ${label.length > 2 ? 9 : 11}px 'Courier New'`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, 0, 0);
+  }
+  ctx.restore();
+
+  if (!dead && spawnAnim >= 0.5) {
+    const bw = NODE_RADIUS*2, bh = 2.5;
+    const bx = x-bw/2, by = y+NODE_RADIUS+4;
+    const pct = Math.max(0, hp/maxHp);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,1); ctx.fill();
+    ctx.fillStyle = pct>0.5 ? `rgba(${r},${g},${b},0.7)` : pct>0.25 ? '#b0730e' : '#b0392b';
+    ctx.beginPath(); ctx.roundRect(bx,by,bw*pct,bh,1); ctx.fill();
+  }
+}
+
+function drawAoe() {
+  if (mx < 0) return;
+  const inRange  = nodes.filter(n => !n.dead && dist(mx,my,n.x,n.y) < AOE_RADIUS+NODE_RADIUS);
+  const active   = inRange.length > 0;
+  const rc       = awakened ? COLORS.awake : (aoeCritPulse > 0 ? COLORS.gold : COLORS.teal);
+  const [rr,rg,rb] = hexRgb(rc);
+  const cs       = 1 + aoeCritPulse*0.12 + aoeExpandPulse*0.08;
+
+  ctx.save();
+  ctx.translate(mx, my); ctx.scale(cs, cs);
+
+  const fa = active ? 0.025 + aoePulse*0.03 : 0.008;
+  ctx.fillStyle = `rgba(${rr},${rg},${rb},${fa})`;
+  ctx.beginPath(); ctx.arc(0,0,AOE_RADIUS,0,Math.PI*2); ctx.fill();
+
+  const ra = active ? 0.28 + aoePulse*0.18 : 0.09 + aoePulse*0.07;
+  if (aoePulse > 0 || aoeCritPulse > 0 || aoeExpandPulse > 0) {
+    ctx.shadowColor = rc;
+    ctx.shadowBlur  = 3 + aoePulse*4 + aoeCritPulse*6 + aoeExpandPulse*8;
+  }
+  ctx.strokeStyle = `rgba(${rr},${rg},${rb},${ra})`;
+  ctx.lineWidth   = active ? 1.2+aoePulse*0.35 : 0.8;
+  ctx.beginPath(); ctx.arc(0,0,AOE_RADIUS,0,Math.PI*2); ctx.stroke();
+  ctx.shadowBlur  = 0;
+
+  // 각성 second ring
+  if (awakened) {
+    ctx.strokeStyle = `rgba(${rr},${rg},${rb},${0.1+aoeExpandPulse*0.2})`;
+    ctx.lineWidth = 0.6;
+    ctx.setLineDash([4,6]);
+    ctx.beginPath(); ctx.arc(0,0,AOE_RADIUS*1.25,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.fillStyle = `rgba(${rr},${rg},${rb},${active ? 0.4 : 0.15})`;
+  ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
+
+  if (active) {
+    ctx.strokeStyle = `rgba(${rr},${rg},${rb},${0.18+aoePulse*0.18})`;
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI*2/8)*i;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*(AOE_RADIUS-4), Math.sin(a)*(AOE_RADIUS-4));
+      ctx.lineTo(Math.cos(a)*(AOE_RADIUS+2), Math.sin(a)*(AOE_RADIUS+2));
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // Target lines
+  if (active) {
+    inRange.forEach(n => {
+      const [nr,ng,nb] = hexRgb(n.color);
+      ctx.strokeStyle = `rgba(${nr},${ng},${nb},${0.05+aoePulse*0.07})`;
+      ctx.lineWidth = 0.6; ctx.setLineDash([2,5]);
+      ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(n.x,n.y); ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  // Debug overlay
+  if (debugMode) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.setLineDash([2,4]);
+    ctx.beginPath(); ctx.arc(mx,my,AOE_RADIUS+NODE_RADIUS,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(87,209,184,0.5)';
+    ctx.font = '9px Courier New'; ctx.textAlign = 'left';
+    ctx.fillText(`r=${AOE_RADIUS}  hits=${inRange.length}`, mx+AOE_RADIUS+6, my);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════
+// LOOP
+// ════════════════════════════════════════
+let lastTime = 0;
+
+function loop(now) {
+  const dt = Math.min((now-lastTime)/1000, 0.05);
+  lastTime = now;
+
+  tickTimer += dt;
+  if (tickTimer >= TICK_INTERVAL) { tickTimer -= TICK_INTERVAL; doTick(); }
+
+  aoePulse      = Math.max(0, aoePulse      - dt*5);
+  aoeCritPulse  = Math.max(0, aoeCritPulse  - dt*4.5);
+  aoeExpandPulse= Math.max(0, aoeExpandPulse- dt*3.5);
+  flashAlpha    = Math.max(0, flashAlpha    - dt*4);
+
+  nodes.forEach(n => {
+    n.hitFlash = Math.max(0, n.hitFlash - dt*10);
+    if (!n.dead) {
+      n.spawnAnim = Math.min(1, n.spawnAnim + dt*2.5);
+    } else {
+      n.respawnTimer -= dt;
+      n.deathScale   += dt*2;
+      n.deathAlpha    = Math.max(0, n.deathAlpha - dt*3.5);
+      if (n.respawnTimer <= 0) {
+        const m = NODE_RADIUS+16;
+        n.x = m+Math.random()*(FW-m*2); n.y = m+Math.random()*(FH-m*2);
+        n.hp = n.maxHp; n.dead = false;
+        n.spawnAnim = 0; n.deathScale = 1; n.deathAlpha = 1;
+      }
+    }
+  });
+
+  for (let i=particles.length-1;i>=0;i--) {
+    const p=particles[i]; p.t+=dt;
+    if(p.t>=p.dur){particles.splice(i,1);continue;}
+    p.x+=p.vx*dt; p.y+=p.vy*dt+55*dt*dt;
+  }
+  for (let i=damageNums.length-1;i>=0;i--) {
+    const d=damageNums[i]; d.t+=dt;
+    if(d.t>=d.dur){damageNums.splice(i,1);continue;}
+    d.y-=dt*30;
+  }
+  for (let i=rings.length-1;i>=0;i--) {
+    const r=rings[i]; r.t+=dt;
+    if(r.t>=r.dur){rings.splice(i,1);}
+  }
+
+  // ── draw ──
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0,0,FW,FH);
+
+  if (flashAlpha > 0) {
+    const [fr,fg,fb] = hexRgb(COLORS.gold);
+    ctx.fillStyle = `rgba(${fr},${fg},${fb},${flashAlpha})`;
+    ctx.fillRect(0,0,FW,FH);
+  }
+
+  rings.forEach(ring => {
+    const t = ring.t/ring.dur;
+    const r = ring.r+(ring.maxR-ring.r)*t;
+    const a = (1-t)*0.4;
+    const [rr,rg,rb] = hexRgb(ring.color);
+    ctx.strokeStyle = `rgba(${rr},${rg},${rb},${a})`;
+    ctx.lineWidth   = ring.width*(1-t*0.55);
+    ctx.beginPath(); ctx.arc(ring.x,ring.y,Math.max(1,r),0,Math.PI*2); ctx.stroke();
+  });
+
+  nodes.forEach(drawNode);
+  drawAoe();
+
+  particles.forEach(p => {
+    const ease = 1-p.t/p.dur;
+    ctx.save(); ctx.globalAlpha = ease*0.62;
+    if (p.type==='bit') {
+      ctx.fillStyle=p.color;
+      ctx.font=`bold ${Math.round(6+ease*4)}px Courier New`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(p.text,p.x,p.y);
+    } else {
+      ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size*ease,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  damageNums.forEach(d => {
+    const t=d.t/d.dur, ease=1-t*t;
+    const sc=d.scale*(1+(1-t)*0.18);
+    const [dr,dg,db]=hexRgb(d.color);
+    ctx.save(); ctx.globalAlpha=ease*0.88;
+    ctx.translate(d.x,d.y); ctx.scale(sc,sc);
+    ctx.font=`bold ${d.scale>1?14:10}px 'Courier New'`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillText(d.text,1,1);
+    ctx.fillStyle=`rgba(${dr},${dg},${db},1)`; ctx.fillText(d.text,0,0);
+    ctx.restore();
+  });
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(t => { lastTime=t; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>

@@ -1,0 +1,808 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sound Preview — click-to-commit (43종 후보 청음 · WebAudio 합성)</title>
+<style>
+:root{
+  --bg:#0b1218; --bg2:#0d1117; --panel:#111b24; --panel2:#141b24;
+  --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.14);
+  --text:#e2e8f0; --muted:#8b96a5; --faint:#64748b;
+  --accent:#58a6ff; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:radial-gradient(1200px 700px at 50% -10%, #14202b 0%, var(--bg) 60%);
+  color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding:26px 20px 90px; line-height:1.45;
+}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:.2px}
+h1 .neon{color:var(--cyan);text-shadow:0 0 14px rgba(82,255,206,.4)}
+.sub{color:var(--muted);font-size:13px;margin:0 0 2px;max-width:960px}
+.sub code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;color:var(--teal)}
+.wrap{max-width:1180px;margin:0 auto}
+
+/* sticky control bar */
+.bar{
+  position:sticky; top:0; z-index:20; margin:16px 0 8px;
+  background:linear-gradient(180deg, rgba(13,17,23,.96), rgba(13,17,23,.82));
+  backdrop-filter:blur(8px); border:1px solid var(--border);
+  border-radius:14px; padding:12px 14px; display:flex; flex-wrap:wrap;
+  gap:14px 18px; align-items:center;
+}
+.bar .grp{display:flex;align-items:center;gap:9px}
+.bar label.vol{font-size:12px;color:var(--muted);white-space:nowrap}
+input[type=range]{accent-color:var(--cyan);width:150px}
+.volval{font-variant-numeric:tabular-nums;color:var(--cyan);font-size:12px;min-width:34px}
+.btn{
+  border:1px solid var(--border-strong); background:#1a2530; color:var(--text);
+  border-radius:9px; padding:7px 12px; font-size:12.5px; cursor:pointer;
+  font-family:inherit; transition:.12s;
+}
+.btn:hover{border-color:var(--cyan);color:#fff}
+.btn.primary{background:linear-gradient(180deg,#1f6feb,#1a4fb0);border-color:#3b82f6;color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent}
+.btn.warm{border-color:var(--amber);color:var(--amber)}
+.sep{width:1px;height:26px;background:var(--border);margin:0 2px}
+
+/* summary output */
+.summary{margin:10px 0 4px;display:none}
+.summary.open{display:block}
+textarea{
+  width:100%; min-height:150px; background:#0a0f14; color:var(--teal);
+  border:1px solid var(--border); border-radius:10px; padding:11px 13px;
+  font-family:ui-monospace,"Cascadia Code","Consolas",monospace; font-size:12px; resize:vertical;
+}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--muted);margin:10px 2px 2px}
+.legend .badge{transform:translateY(1px)}
+
+/* category */
+.cat{margin:26px 0 0}
+.cat-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:14px}
+.cat-h h2{font-size:15.5px;margin:0;letter-spacing:.3px}
+.cat-h .cnt{font-size:11.5px;color:var(--faint)}
+.cat-h .note{font-size:11.5px;color:var(--muted)}
+
+/* grid + cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{
+  background:linear-gradient(180deg,var(--panel),#0f1720);
+  border:1px solid var(--border); border-radius:13px; padding:13px 14px 12px;
+  display:flex;flex-direction:column;gap:9px; transition:.15s;
+}
+.card:hover{border-color:var(--border-strong)}
+.card.climax{
+  border-color:rgba(245,232,89,.5);
+  box-shadow:0 0 0 1px rgba(245,232,89,.14) inset, 0 0 22px rgba(245,232,89,.09);
+  background:linear-gradient(180deg,#1a1a10,#12120a);
+}
+.card.reserved{opacity:.9;border-style:dashed}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sid{font-family:ui-monospace,"Cascadia Code","Consolas",monospace;font-size:12.5px;color:var(--teal);word-break:break-all}
+.card.climax .sid{color:var(--gold)}
+.badges{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px;letter-spacing:.4px;white-space:nowrap}
+.badge.p1{background:rgba(255,107,107,.16);color:var(--red)}
+.badge.p2{background:rgba(82,255,206,.14);color:var(--cyan)}
+.badge.p3{background:rgba(139,150,165,.16);color:var(--muted)}
+.badge.kind{background:rgba(88,166,255,.14);color:var(--accent)}
+.badge.climaxb{background:linear-gradient(90deg,#f5e859,#fbb03b);color:#241d00;box-shadow:0 0 10px rgba(245,232,89,.5)}
+.badge.res{background:rgba(191,156,254,.16);color:var(--purple)}
+.desc{font-size:12px;color:var(--muted);min-height:2.4em}
+.controls{display:flex;gap:7px;flex-wrap:wrap}
+.play{
+  flex:1 1 46%; border:1px solid var(--border-strong); border-radius:8px;
+  padding:8px 6px; font-size:12px; cursor:pointer; font-family:inherit;
+  background:#16212c; color:var(--text); transition:.1s; min-width:90px;
+}
+.play .vk{display:block;font-size:9.5px;color:var(--faint);margin-top:1px}
+.play.a:hover{border-color:var(--amber);color:var(--amber)}
+.play.b:hover{border-color:var(--teal);color:var(--teal)}
+.play:active{transform:translateY(1px)}
+.play.on{box-shadow:0 0 0 2px rgba(82,255,206,.4) inset}
+.stop{flex:0 0 auto;border:1px solid var(--border-strong);border-radius:8px;background:#16212c;color:var(--muted);cursor:pointer;font-size:12px;padding:8px 12px;font-family:inherit}
+.stop:hover{border-color:var(--red);color:var(--red)}
+.choose{display:flex;gap:12px;font-size:12px;color:var(--muted);border-top:1px dashed var(--border);padding-top:9px}
+.choose label{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.choose input{accent-color:var(--cyan);cursor:pointer}
+.choose label.skip{color:var(--faint)}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:#16212c;border:1px solid var(--cyan);color:var(--cyan);
+  padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;
+  transition:.25s;z-index:50;box-shadow:0 6px 24px rgba(0,0,0,.5)
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+footer{color:var(--faint);font-size:11.5px;margin-top:34px;border-top:1px solid var(--border);padding-top:14px;max-width:960px}
+</style>
+
+<div class="wrap">
+  <h1>🎧 Sound Preview — <span class="neon">click-to-commit</span></h1>
+  <p class="sub">개발자 테마 클리커(기술 스택 채굴) · 레트로+네온 톤. <b>43종 사운드 인벤토리</b>의 후보 2안을 브라우저에서 즉시 청음합니다.
+  전부 <b>WebAudio API 코드 합성</b>(오실레이터/노이즈/엔벨로프 — 오디오 파일 0개). 각 id마다 <b>A(레트로 8bit/sfxr풍)</b> · <b>B(소프트/모던)</b> 후보를 비교하고, 아래에서 선택 → <code>선택 결과 요약 복사</code>로 결과를 넘겨주세요.</p>
+
+  <div class="bar">
+    <div class="grp">
+      <label class="vol">🔊 마스터 볼륨</label>
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="0.8">
+      <span class="volval" id="volval">0.80</span>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="btn primary" id="copyBtn">📋 선택 결과 요약 복사</button>
+      <button class="btn ghost" id="previewBtn">미리보기</button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="btn" id="allA">모두 A</button>
+      <button class="btn" id="allB">모두 B</button>
+      <button class="btn ghost" id="reset">선택 초기화</button>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <button class="btn warm" id="chaos">⚡ 카오스 런 믹싱 데모</button>
+      <button class="stop" id="stopBgm">■ BGM 정지</button>
+    </div>
+  </div>
+
+  <div class="summary" id="summaryBox">
+    <textarea id="out" readonly placeholder="선택 결과 요약이 여기에 표시됩니다."></textarea>
+  </div>
+
+  <div class="legend">
+    <span><span class="badge p1">P1</span> 최우선(코어·절정)</span>
+    <span><span class="badge p2">P2</span> 보강</span>
+    <span><span class="badge p3">P3</span> 저강도/예약</span>
+    <span><span class="badge kind">SFX</span>/<span class="badge kind">UI</span>/<span class="badge kind">BGM</span> 종류</span>
+    <span><span class="badge climaxb">절정</span> 도파민 절정(더 화려한 합성)</span>
+    <span><span class="badge res">예약</span> §2.8 배선 defer</span>
+    <span style="color:var(--faint)">A=레트로 8bit · B=소프트/모던</span>
+  </div>
+
+  <div id="catalog"></div>
+
+  <footer>
+    합성 방식: 각 사운드는 오실레이터(square/sine/triangle/sawtooth) + 필터드 노이즈 + ADSR·피치 스윕으로 실시간 생성(jsfxr 스타일).
+    절정 3종(<code>sfx_skilltree_awaken</code> · <code>sfx_treasure_pop</code> · <code>sfx_card_legendary</code>)은 차지 스윕 + 화음 + 노이즈 버스트를 겹쳐 차별화.
+    BGM 3종은 8~9초 신스 아르페지오/패드 루프(A=칩튠, B=패드).
+    데모용 근사치이며 실제 에셋(sfxr/Kenney/self)은 sound-asset-plan.md Task 2~5에서 확보합니다. 외부 리소스 0개 · 완전 자체완결.
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   WebAudio 합성 엔진
+   ============================================================ */
+const AC = window.AudioContext || window.webkitAudioContext;
+let ctx=null, master=null, comp=null;
+const volEl=document.getElementById('vol'), volVal=document.getElementById('volval');
+
+function ensure(){
+  if(!ctx){
+    ctx=new AC();
+    master=ctx.createGain(); master.gain.value=parseFloat(volEl.value);
+    comp=ctx.createDynamicsCompressor();
+    comp.threshold.value=-14; comp.knee.value=24; comp.ratio.value=4;
+    comp.attack.value=0.003; comp.release.value=0.16;
+    master.connect(comp); comp.connect(ctx.destination);
+  }
+  if(ctx.state==='suspended') ctx.resume();
+  return ctx;
+}
+volEl.addEventListener('input',()=>{
+  volVal.textContent=parseFloat(volEl.value).toFixed(2);
+  if(master) master.gain.setTargetAtTime(parseFloat(volEl.value), ctx.currentTime, 0.02);
+});
+
+/* --- noise buffer cache --- */
+const _nbuf={};
+function noiseBuf(dur){
+  const key=Math.ceil(dur*100)/100;
+  if(_nbuf[key]) return _nbuf[key];
+  const len=Math.max(1,Math.floor(ctx.sampleRate*key));
+  const b=ctx.createBuffer(1,len,ctx.sampleRate);
+  const d=b.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  _nbuf[key]=b; return b;
+}
+
+/* --- primitive: tone (osc + pitch sweep + ADSR) --- */
+function tone(dest,t0,o){
+  const type=o.type||'square', f0=o.f0, f1=(o.f1==null?null:o.f1),
+        dur=o.dur||0.15, gain=o.gain==null?0.3:o.gain,
+        attack=o.attack||0.004, hold=o.hold||0, curve=o.curve||'exp',
+        detune=o.detune||0;
+  const osc=ctx.createOscillator();
+  osc.type=type; osc.detune.value=detune;
+  osc.frequency.setValueAtTime(f0,t0);
+  if(f1!=null){
+    const tf=Math.max(1,f1);
+    if(curve==='exp') osc.frequency.exponentialRampToValueAtTime(tf,t0+dur);
+    else osc.frequency.linearRampToValueAtTime(tf,t0+dur);
+  }
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t0+attack);
+  const s=Math.min(t0+attack+hold, t0+dur-0.001);
+  g.gain.setValueAtTime(Math.max(0.0002,gain),Math.max(s,t0+attack));
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(g); g.connect(dest);
+  osc.start(t0); osc.stop(t0+dur+0.03);
+  return {osc,g};
+}
+
+/* --- primitive: filtered noise --- */
+function noise(dest,t0,o){
+  const dur=o.dur||0.15, gain=o.gain==null?0.3:o.gain,
+        type=o.type||'lowpass', freq=o.freq||3000, q=o.q||1,
+        f1=(o.f1==null?null:o.f1), attack=o.attack||0.002;
+  const src=ctx.createBufferSource(); src.buffer=noiseBuf(dur+0.05);
+  const filt=ctx.createBiquadFilter(); filt.type=type;
+  filt.frequency.setValueAtTime(freq,t0); filt.Q.value=q;
+  if(f1!=null) filt.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t0+dur);
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t0+attack);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  src.connect(filt); filt.connect(g); g.connect(dest);
+  src.start(t0); src.stop(t0+dur+0.05);
+  return {src,g};
+}
+
+/* --- helpers: chord + arpeggio --- */
+function chord(d,t,freqs,o){
+  o=o||{};
+  freqs.forEach((f,i)=>tone(d,t,{
+    type:o.type||'sine', f0:f, f1:o.ratio?f*o.ratio:null,
+    dur:o.dur||0.4, gain:o.gain==null?0.12:o.gain, attack:o.attack||0.02,
+    hold:o.hold||0, curve:o.curve||'exp',
+    detune:(i-(freqs.length-1)/2)*(o.spread||0)
+  }));
+}
+function arp(d,t,freqs,step,o){
+  o=o||{};
+  freqs.forEach((f,i)=>tone(d,t+i*step,{
+    type:o.type||'square', f0:f, dur:o.dur||step*0.9,
+    gain:o.gain==null?0.16:o.gain, attack:o.attack||0.005, curve:o.curve||'exp'
+  }));
+}
+
+/* ============================================================
+   43 사운드 A/B 합성 정의
+   ============================================================ */
+const S={
+  /* ---- 런 코어 ---- */
+  sfx_tick_hit:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:880,f1:440,dur:0.05,gain:0.28}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:520,f1:360,dur:0.06,gain:0.24}); noise(d,t,{dur:0.03,gain:0.05,type:'lowpass',freq:2000}); }
+  },
+  sfx_tick_crit:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:660,f1:1320,dur:0.11,gain:0.3}); },
+    B:(d,t)=>{ tone(d,t,{type:'triangle',f0:740,f1:1480,dur:0.12,gain:0.24}); tone(d,t+0.02,{type:'sine',f0:2200,dur:0.09,gain:0.08}); }
+  },
+  sfx_node_clear:{
+    A:(d,t)=>{ noise(d,t,{dur:0.18,gain:0.28,type:'lowpass',freq:5000,f1:300}); tone(d,t,{type:'square',f0:330,f1:150,dur:0.16,gain:0.16}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.2,gain:0.15,type:'lowpass',freq:3000,f1:800}); chord(d,t+0.02,[523.25,392],{type:'triangle',dur:0.22,gain:0.1}); }
+  },
+  sfx_level_up:{
+    A:(d,t)=>{ arp(d,t,[392,523,659,784],0.09,{type:'square',gain:0.16,dur:0.14}); tone(d,t+0.36,{type:'square',f0:1046,dur:0.2,gain:0.14}); },
+    B:(d,t)=>{ arp(d,t,[523.25,659.25,783.99,1046.5],0.09,{type:'triangle',gain:0.13,dur:0.16}); chord(d,t+0.36,[523,784],{type:'sine',dur:0.35,gain:0.08,attack:0.03}); }
+  },
+  sfx_kb_slam:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:180,f1:80,dur:0.12,gain:0.28}); noise(d,t,{dur:0.05,gain:0.16,type:'highpass',freq:2500,f1:5000}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:150,f1:70,dur:0.14,gain:0.24,attack:0.003}); noise(d,t,{dur:0.05,gain:0.08,type:'bandpass',freq:1800,q:0.8}); }
+  },
+  sfx_tier_currency:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:988,dur:0.05,gain:0.16}); tone(d,t+0.06,{type:'square',f0:1319,dur:0.07,gain:0.16}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:1046,dur:0.08,gain:0.14}); tone(d,t+0.05,{type:'sine',f0:1568,dur:0.1,gain:0.12}); }
+  },
+  sfx_archtoken_drop:{
+    A:(d,t)=>{ arp(d,t,[1319,1760,2093],0.05,{type:'square',gain:0.12,dur:0.12}); tone(d,t+0.16,{type:'square',f0:2637,dur:0.2,gain:0.08}); },
+    B:(d,t)=>{ chord(d,t,[1318.5,1760,2093],{type:'sine',dur:0.35,gain:0.08,attack:0.03,spread:3}); noise(d,t,{dur:0.2,gain:0.05,type:'highpass',freq:5000,f1:11000}); }
+  },
+  sfx_passive_income:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:600,dur:0.04,gain:0.12}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:520,dur:0.05,gain:0.1}); }
+  },
+
+  /* ---- UI / 전환 ---- */
+  sfx_ui_button:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:640,dur:0.04,gain:0.14}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:520,dur:0.05,gain:0.12}); }
+  },
+  sfx_run_start:{
+    A:(d,t)=>{ arp(d,t,[262,392,523],0.06,{type:'square',gain:0.16,dur:0.12}); tone(d,t+0.18,{type:'square',f0:784,dur:0.2,gain:0.14}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:196,f1:392,dur:0.35,gain:0.14,attack:0.06}); chord(d,t+0.2,[392,523,659],{type:'triangle',dur:0.3,gain:0.09,attack:0.02}); }
+  },
+  sfx_run_end:{
+    A:(d,t)=>{ arp(d,t,[784,659,523,392],0.09,{type:'square',gain:0.15,dur:0.14}); tone(d,t+0.36,{type:'square',f0:262,dur:0.25,gain:0.13}); },
+    B:(d,t)=>{ arp(d,t,[783.99,659.25,523.25],0.1,{type:'triangle',gain:0.12,dur:0.18}); chord(d,t+0.3,[392,262],{type:'sine',dur:0.4,gain:0.08,attack:0.03}); }
+  },
+  sfx_ui_tab:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:440,dur:0.04,gain:0.12}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:392,dur:0.05,gain:0.1}); }
+  },
+  sfx_ui_back:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:400,f1:280,dur:0.05,gain:0.12}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:340,f1:240,dur:0.06,gain:0.1}); }
+  },
+  sfx_ui_wipe:{
+    A:(d,t)=>{ noise(d,t,{dur:0.25,gain:0.16,type:'bandpass',freq:500,f1:3000,q:0.6}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.3,gain:0.1,type:'lowpass',freq:800,f1:2500}); }
+  },
+  sfx_ui_denied:{
+    A:(d,t)=>{ tone(d,t,{type:'sawtooth',f0:200,f1:140,dur:0.14,gain:0.14}); tone(d,t+0.07,{type:'sawtooth',f0:180,f1:120,dur:0.1,gain:0.12}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:220,dur:0.08,gain:0.12}); tone(d,t+0.1,{type:'sine',f0:165,dur:0.1,gain:0.1}); }
+  },
+  sfx_ui_landing:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:200,f1:120,dur:0.1,gain:0.16}); noise(d,t,{dur:0.05,gain:0.08,type:'lowpass',freq:1200}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:180,f1:100,dur:0.12,gain:0.14,attack:0.003}); noise(d,t,{dur:0.06,gain:0.05,type:'lowpass',freq:800}); }
+  },
+
+  /* ---- 스킬트리 ---- */
+  sfx_skilltree_purchase:{
+    A:(d,t)=>{ arp(d,t,[523,659,784],0.06,{type:'square',gain:0.16,dur:0.12}); tone(d,t+0.14,{type:'square',f0:1046,dur:0.18,gain:0.12}); },
+    B:(d,t)=>{ chord(d,t,[659.25,987.77],{type:'sine',dur:0.3,gain:0.13,attack:0.02}); tone(d,t+0.08,{type:'sine',f0:1318.5,dur:0.3,gain:0.08}); }
+  },
+  sfx_skilltree_weapon_unlock:{
+    A:(d,t)=>{ tone(d,t,{type:'sawtooth',f0:80,f1:800,dur:0.35,gain:0.14}); chord(d,t+0.32,[392,523,659,784],{type:'square',dur:0.35,gain:0.13}); noise(d,t+0.32,{dur:0.12,gain:0.15,type:'highpass',freq:3000,f1:9000}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:110,f1:660,dur:0.4,gain:0.14,attack:0.1}); chord(d,t+0.35,[523.25,659.25,783.99],{type:'triangle',dur:0.5,gain:0.11,attack:0.03,spread:4}); tone(d,t+0.35,{type:'sine',f0:1046,dur:0.5,gain:0.06,attack:0.05}); }
+  },
+  /* ★ 절정: 각성 스펙터클 (차지→버스트→애프터글로우) */
+  sfx_skilltree_awaken:{
+    A:(d,t)=>{
+      tone(d,t,{type:'square',f0:110,f1:660,dur:0.5,gain:0.16,attack:0.05});
+      tone(d,t,{type:'square',f0:110,f1:660,dur:0.5,gain:0.1,detune:8});
+      const b=t+0.5;
+      noise(d,b,{dur:0.28,gain:0.4,type:'lowpass',freq:6000,f1:200});
+      chord(d,b,[261.63,392,523.25],{type:'square',dur:0.32,gain:0.18});
+      tone(d,b,{type:'square',f0:65,f1:40,dur:0.35,gain:0.25});
+      arp(d,b+0.06,[1046,784,659,523],0.11,{type:'square',gain:0.12,dur:0.16});
+    },
+    B:(d,t)=>{
+      tone(d,t,{type:'sine',f0:110,f1:440,dur:0.55,gain:0.16,attack:0.08});
+      tone(d,t,{type:'sine',f0:55,f1:110,dur:0.6,gain:0.14});
+      const b=t+0.55;
+      noise(d,b,{dur:0.4,gain:0.16,type:'bandpass',freq:1200,q:0.7,f1:400});
+      chord(d,b,[261.63,329.63,392,523.25],{type:'triangle',dur:0.9,gain:0.11,attack:0.04,spread:5});
+      tone(d,b+0.1,{type:'sine',f0:1046,f1:1568,dur:0.7,gain:0.07,attack:0.05});
+      tone(d,b,{type:'sine',f0:65,dur:0.8,gain:0.16,attack:0.03});
+    }
+  },
+  sfx_fever_enter:{
+    A:(d,t)=>{ arp(d,t,[392,523,659,784],0.075,{type:'square',gain:0.16,dur:0.12}); tone(d,t+0.3,{type:'sawtooth',f0:784,f1:1175,dur:0.22,gain:0.13,attack:0.01}); },
+    B:(d,t)=>{ arp(d,t,[392,523,659,784],0.08,{type:'triangle',gain:0.12,dur:0.14}); }
+  },
+  sfx_golden_spawn:{
+    A:(d,t)=>{ arp(d,t,[330,494,659],0.06,{type:'square',gain:0.15,dur:0.1}); tone(d,t+0.18,{type:'square',f0:988,dur:0.12,gain:0.12}); },
+    B:(d,t)=>{ tone(d,t,{type:'triangle',f0:330,f1:660,dur:0.2,gain:0.1,attack:0.01}); }
+  },
+  sfx_result_tick:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:760,dur:0.045,gain:0.08}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:620,f1:700,dur:0.065,gain:0.06,attack:0.008}); }
+  },
+  sfx_new_best:{
+    A:(d,t)=>{ arp(d,t,[523,659,784,1046],0.08,{type:'square',gain:0.15,dur:0.14}); chord(d,t+0.34,[523,659,784],{type:'square',dur:0.35,gain:0.12}); },
+    B:(d,t)=>{ arp(d,t,[523,659,784],0.1,{type:'triangle',gain:0.1,dur:0.16}); }
+  },
+  sfx_skilltree_select:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:900,dur:0.05,gain:0.15}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:760,dur:0.06,gain:0.13}); }
+  },
+  sfx_skilltree_reveal:{
+    A:(d,t)=>{ arp(d,t,[1319,1760,2093],0.035,{type:'square',gain:0.1,dur:0.06}); },
+    B:(d,t)=>{ chord(d,t,[1318.5,1760],{type:'sine',dur:0.18,gain:0.09,attack:0.01,spread:2}); }
+  },
+  sfx_skilltree_hold_charge:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:200,f1:800,dur:0.5,gain:0.12,attack:0.05}); tone(d,t,{type:'square',f0:100,f1:400,dur:0.5,gain:0.07,detune:6}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:200,f1:700,dur:0.6,gain:0.14,attack:0.08}); noise(d,t,{dur:0.6,gain:0.04,type:'bandpass',freq:600,f1:1800,q:1}); }
+  },
+
+  /* ---- 보물티켓 / 카드 ---- */
+  sfx_treasure_charge:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:110,f1:440,dur:0.9,gain:0.14,attack:0.3}); tone(d,t,{type:'square',f0:110,f1:220,dur:0.9,gain:0.08,detune:8}); arp(d,t+0.2,[220,262,330,392,494,587],0.11,{type:'square',gain:0.06,dur:0.09}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:110,f1:330,dur:1.0,gain:0.16,attack:0.5}); tone(d,t,{type:'sine',f0:55,f1:110,dur:1.0,gain:0.1,attack:0.4}); noise(d,t,{dur:1.0,gain:0.05,type:'bandpass',freq:400,f1:2000,q:1}); }
+  },
+  /* ★ 절정: 팡! */
+  sfx_treasure_pop:{
+    A:(d,t)=>{ noise(d,t,{dur:0.05,gain:0.25,type:'highpass',freq:2000,f1:6000}); arp(d,t,[523,659,880,1319],0.05,{type:'square',gain:0.22,dur:0.08}); tone(d,t+0.2,{type:'square',f0:1760,f1:2637,dur:0.18,gain:0.2}); },
+    B:(d,t)=>{ chord(d,t,[880,1319,1760],{type:'sine',dur:0.4,gain:0.14,attack:0.005}); noise(d,t,{dur:0.25,gain:0.12,type:'highpass',freq:3000,f1:8000}); tone(d,t,{type:'sine',f0:220,f1:110,dur:0.2,gain:0.18}); tone(d,t+0.12,{type:'sine',f0:2093,dur:0.3,gain:0.1,attack:0.02}); }
+  },
+  /* ★ 절정: 레전더리 */
+  sfx_card_legendary:{
+    A:(d,t)=>{ arp(d,t,[659,988,1319,1760],0.07,{type:'square',gain:0.16,dur:0.12}); noise(d,t,{dur:0.4,gain:0.1,type:'highpass',freq:2000,f1:9000}); tone(d,t+0.28,{type:'square',f0:1319,f1:2637,dur:0.28,gain:0.14}); },
+    B:(d,t)=>{ chord(d,t,[523.25,659.25,783.99,1046.5],{type:'sine',dur:0.55,gain:0.1,attack:0.06,spread:4}); tone(d,t+0.05,{type:'sine',f0:2093,f1:3136,dur:0.45,gain:0.06,attack:0.08}); noise(d,t,{dur:0.5,gain:0.07,type:'highpass',freq:4000,f1:11000}); tone(d,t,{type:'sine',f0:130,dur:0.5,gain:0.14,attack:0.02}); }
+  },
+  sfx_card_select:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:880,f1:1046,dur:0.1,gain:0.14}); tone(d,t+0.05,{type:'square',f0:1319,dur:0.08,gain:0.1}); },
+    B:(d,t)=>{ chord(d,t,[880,1319],{type:'sine',dur:0.18,gain:0.1,attack:0.01}); }
+  },
+  sfx_card_commit:{
+    A:(d,t)=>{ arp(d,t,[523,659,880],0.06,{type:'square',gain:0.14,dur:0.1}); tone(d,t+0.16,{type:'square',f0:1046,f1:1319,dur:0.18,gain:0.12}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:392,f1:784,dur:0.28,gain:0.13,attack:0.02}); chord(d,t+0.15,[659,988],{type:'sine',dur:0.25,gain:0.08}); }
+  },
+  sfx_reroll:{
+    A:(d,t)=>{ noise(d,t,{dur:0.18,gain:0.14,type:'bandpass',freq:800,f1:3000,q:0.6}); arp(d,t,[660,880,1100],0.05,{type:'square',gain:0.08,dur:0.05}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.22,gain:0.1,type:'lowpass',freq:1500,f1:3500}); tone(d,t+0.1,{type:'sine',f0:880,dur:0.12,gain:0.08}); }
+  },
+  sfx_skip:{
+    A:(d,t)=>{ noise(d,t,{dur:0.1,gain:0.12,type:'highpass',freq:1500,f1:5000}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.12,gain:0.08,type:'bandpass',freq:2000,f1:4000,q:0.7}); }
+  },
+
+  /* ---- 버프 큐 ---- */
+  sfx_buff_release:{
+    A:(d,t)=>{ noise(d,t,{dur:0.2,gain:0.18,type:'bandpass',freq:600,f1:2400,q:0.8}); tone(d,t+0.12,{type:'square',f0:440,f1:220,dur:0.2,gain:0.2}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.25,gain:0.12,type:'lowpass',freq:1200,f1:400}); tone(d,t+0.1,{type:'sine',f0:330,f1:165,dur:0.25,gain:0.18,attack:0.02}); }
+  },
+  sfx_buff_load:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:700,f1:900,dur:0.06,gain:0.14}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:620,f1:760,dur:0.07,gain:0.12}); }
+  },
+  sfx_buff_combo:{
+    A:(d,t)=>{ arp(d,t,[392,523,659,880],0.05,{type:'square',gain:0.14,dur:0.09}); },
+    B:(d,t)=>{ chord(d,t,[523,659,880],{type:'sine',dur:0.3,gain:0.09,attack:0.01,spread:3}); tone(d,t+0.08,{type:'sine',f0:1046,dur:0.2,gain:0.06}); }
+  },
+  sfx_buff_empty:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:300,f1:200,dur:0.12,gain:0.14}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:260,f1:180,dur:0.14,gain:0.12}); }
+  },
+
+  /* ---- 무기 스킬 ---- */
+  sfx_chain_arc:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:1400,f1:300,dur:0.09,gain:0.16}); noise(d,t,{dur:0.06,gain:0.1,type:'highpass',freq:3000,f1:8000}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:1200,f1:400,dur:0.1,gain:0.14}); noise(d,t,{dur:0.08,gain:0.06,type:'bandpass',freq:2000,q:1.2}); }
+  },
+  sfx_chain_hit:{
+    A:(d,t)=>{ noise(d,t,{dur:0.06,gain:0.18,type:'highpass',freq:2500,f1:7000}); tone(d,t,{type:'square',f0:900,f1:600,dur:0.05,gain:0.12}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.07,gain:0.1,type:'bandpass',freq:1800,q:1}); tone(d,t,{type:'sine',f0:820,dur:0.06,gain:0.1}); }
+  },
+  sfx_tx_scan:{
+    A:(d,t)=>{ tone(d,t,{type:'sawtooth',f0:400,f1:1600,dur:0.3,gain:0.12}); tone(d,t+0.3,{type:'square',f0:1760,dur:0.08,gain:0.14}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:400,f1:1400,dur:0.32,gain:0.12,attack:0.02}); tone(d,t+0.32,{type:'sine',f0:1568,dur:0.1,gain:0.1}); }
+  },
+  sfx_tx_commit:{
+    A:(d,t)=>{ noise(d,t,{dur:0.25,gain:0.3,type:'lowpass',freq:4000,f1:250}); tone(d,t,{type:'square',f0:120,f1:60,dur:0.28,gain:0.22}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.28,gain:0.16,type:'lowpass',freq:2000,f1:400}); tone(d,t,{type:'sine',f0:100,f1:55,dur:0.3,gain:0.2,attack:0.005}); }
+  },
+  sfx_tx_rollback:{
+    A:(d,t)=>{ noise(d,t,{dur:0.35,gain:0.28,type:'lowpass',freq:300,f1:5000}); tone(d,t,{type:'sawtooth',f0:80,f1:500,dur:0.32,gain:0.16}); tone(d,t+0.32,{type:'square',f0:500,f1:60,dur:0.1,gain:0.16}); },
+    B:(d,t)=>{ noise(d,t,{dur:0.4,gain:0.14,type:'bandpass',freq:400,f1:2400,q:0.7}); tone(d,t,{type:'sine',f0:110,f1:660,dur:0.35,gain:0.14}); tone(d,t+0.35,{type:'sine',f0:660,f1:110,dur:0.15,gain:0.12}); }
+  },
+  sfx_worker_harvest:{
+    A:(d,t)=>{ tone(d,t,{type:'square',f0:1500,f1:1200,dur:0.05,gain:0.14}); noise(d,t+0.04,{dur:0.05,gain:0.1,type:'bandpass',freq:3000,q:2}); },
+    B:(d,t)=>{ tone(d,t,{type:'sine',f0:1320,dur:0.07,gain:0.12}); noise(d,t+0.03,{dur:0.05,gain:0.05,type:'bandpass',freq:2400,q:1.5}); }
+  },
+  sfx_vdom_patch:{
+    A:(d,t)=>{ arp(d,t,[1760,880,1320,660],0.025,{type:'square',gain:0.1,dur:0.04}); },
+    B:(d,t)=>{ tone(d,t,{type:'triangle',f0:1200,f1:1600,dur:0.1,gain:0.12}); tone(d,t+0.05,{type:'triangle',f0:900,dur:0.06,gain:0.08}); }
+  }
+};
+
+/* ============================================================
+   BGM 루프 (A=칩튠 아르페지오 / B=소프트 패드)
+   ============================================================ */
+function push(v,r){ if(!v||!r) return; if(r.osc) v.push(r.osc); else if(r.src) v.push(r.src); }
+
+function bgmMenuA(bus,t0,dur,v){
+  const bars=[[220,261.63,329.63],[174.61,220,261.63],[261.63,329.63,392],[196,246.94,293.66]];
+  const bd=dur/4, patt=[0,1,2,1,0,1,2,1];
+  bars.forEach((ch,bi)=>{ const bt=t0+bi*bd, step=bd/8;
+    push(v,tone(bus,bt,{type:'triangle',f0:ch[0]/2,dur:bd*0.9,gain:0.08,attack:0.02}));
+    patt.forEach((idx,si)=>push(v,tone(bus,bt+si*step,{type:'square',f0:ch[idx]*2,dur:step*0.8,gain:0.055,attack:0.005})));
+  });
+}
+function bgmMenuB(bus,t0,dur,v){
+  const bars=[[220,261.63,329.63],[174.61,220,261.63],[261.63,329.63,392],[196,246.94,293.66]];
+  const bd=dur/4;
+  bars.forEach((ch,bi)=>{ const bt=t0+bi*bd;
+    ch.forEach((f,i)=>push(v,tone(bus,bt,{type:'sine',f0:f,dur:bd*1.05,gain:0.05,attack:0.4,detune:(i-1)*4})));
+    push(v,tone(bus,bt,{type:'sine',f0:ch[0]/2,dur:bd*1.05,gain:0.05,attack:0.3}));
+    push(v,tone(bus,bt+bd*0.5,{type:'triangle',f0:ch[2]*2,dur:bd*0.5,gain:0.035,attack:0.1}));
+  });
+}
+function bgmHubA(bus,t0,dur,v){
+  const bars=[[146.83,174.61,220],[116.54,146.83,174.61],[174.61,220,261.63],[130.81,164.81,196]];
+  const bd=dur/4, patt=[0,1,2,1];
+  bars.forEach((ch,bi)=>{ const bt=t0+bi*bd, step=bd/4;
+    push(v,tone(bus,bt,{type:'triangle',f0:ch[0],dur:bd*0.95,gain:0.06,attack:0.05}));
+    patt.forEach((idx,si)=>push(v,tone(bus,bt+si*step,{type:'square',f0:ch[idx]*2,dur:step*0.7,gain:0.05,attack:0.02})));
+  });
+}
+function bgmHubB(bus,t0,dur,v){
+  const bars=[[146.83,174.61,220],[116.54,146.83,174.61],[174.61,220,261.63],[130.81,164.81,196]];
+  const bd=dur/4;
+  bars.forEach((ch,bi)=>{ const bt=t0+bi*bd;
+    ch.forEach((f,i)=>push(v,tone(bus,bt,{type:'sine',f0:f,dur:bd*1.08,gain:0.055,attack:0.6,detune:(i-1)*3})));
+    push(v,tone(bus,bt+bd*0.6,{type:'sine',f0:ch[2]*2,dur:bd*0.4,gain:0.03,attack:0.2}));
+  });
+}
+function bgmRunA(bus,t0,dur,v){
+  const bars=[[220,261.63,329.63],[220,261.63,329.63],[293.66,349.23,440],[329.63,415.30,493.88]];
+  const bd=dur/4;
+  bars.forEach((ch,bi)=>{ const bt=t0+bi*bd, beats=8, step=bd/beats;
+    for(let b=0;b<beats;b++){ const bt2=bt+b*step;
+      if(b%2===0) push(v,tone(bus,bt2,{type:'sine',f0:70,f1:45,dur:0.12,gain:0.14,attack:0.002}));
+      push(v,tone(bus,bt2,{type:'square',f0:ch[0]/2,dur:step*0.5,gain:0.055}));
+      push(v,tone(bus,bt2,{type:'square',f0:ch[b%3]*2,dur:step*0.6,gain:0.045,attack:0.003}));
+      if(b%2===1) push(v,noise(bus,bt2,{dur:0.03,gain:0.04,type:'highpass',freq:6000}));
+    }
+  });
+}
+function bgmRunB(bus,t0,dur,v){
+  const bars=[[220,261.63,329.63],[220,261.63,329.63],[293.66,349.23,440],[329.63,415.30,493.88]];
+  const bd=dur/4;
+  bars.forEach((ch,bi)=>{ const bt=t0+bi*bd, beats=8, step=bd/beats;
+    ch.forEach((f,i)=>push(v,tone(bus,bt,{type:'triangle',f0:f,dur:bd*1.02,gain:0.045,attack:0.15,detune:(i-1)*4})));
+    for(let b=0;b<beats;b++){ const bt2=bt+b*step;
+      push(v,tone(bus,bt2,{type:'sine',f0:ch[0]/2,f1:ch[0]/2*0.9,dur:step*0.7,gain:0.08,attack:0.005}));
+      if(b%2===0) push(v,tone(bus,bt2,{type:'sine',f0:60,dur:0.14,gain:0.1,attack:0.003}));
+    }
+  });
+}
+const bgmBuilders={
+  bgm_main_menu:{A:{fn:bgmMenuA,dur:8},B:{fn:bgmMenuB,dur:8}},
+  bgm_hub:{A:{fn:bgmHubA,dur:9},B:{fn:bgmHubB,dur:9}},
+  bgm_run:{A:{fn:bgmRunA,dur:8},B:{fn:bgmRunB,dur:8}}
+};
+
+/* --- BGM 재생 엔진 (룩어헤드 스케줄러) --- */
+let bgmState=null;
+function stopBgm(){
+  if(!bgmState) return;
+  clearInterval(bgmState.timer);
+  const g=bgmState.gain, vs=bgmState.voices, t=ctx.currentTime;
+  try{ g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value,t); g.gain.linearRampToValueAtTime(0.0001,t+0.15);}catch(e){}
+  setTimeout(()=>{ vs.forEach(n=>{try{n.stop();}catch(e){}}); try{g.disconnect();}catch(e){} },220);
+  const key=bgmState.key; bgmState=null; markBgm(null);
+}
+function startBgm(key,fn,dur){
+  ensure();
+  if(bgmState && bgmState.key===key){ stopBgm(); return; }
+  stopBgm();
+  const gain=ctx.createGain(); gain.gain.value=0.9; gain.connect(master);
+  const st={key,gain,voices:[],timer:null,startAt:ctx.currentTime+0.06,iter:0,dur,fn};
+  bgmState=st;
+  const sched=()=>{
+    if(bgmState!==st) return;
+    const horizon=ctx.currentTime+dur*1.25;
+    while(st.startAt+st.iter*dur<horizon){ st.fn(gain,st.startAt+st.iter*dur,dur,st.voices); st.iter++; }
+    if(st.voices.length>700) st.voices.splice(0,350);
+  };
+  sched();
+  st.timer=setInterval(sched,dur*500);
+  markBgm(key);
+}
+function markBgm(key){
+  document.querySelectorAll('.play[data-bgmkey]').forEach(b=>{
+    b.classList.toggle('on', b.dataset.bgmkey===key);
+  });
+}
+
+/* --- SFX 재생 --- */
+function playSfx(id,v){
+  ensure();
+  const fn=S[id] && S[id][v];
+  if(!fn) return;
+  try{ fn(master, ctx.currentTime+0.02); }catch(e){ console.warn(id,v,e); }
+}
+
+/* ============================================================
+   카탈로그 데이터 (표시 순서 = 카테고리별, 각 P1→P2→P3)
+   ============================================================ */
+const CAT_ORDER=['run','ui','skill','treasure','buff','weapon','bgm'];
+const CAT_TITLE={
+  run:'① 런 코어 루프 (Run Core)',
+  ui:'② UI · 화면 전환 (UI / Transition)',
+  skill:'③ 스킬트리 (Skill Tree)',
+  treasure:'④ 보물티켓 · 장비 카드 (Treasure / Gacha)',
+  buff:'⑤ 버프 큐 (Buff Queue)',
+  weapon:'⑥ 무기 스킬 · 자동 전투 (Weapons)',
+  bgm:'⑦ BGM 루프 (8~9초 · 재생/정지)'
+};
+const CAT_NOTE={
+  run:'0.5초 틱·클리어·레벨업·재화 — 최다빈도 베드',
+  ui:'버튼/전환/결과 — 전역 뉴트럴 톤',
+  skill:'성장 보상 (DDD① 각성) — awaken이 최정점',
+  treasure:'보상의 스펙터클 (DDD②) — pop/legendary 절정',
+  buff:'커서 추종 큐 — 방출/콤보',
+  weapon:'런의 카오스 (DDD③) — 체인/TX/워커/VDOM',
+  bgm:'owner의 BGM 유무 결정 종속 (§5·§6-B)'
+};
+const CATALOG=[
+  // 런 코어
+  {id:'sfx_tick_hit',cat:'run',p:1,kind:'SFX',desc:'수동 채굴 틱 — 최다빈도, 짧은 타격 blip (저음량 스택 대비)'},
+  {id:'sfx_tick_crit',cat:'run',p:1,kind:'SFX',desc:'채굴 크리티컬 — 밝게 상승하는 크리 쾌감 blip'},
+  {id:'sfx_node_clear',cat:'run',p:1,kind:'SFX',desc:'노드 파괴 클리어 — 파삭 파괴 + 상쾌한 tail'},
+  {id:'sfx_level_up',cat:'run',p:1,kind:'SFX',desc:'레벨업 + 보물티켓 획득 — 상승 아르페지오 팡파레'},
+  {id:'sfx_kb_slam',cat:'run',p:2,kind:'SFX',desc:'키보드 해머 슬램 — 묵직한 키캡 clack'},
+  {id:'sfx_tier_currency',cat:'run',p:2,kind:'UI',desc:'티어 재화 분배 — 코인 tick (티어별 상승 피치)'},
+  {id:'sfx_archtoken_drop',cat:'run',p:2,kind:'SFX',desc:'ArchToken 희귀 드랍 — 반짝 chime'},
+  {id:'sfx_passive_income',cat:'run',p:3,kind:'SFX',desc:'패시브 수입 tick — 극저음량 (과다 스택 주의)'},
+  {id:'sfx_fever_enter',cat:'run',p:1,kind:'SFX',climax:true,desc:'Fever enter stinger'},
+  {id:'sfx_golden_spawn',cat:'run',p:1,kind:'SFX',desc:'Golden node spawn alert'},
+  {id:'sfx_result_tick',cat:'ui',p:2,kind:'UI',desc:'Result count-up tick'},
+  {id:'sfx_new_best',cat:'ui',p:1,kind:'SFX',climax:true,desc:'New best fanfare'},
+  // UI
+  {id:'sfx_ui_button',cat:'ui',p:1,kind:'UI',desc:'일반 버튼 클릭 — 전역 뉴트럴 click'},
+  {id:'sfx_run_start',cat:'ui',p:1,kind:'UI',desc:'런 시작 — 세션 시작 stinger'},
+  {id:'sfx_run_end',cat:'ui',p:1,kind:'UI',desc:'런 종료 결과 오버레이 — 마감 정산 jingle'},
+  {id:'sfx_ui_tab',cat:'ui',p:2,kind:'UI',desc:'탭/패밀리 전환 — 낮은 피치 click 변형'},
+  {id:'sfx_ui_back',cat:'ui',p:2,kind:'UI',desc:'닫기/뒤로 — low back click'},
+  {id:'sfx_ui_wipe',cat:'ui',p:2,kind:'UI',desc:'화면 wipe 전환 — whoosh'},
+  {id:'sfx_ui_denied',cat:'ui',p:3,kind:'UI',desc:'잔액 부족/무효 액션 — 부정 buzz'},
+  {id:'sfx_ui_landing',cat:'ui',p:3,kind:'UI',reserved:true,desc:'화면 전환 랜딩 완료 — settle/thud (예약 · 배선 defer)'},
+  // 스킬트리
+  {id:'sfx_skilltree_purchase',cat:'skill',p:1,kind:'SFX',desc:'스탯/자원 노드 구매 — 확정적 "장착" chime'},
+  {id:'sfx_skilltree_weapon_unlock',cat:'skill',p:1,kind:'SFX',desc:'첫 무기 해금 — 파워온/부트 스펙터클 (Phase C)'},
+  {id:'sfx_skilltree_awaken',cat:'skill',p:1,kind:'SFX',climax:true,desc:'각성 스펙터클 — 차지→버스트→애프터글로우 3페이즈 (DDD① 최정점)'},
+  {id:'sfx_skilltree_select',cat:'skill',p:2,kind:'UI',desc:'노드 선택/상세 패널 — 부드러운 select tick'},
+  {id:'sfx_skilltree_reveal',cat:'skill',p:2,kind:'SFX',desc:'인접 노드 점등 — 반짝 확산'},
+  {id:'sfx_skilltree_hold_charge',cat:'skill',p:3,kind:'SFX',reserved:true,desc:'홀드-투-언락 충전 — 상승 텐션 riser (예약 · 배선 defer)'},
+  // 보물티켓/카드
+  {id:'sfx_treasure_charge',cat:'treasure',p:1,kind:'SFX',desc:'보물 개봉 차지 프리앰블 — 상승 텐션 hum'},
+  {id:'sfx_treasure_pop',cat:'treasure',p:1,kind:'SFX',climax:true,desc:'차지 완료 팡! — 뿅 팡파레 버스트 (DDD② 절정)'},
+  {id:'sfx_card_legendary',cat:'treasure',p:2,kind:'SFX',climax:true,desc:'레전더리 카드 연출 — 황금 chime + 화면번쩍 (DDD② 절정)'},
+  {id:'sfx_card_select',cat:'treasure',p:2,kind:'UI',desc:'가챠 카드 선택 — 확정 select 스팅어'},
+  {id:'sfx_card_commit',cat:'treasure',p:2,kind:'SFX',desc:'슬롯 티어업 확정 — 장착 완료 riser'},
+  {id:'sfx_reroll',cat:'treasure',p:2,kind:'UI',desc:'장비 카드 리롤 — 셔플 whoosh'},
+  {id:'sfx_skip',cat:'treasure',p:3,kind:'UI',desc:'장비 개봉 스킵 — 가벼운 폐기 swish'},
+  // 버프 큐
+  {id:'sfx_buff_release',cat:'buff',p:1,kind:'SFX',desc:'버프 큐 방출 (스페이스/클릭) — whoosh + 임팩트'},
+  {id:'sfx_buff_load',cat:'buff',p:2,kind:'SFX',desc:'버프 토큰 적재 — 짧은 적재 click (연장 시 상승 피치)'},
+  {id:'sfx_buff_combo',cat:'buff',p:2,kind:'SFX',desc:'콤보 방출 — 상승 스팅어 (콤보 클수록 순백)'},
+  {id:'sfx_buff_empty',cat:'buff',p:3,kind:'UI',desc:'빈 큐 방출 — 힘없는 low blip'},
+  // 무기
+  {id:'sfx_chain_arc',cat:'weapon',p:2,kind:'SFX',desc:'체인 아크 — 전기 zap (연쇄)'},
+  {id:'sfx_chain_hit',cat:'weapon',p:2,kind:'SFX',desc:'체인 히트 버스트 — 짧은 스파크 임팩트'},
+  {id:'sfx_tx_scan',cat:'weapon',p:2,kind:'SFX',desc:'트랜잭션 스캔/락온 — 스캐닝 스윕 beep'},
+  {id:'sfx_tx_commit',cat:'weapon',p:2,kind:'SFX',desc:'트랜잭션 커밋 — 그룹 폭발 (묵직)'},
+  {id:'sfx_tx_rollback',cat:'weapon',p:2,kind:'SFX',desc:'트랜잭션 롤백 각성 — 역재생감 大폭발'},
+  {id:'sfx_worker_harvest',cat:'weapon',p:2,kind:'SFX',desc:'워커 채집 — 기계적 채굴 clink'},
+  {id:'sfx_vdom_patch',cat:'weapon',p:2,kind:'SFX',desc:'VDOM 패치/스플래시 — 디지털 글리치'},
+  // BGM
+  {id:'bgm_main_menu',cat:'bgm',p:3,kind:'BGM',desc:'메인 메뉴 — 저강도 앰비언트/lo-fi 루프'},
+  {id:'bgm_hub',cat:'bgm',p:3,kind:'BGM',desc:'허브/스킬트리 — 차분·집중 루프'},
+  {id:'bgm_run',cat:'bgm',p:3,kind:'BGM',desc:'런 인게임 — 빠른 비트 텐션 루프'}
+];
+
+/* ============================================================
+   렌더링
+   ============================================================ */
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function cardHTML(s){
+  const isBgm=s.kind==='BGM';
+  const badges=`<span class="badges">
+    <span class="badge p${s.p}">P${s.p}</span>
+    <span class="badge kind">${s.kind}</span>
+    ${s.climax?'<span class="badge climaxb">절정</span>':''}
+    ${s.reserved?'<span class="badge res">예약</span>':''}
+  </span>`;
+  let controls;
+  if(isBgm){
+    controls=`<div class="controls">
+      <button class="play a" data-id="${s.id}" data-v="A" data-bgmkey="${s.id}_A">▶ A<span class="vk">레트로 칩튠</span></button>
+      <button class="play b" data-id="${s.id}" data-v="B" data-bgmkey="${s.id}_B">▶ B<span class="vk">소프트 패드</span></button>
+      <button class="stop" data-stopbgm>■</button>
+    </div>`;
+  }else{
+    controls=`<div class="controls">
+      <button class="play a" data-id="${s.id}" data-v="A">▶ A<span class="vk">레트로 8bit</span></button>
+      <button class="play b" data-id="${s.id}" data-v="B">▶ B<span class="vk">소프트/모던</span></button>
+    </div>`;
+  }
+  return `<div class="card ${s.climax?'climax':''} ${s.reserved?'reserved':''}">
+    <div class="card-head"><code class="sid">${s.id}</code>${badges}</div>
+    <div class="desc">${esc(s.desc)}</div>
+    ${controls}
+    <div class="choose">
+      <label><input type="radio" name="sel_${s.id}" value="A"> A</label>
+      <label><input type="radio" name="sel_${s.id}" value="B"> B</label>
+      <label class="skip"><input type="radio" name="sel_${s.id}" value="skip"> skip</label>
+    </div>
+  </div>`;
+}
+function render(){
+  const root=document.getElementById('catalog');
+  let html='';
+  CAT_ORDER.forEach(cat=>{
+    const items=CATALOG.filter(s=>s.cat===cat);
+    html+=`<section class="cat"><div class="cat-h">
+      <h2>${CAT_TITLE[cat]}</h2>
+      <span class="cnt">${items.length}종 · ${items.length*2}안</span>
+      <span class="note">${CAT_NOTE[cat]}</span>
+    </div><div class="grid">${items.map(cardHTML).join('')}</div></section>`;
+  });
+  root.innerHTML=html;
+}
+render();
+
+/* ============================================================
+   이벤트 위임
+   ============================================================ */
+document.getElementById('catalog').addEventListener('click',e=>{
+  const stop=e.target.closest('[data-stopbgm]');
+  if(stop){ stopBgm(); return; }
+  const btn=e.target.closest('.play');
+  if(!btn) return;
+  const id=btn.dataset.id, v=btn.dataset.v;
+  if(btn.dataset.bgmkey){
+    const b=bgmBuilders[id][v];
+    startBgm(id+'_'+v, b.fn, b.dur);
+  }else{
+    playSfx(id,v);
+    btn.classList.add('on'); setTimeout(()=>btn.classList.remove('on'),140);
+  }
+});
+
+/* --- 상단 컨트롤 --- */
+document.getElementById('stopBgm').addEventListener('click',stopBgm);
+document.getElementById('allA').addEventListener('click',()=>setAll('A'));
+document.getElementById('allB').addEventListener('click',()=>setAll('B'));
+document.getElementById('reset').addEventListener('click',()=>{
+  document.querySelectorAll('.choose input:checked').forEach(i=>i.checked=false);
+  toast('선택 초기화');
+});
+function setAll(val){
+  CATALOG.forEach(s=>{ const el=document.querySelector(`input[name="sel_${s.id}"][value="${val}"]`); if(el) el.checked=true; });
+  toast('모두 '+val+' 선택');
+}
+
+/* --- 카오스 런 믹싱 데모 (DDD③ 레이어링) --- */
+document.getElementById('chaos').addEventListener('click',()=>{
+  ensure();
+  const t=ctx.currentTime;
+  // 무기 4종 + 버프 방출 + 각성 버스트가 겹치는 최대 카오스 (A안)
+  for(let i=0;i<8;i++){ S.sfx_tick_hit.A(master, t+i*0.09); if(i%3===0) S.sfx_tick_crit.A(master, t+i*0.09); }
+  S.sfx_chain_arc.A(master,t+0.15); S.sfx_chain_hit.A(master,t+0.35); S.sfx_chain_arc.A(master,t+0.55);
+  S.sfx_worker_harvest.A(master,t+0.25); S.sfx_worker_harvest.A(master,t+0.65);
+  S.sfx_vdom_patch.A(master,t+0.4);
+  S.sfx_tx_scan.A(master,t+0.1); S.sfx_tx_commit.A(master,t+0.5);
+  S.sfx_buff_release.A(master,t+0.7);
+  S.sfx_skilltree_awaken.A(master,t+0.85);   // 절정이 베드 위로 부각되는지 청음
+  toast('카오스 런 믹싱 데모 — 절정(각성)이 베드 위로 들리는지 확인');
+});
+
+/* --- 선택 결과 요약 --- */
+function buildSummary(){
+  const now=new Date();
+  const stamp=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const lines=['# Sound Preview 선택 결과 — click-to-commit','# '+stamp+'  (A=레트로8bit / B=소프트모던 / skip=미채택)',''];
+  const c={A:0,B:0,skip:0,unset:0};
+  CAT_ORDER.forEach(cat=>{
+    lines.push('## '+CAT_TITLE[cat]);
+    CATALOG.filter(s=>s.cat===cat).forEach(s=>{
+      const sel=document.querySelector(`input[name="sel_${s.id}"]:checked`);
+      const val=sel?sel.value:'-미정-';
+      if(sel) c[sel.value]++; else c.unset++;
+      lines.push(`- ${s.id.padEnd(30,' ')} : ${val}${s.climax?'   (★절정)':''}${s.reserved?'   (예약)':''}`);
+    });
+    lines.push('');
+  });
+  lines.push(`합계 — A:${c.A} / B:${c.B} / skip:${c.skip} / 미정:${c.unset}   (총 ${CATALOG.length} id, 후보 ${CATALOG.length*2}안)`);
+  return lines.join('\n');
+}
+const out=document.getElementById('out'), summaryBox=document.getElementById('summaryBox');
+document.getElementById('copyBtn').addEventListener('click',async()=>{
+  const txt=buildSummary();
+  out.value=txt; summaryBox.classList.add('open');
+  try{ await navigator.clipboard.writeText(txt); toast('✅ 선택 결과를 클립보드에 복사했습니다'); }
+  catch(e){ out.focus(); out.select(); try{document.execCommand('copy');}catch(_){}
+    toast('아래 텍스트박스에서 직접 복사하세요'); }
+});
+document.getElementById('previewBtn').addEventListener('click',()=>{
+  out.value=buildSummary();
+  summaryBox.classList.toggle('open');
+});
+
+/* --- toast --- */
+let toastTimer=null; const toastEl=document.getElementById('toast');
+function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2000); }
+</script>

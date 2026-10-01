@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>젬 인벤토리 빈 상태 — 현재 vs V2 비교본</title>
+<!--
+  gem-inventory-empty-state-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : gem-inventory-empty-state-fix-plan T4 산출물. 젬 인벤토리 밴드가 **0건**일 때의
+          라벨 배치(T2)와 문구 분기(T3)를 "현재 vs V2" 로 나란히 놓은 **정적 비교본**이다.
+          실조작 없음 — 필터/뽑기 어느 것도 동작하지 않는다.
+  소유  : docs/archives/armament-gems/gem-inventory-empty-state-fix-plan.md T4 (종결·아카이브)
+  정본  : html/armament-menu.html 은 **무수정**. #view-sockets(:987) · #view-draw(:1030) ·
+          renderGemInventoryGrid(:2088-2097) 어느 것도 건드리지 않았다.
+          여기는 사본이 아니라 "현재 vs V2" 비교 전용 별도 파일이다.
+  팔레트: armament-menu.html :9-30 토큰 + 밴드 구조색(#1a2535 격자선 · #0e1620 타일면,
+          :336-348)을 그대로 복사. Unity 쪽 색은 UiTheme 토큰 실값을 hex 로 적었을 뿐이다
+          (TextTitleColor #eaf3f2 · StagePanelColor #0a1017 · StageOutlineColor #1b2836).
+          **raw 색 신설 0.**
+
+  ⚠ 이 비교본이 명시하는 사실 3건
+     1) **문구 정본은 Unity 3분기다**(플랜 R1 #9 처분). 목업 현행 문구
+        "모든 보유 젬이 장착 중입니다."(armament-menu.html:2095)는 2분기 시절 문구라
+        V2 와 다르다 — 아래 §2 표가 그 차이다.
+     2) 목업의 ② "보유 0" 분기는 **도달 불가**다(리뷰 R2-3). renderGemInventory() 가
+        정적 GEM_LIBRARY 에서 unequipped 를 파생하므로(armament-menu.html:2062) 보유 0
+        상태를 만들 수 없다. 이 페이지의 ② 재현은 **정적 표기**다.
+     3) 격자선은 이 플랜에서 **도입하지 않는다**(OQ2=(a)). Canvas 는 채운 상태에도 격자가
+        없으므로 아래 V2 재현에도 격자를 넣지 않았다 — 격자 파리티는 mockup-parity-sweep-plan 소관.
+-->
+<style>
+:root{
+  /* ── armament-menu.html :9-30 토큰 (그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --border-gold:rgba(201,162,39,0.25);
+  --teal:#57d1b8; --gold:#f5e859; --text:#e2e8f0; --muted:#8c99ad; --muted2:#2a3a4a;
+  --red:#ff6b6b;
+  /* ── armament-menu.html :336-348 밴드 구조색 (그대로) ── */
+  --tile:#0e1620; --gridline:#1a2535;
+  /* ── Unity UiTheme 실값(색 신설이 아니라 표기) ── */
+  --u-text-title:#eaf3f2; --u-stage-panel:#0a1017; --u-stage-outline:#1b2836;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:28px 24px 60px; background:var(--bg); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.6;
+}
+.wrap{max-width:1180px; margin:0 auto;}
+h1{font-size:20px; margin:0 0 6px; color:var(--u-text-title); letter-spacing:.02em;}
+h2{font-size:14px; margin:0 0 10px; letter-spacing:.06em; color:var(--teal);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 22px;}
+code{font-family:'Courier New',Courier,monospace; font-size:12px; color:var(--text);}
+
+.quote{
+  border-left:3px solid var(--gold); background:rgba(245,232,89,.06);
+  padding:12px 16px; margin:0 0 22px; border-radius:0 5px 5px 0;
+  color:var(--text); font-size:13px;
+}
+.quote b{color:var(--gold);}
+.quote .who{display:block; color:var(--muted); font-size:11px; margin-top:6px; letter-spacing:.04em;}
+
+.block{margin:0 0 34px;}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+@media (max-width:900px){ .pair{grid-template-columns:1fr;} }
+.col{border:1px solid var(--u-stage-outline); border-radius:8px; background:var(--u-stage-panel); padding:14px;}
+.col.now{border-color:var(--gridline);}
+.col.v2{border-color:var(--teal);}
+.col h3{font-size:11px; letter-spacing:.1em; margin:0 0 12px; text-transform:uppercase; color:var(--muted);}
+.col.v2 h3{color:var(--teal);}
+.note{font-size:11px; color:var(--muted); margin-top:12px; line-height:1.7;}
+.note b{color:var(--text);}
+.new{color:var(--gold);}
+.bad{color:var(--red);}
+
+/* ── 젬 인벤토리 밴드 재현 — armament-menu #gem-inventory-panel(:328-331) +
+      Canvas GemInventoryBand(SocketsView.cs:1320-1419) 의 세로 순서를 합쳐 놓은 것 ── */
+.band{
+  background:var(--u-stage-panel); border:1px solid var(--u-stage-outline);
+  border-radius:10px; padding:14px 14px 0; position:relative;
+}
+.band .cap{ font-size:11px; letter-spacing:.06em; color:var(--gold); margin-bottom:6px; }
+.band .filter-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:10px; }
+.band .chk{ font-size:10px; color:var(--teal); }
+.band .sel{
+  font-family:'Courier New',monospace; font-size:10px; padding:4px 8px; border-radius:3px;
+  background:var(--tile); border:1px solid rgba(87,209,184,0.35); color:var(--teal);
+}
+/* 리스트 영역 — ListTopY(=밴드 상단에서 102px) 아래부터 밴드 하단까지. 빈 상태에서
+   `_scrollRoot` 가 꺼지고 `_emptyLabel` 만 남는 자리다(SocketsView.cs:1506-1508). */
+.list-area{
+  position:relative; height:196px; border-top:1px dashed rgba(87,209,184,.18);
+  margin:0 -14px; padding:0 14px;
+}
+.list-area .zone-tag{
+  position:absolute; right:8px; top:6px; font-size:9px; letter-spacing:.08em; color:var(--muted2);
+}
+.empty-now{ position:absolute; left:14px; top:0; font-size:13px; color:var(--u-text-title); }
+.empty-v2{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  text-align:center; font-size:13px; color:var(--u-text-title); padding:0 18px;
+}
+.band .foot-pad{ height:14px; }
+
+/* 격자 있는(채운) 상태 참고용 — 목업 정본 규칙 그대로, 이 플랜에서 만지지 않는 부분 */
+.filled-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(44px, 60px)); gap:0;
+  border-top:1px solid var(--gridline); border-left:1px solid var(--gridline);
+  box-shadow:inset -1px -1px 0 var(--gridline);
+}
+.filled-grid div{ aspect-ratio:1/1; background:var(--tile); border-right:1px solid var(--gridline); border-bottom:1px solid var(--gridline); }
+
+table{ border-collapse:collapse; width:100%; font-size:12px; margin-top:6px; }
+th,td{ border:1px solid var(--u-stage-outline); padding:7px 10px; text-align:left; vertical-align:top; }
+th{ color:var(--teal); font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+td{ color:var(--text); }
+td code{ color:var(--muted); }
+tr.hl td{ background:rgba(245,232,89,.05); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>젬 인벤토리 빈 상태 — 현재 vs V2 비교본</h1>
+  <p class="sub">
+    <code>gem-inventory-empty-state-fix-plan</code> T4 · 대상 <code>SocketsView.cs</code> <code>GemInventoryBand</code>(클래스 <code>:1438</code> · 핵심 구현 <code>:1643-1766</code> — 플랜 §0-b 재핀표) ·
+    정본 <code>html/armament-menu.html</code> 무수정 · raw 색 신설 0 · 밴드 위치/구조 무접촉
+  </p>
+
+  <div class="quote">
+    <b>"젬 하나도 없을 때 인벤토리 안보이더라 ㅋㅋ"</b>
+    <span class="who">— owner Play QA 2026-08-28 (당시 화면은 IMGUI 판 — 그 코드는 <code>02fcd7d6</code> 로 삭제됐다.
+    현행 Canvas 판은 밴드 판·테두리를 생성자에서 상시 만들므로 "영역이 통째로 사라진다"는 재현되지 않을 가능성이 높다 —
+    확정은 T1 런타임 실측 몫이고, 이 비교본은 남는 UX 개선분(T2 배치 · T3 문구)만 다룬다.)</span>
+  </div>
+
+  <!-- ══════ 1. 빈 상태 라벨 배치 ══════ -->
+  <div class="block">
+    <h2>1. 빈 상태 라벨 배치 — 좌상단 붙박이 → 리스트 영역 중앙</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재 — TopLeft · y = ListTopY</h3>
+        <div class="band">
+          <div class="cap">보유 젬 인벤토리 — 미장착 0개 (소켓의 "장착" 버튼 → 아래에서 선택)</div>
+          <div class="filter-bar">
+            <span class="chk">☐ 장착 가능만</span>
+            <span class="sel">등급: 전체</span>
+            <span class="sel">효과군: 전체</span>
+          </div>
+          <div class="list-area">
+            <span class="zone-tag">리스트 영역 (ListTopY ~ 밴드 하단)</span>
+            <div class="empty-now">모든 보유 젬이 장착 중이거나 보유 젬이 없습니다.</div>
+          </div>
+          <div class="foot-pad"></div>
+        </div>
+        <p class="note">
+          <code>NewFittedText(..., x=0, y=ListTopY, width=rect.width, TopLeft)</code> +
+          <code>ContentSizeFitter</code>(<code>SocketsView.cs</code> 구판 :1409-1411) —
+          한 줄이 리스트 영역 <b>좌상단에 붙박이</b>로 서고 그 아래 190px 가량이 통째로 빈다.
+          밴드가 커질수록 <b>여백만 커진다</b>.
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 앵커 스트레치 + Center</h3>
+        <div class="band">
+          <div class="cap">보유 젬 인벤토리 — 미장착 0개 (소켓의 "장착" 버튼 → 아래에서 선택)</div>
+          <div class="filter-bar">
+            <span class="chk">☐ 장착 가능만</span>
+            <span class="sel">등급: 전체</span>
+            <span class="sel">효과군: 전체</span>
+          </div>
+          <div class="list-area">
+            <span class="zone-tag">리스트 영역 (ListTopY ~ 밴드 하단)</span>
+            <div class="empty-v2 new">아직 젬이 없습니다 — 뽑기에서 첫 젬을 얻어 보세요</div>
+          </div>
+          <div class="foot-pad"></div>
+        </div>
+        <p class="note">
+          라벨 rect 를 <b>계산하지 않는다</b> — <code>anchorMin(0,0)/anchorMax(1,1)</code> 스트레치 +
+          <code>offsetMax=(0, -ListTopY)</code> 로 리스트 영역을 덮고,
+          <code>TextAlignmentOptions.Center</code> 가 글자를 가운데 둔다.
+          <br>⚠ 이 선택의 이유는 <b>리뷰 R2-1</b>이다: <code>Relayout(rect)</code>(:1454-1460)은
+          <code>_root</code>·<code>_scrollRoot</code> 만 다시 놓고 <code>_emptyLabel</code> 은 건드리지 않는다.
+          소켓 탭은 무기 아트 높이로 밴드 rect 가 런타임에 밀리므로(:651),
+          y 를 <b>계산해 넣었다면 Relayout 뒤 중앙이 어긋난다</b>.
+          <br><code>ContentSizeFitter</code> 는 스트레치와 상충하므로 V2 에서는 쓰지 않는다.
+          GameObject 는 <b>빌드 때 1회</b> 만들고 <code>SetActive</code> 로만 켜고 끈다 —
+          매 프레임 생성 0 · 상호작용 컨트롤 개수 불변.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 2. 문구 분기 ══════ -->
+  <div class="block">
+    <h2>2. 빈 상태 문구 — 2분기 → 3분기 (정본 = Unity)</h2>
+    <div class="pair">
+
+      <div class="col now">
+        <h3>현재 — 2분기 (필터 여부만)</h3>
+        <div class="band" style="padding-bottom:14px;">
+          <div class="cap">① 필터로 0건</div>
+          <div class="empty-v2" style="position:static; display:block; text-align:left; padding:0 0 12px;">필터 조건에 맞는 젬이 없습니다. (필터를 해제해 보세요)</div>
+          <div class="cap">② 보유 0 &nbsp;/&nbsp; ③ 전부 장착 중 <span class="bad">— 한 문구로 뭉쳐 있다</span></div>
+          <div class="empty-v2" style="position:static; display:block; text-align:left; padding:0;">모든 보유 젬이 장착 중이거나 보유 젬이 없습니다.</div>
+        </div>
+        <p class="note">
+          Unity <code>SocketsView.cs</code> 구판 :1503-1505 · 목업 <code>armament-menu.html:2093-2095</code>.
+          <b>목업 쪽 두 번째 문구는 "모든 보유 젬이 장착 중입니다."</b> 로 Unity 와도 다르다 —
+          목업은 보유 0 을 아예 상정하지 않은 문구다.
+          두 경우가 같은 문장을 쓰니 <b>다음 행동(뽑기로 가라 / 소켓을 비워라)이 갈리지 않는다.</b>
+        </p>
+      </div>
+
+      <div class="col v2">
+        <h3>V2 — 3분기 (필터 → 보유0 → 전부장착)</h3>
+        <div class="band" style="padding-bottom:14px;">
+          <div class="cap">① 필터로 0건</div>
+          <div class="empty-v2" style="position:static; display:block; text-align:left; padding:0 0 12px;">필터 조건에 맞는 젬이 없습니다. (필터를 해제해 보세요)</div>
+          <div class="cap">② 보유 0</div>
+          <div class="empty-v2 new" style="position:static; display:block; text-align:left; padding:0 0 12px;">아직 젬이 없습니다 — 뽑기에서 첫 젬을 얻어 보세요</div>
+          <div class="cap">③ 전부 장착 중</div>
+          <div class="empty-v2 new" style="position:static; display:block; text-align:left; padding:0;">보유 젬이 모두 장착돼 있습니다</div>
+        </div>
+        <p class="note">
+          ① 문구는 <b>글자 하나 바꾸지 않는다</b> — 필터 해제 안내는 하드 제약이다
+          (필터 바 선행 호출 계약 <code>SocketsView.cs:1502-1503</code>: 필터 바가 사라지면 되돌릴 수 없다).
+          ②·③ 만 새 문구이며, 이 <b>3분기가 문구 정본</b>이다(플랜 R1 #9 처분).
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ 3. 판정식 ══════ -->
+  <div class="block">
+    <h2>3. 판정식 — 우선순위 필터 → 보유 0 → 전부 장착</h2>
+    <table>
+      <tr>
+        <th>상태</th><th><code>totalUnequipped</code></th><th><code>shown</code></th>
+        <th><code>filtered</code></th><th><code>_c._gemInventory.Count</code></th><th>문구</th>
+      </tr>
+      <tr>
+        <td>필터로 0건</td><td>&gt; 0</td><td>0</td><td><b>true</b></td><td>&gt; 0</td>
+        <td>① 필터 조건에 맞는 젬이 없습니다. (필터를 해제해 보세요)</td>
+      </tr>
+      <tr class="hl">
+        <td>보유 젬 0</td><td>0</td><td>0</td><td>false</td><td><b>0</b></td>
+        <td class="new">② 아직 젬이 없습니다 — 뽑기에서 첫 젬을 얻어 보세요</td>
+      </tr>
+      <tr class="hl">
+        <td>전부 장착 중</td><td>0</td><td>0</td><td>false</td><td><b>&gt; 0</b></td>
+        <td class="new">③ 보유 젬이 모두 장착돼 있습니다</td>
+      </tr>
+    </table>
+    <p class="note">
+      ⚠ ②를 <code>totalUnequipped == 0</code> 으로 판정하면 <b>③과 구분되지 않는다</b> —
+      표시 버퍼 루프(<code>SocketsView.cs:1471-1486</code>)가 <code>IsGemSocketed</code> 인 젬을
+      <code>continue</code> 로 건너뛰기 때문이다. 그래서 보유 수는 반드시
+      <code>_c._gemInventory.Count</code> 로 본다. 이 접근은 <b>이미 같은 클래스가 쓰고 있어</b>
+      접근자 신설·<code>internal</code> 승격이 필요 없다(같은 파일 :1471).
+      <br>세 행은 <b>상호 배타 + 전수 커버</b>다 — 누락·중복 0.
+    </p>
+  </div>
+
+  <!-- ══════ 4. 목업과의 차이 ══════ -->
+  <div class="block">
+    <h2>4. 목업(<code>armament-menu.html</code>) 과의 차이 — 정본은 Unity</h2>
+    <table>
+      <tr><th>분기</th><th>Unity V2 (정본)</th><th>목업 현행</th><th>목업 도달 가능?</th></tr>
+      <tr>
+        <td>① 필터로 0건</td>
+        <td>필터 조건에 맞는 젬이 없습니다. (필터를 해제해 보세요)</td>
+        <td><code>:2094</code> 동일 문구</td>
+        <td>가능 — 필터 드롭다운으로 재현</td>
+      </tr>
+      <tr class="hl">
+        <td>② 보유 0</td>
+        <td class="new">아직 젬이 없습니다 — 뽑기에서 첫 젬을 얻어 보세요</td>
+        <td><code>:2095</code> "모든 보유 젬이 장착 중입니다." 로 <b>뭉쳐 있음</b></td>
+        <td class="bad">불가 — <b>R2-3</b>. <code>renderGemInventory()</code> 가 정적
+          <code>GEM_LIBRARY</code> 에서 <code>unequipped</code> 를 파생하므로(<code>:2062</code>)
+          보유 0 상태가 만들어지지 않는다. 이 페이지의 ② 재현은 <b>정적 표기</b>다.</td>
+      </tr>
+      <tr>
+        <td>③ 전부 장착 중</td>
+        <td class="new">보유 젬이 모두 장착돼 있습니다</td>
+        <td><code>:2095</code> "모든 보유 젬이 장착 중입니다."</td>
+        <td>가능 — 모든 젬을 소켓에 넣으면 재현</td>
+      </tr>
+      <tr>
+        <td>배치</td>
+        <td>리스트 영역 <b>중앙</b>(스트레치 + Center)</td>
+        <td>격자 컨테이너 안 <b>좌상단</b> 한 줄(<code>:2093-2096</code>, <code>font-size:10px; color:#2a3a4a</code>)</td>
+        <td>—</td>
+      </tr>
+    </table>
+    <p class="note">
+      정본 <code>html/armament-menu.html</code> 은 <b>이 플랜에서 수정하지 않는다</b>(무단 수정 0).
+      위 차이는 목업 동기화가 필요할 때 <b>이 표를 근거로</b> 별도 편집하면 된다 —
+      ②는 목업에서 도달 불가라 문구를 넣어도 <b>죽은 분기</b>이므로, 넣는다면 목업 전용 도구 섹션
+      (<code>:1086-</code>)에 "보유 0" 토글을 함께 추가해야 의미가 있다.
+    </p>
+  </div>
+
+  <!-- ══════ 5. 범위 밖 ══════ -->
+  <div class="block">
+    <h2>5. 이 플랜이 <b>건드리지 않는</b> 것</h2>
+    <div class="pair">
+      <div class="col now">
+        <h3>격자선 — 도입하지 않는다 (OQ2 = (a))</h3>
+        <div class="filled-grid">
+          <div></div><div></div><div></div><div></div><div></div><div></div>
+          <div></div><div></div><div></div><div></div><div></div><div></div>
+        </div>
+        <p class="note">
+          위는 <b>목업 정본</b>의 격자 규칙(<code>armament-menu.html:344-348</code> —
+          컨테이너 <code>border-top/left</code> + <code>inset -1px -1px</code> 로 4변을 닫는다).
+          <b>Canvas 에는 이 선이 없다</b> — 채운 상태 <code>SyncTiles</code> 도 타일만 놓는다.
+          빈 상태에만 격자를 넣으면 비대칭이라, 격자 파리티는
+          <code>mockup-parity-sweep-plan</code> 소관으로 넘긴다.
+        </p>
+      </div>
+      <div class="col now">
+        <h3>밴드 위치·구조 — 무접촉 (하드 제약 5)</h3>
+        <p class="note" style="margin-top:0;">
+          밴드의 배치 rect·계층은 손대지 않는다. 뽑기 탭 인벤토리를 <b>하단 밴드 → 우측 드로어</b>로
+          옮기는 것은 형제 플랜 <code>gem-draw-inventory-side-drawer-plan</code> 소관이고,
+          <b>이 플랜이 선행</b>한다 — 빈 상태 로직은 <code>GemInventoryBand</code> 클래스에 붙어 있어
+          드로어가 밴드를 옮겨도 그대로 따라간다.
+          <br><br>본 구현은 <b><code>GemInventoryBand</code> 한 곳 수정</b>이고, 소켓 탭
+          (<code>SocketsView.cs:482</code>, <code>true,true</code>)과 뽑기 탭
+          (<code>GemDrawView.cs:248</code>, <code>false,false</code>)이 <b>같은 클래스 한 벌</b>을
+          공유하므로 두 탭에 동시에 걸린다.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="border-top:1px solid var(--u-stage-outline); padding-top:14px;">
+    이 페이지는 <b>정적 비교본</b>이다 — 실제 렌더는 Unity Canvas 판이 정본이고,
+    빈 상태 실측 캡처(T1, 격리 세이브 키)는 <b>아직 남아 있다</b>(에디터 미가동).
+    T1 결과가 "프레임 정상 표시"로 나오면 §1 인용부의 결함 서술은 "IMGUI 한정·소멸"로 확정되고,
+    남는 산출물은 이 페이지가 보여 주는 <b>T2 배치 · T3 문구</b>다.
+  </p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Skill Tree Visual Reference — Click to Commit</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0b0f14;
+  color: #ccc;
+  font-family: 'Consolas', monospace;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+#header {
+  background: #0d1622;
+  border-bottom: 1px solid #1a2d3e;
+  padding: 7px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+h1 { font-size: 12px; color: #57d1b8; letter-spacing: .1em; }
+.sep { width: 1px; height: 18px; background: #1e3040; }
+.legend { display: flex; gap: 12px; align-items: center; }
+.li  { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #5a6a7a; }
+.ld  { width: 12px; height: 12px; flex-shrink: 0; }
+.currency { margin-left: auto; display:flex; align-items:center; gap:12px; font-size:11px; color:#7a8898; white-space:nowrap; }
+#hd-gold { color:#f5e859; font-weight:bold; }
+#hd-insight { color:#c084fc; font-weight:bold; }
+.test-btn {
+  background: rgba(18,30,44,0.9); border: 1px solid #1e3850;
+  color: #4a7890; font-family: 'Consolas', monospace; font-size: 10px;
+  padding: 4px 11px; border-radius: 5px; cursor: pointer; white-space: nowrap; flex-shrink:0;
+}
+.test-btn:hover { background: rgba(28,50,70,0.9); border-color:#2a5878; color: #7ab8d0; }
+#wrap { flex: 1; overflow: hidden; position: relative; }
+canvas { display: block; cursor: grab; }
+canvas.panning { cursor: grabbing; }
+
+/* ── Hover Detail Card ───────────────────────────────────────── */
+#card {
+  position: fixed;
+  width: 252px;
+  background: rgba(6,11,20,0.98);
+  border: 1px solid #1e3a58;
+  border-radius: 10px;
+  padding: 0;
+  z-index: 300;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  overflow: hidden;
+}
+#card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+#card-header {
+  padding: 13px 14px 10px;
+  border-bottom: 1px solid #1a2e40;
+}
+#card-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+#card-icon-bg {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+#card-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: #e0eaf4;
+  line-height: 1.3;
+}
+#card-etype {
+  font-size: 9px;
+  color: #445a6a;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+#card-body {
+  padding: 10px 14px;
+  border-bottom: 1px solid #1a2e40;
+}
+#card-effect {
+  font-size: 11px;
+  color: #7ac0e0;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+#card-desc {
+  font-size: 10px;
+  color: #6a8090;
+  line-height: 1.5;
+}
+#card-footer {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#card-cost {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  color: #6a8090;
+}
+.cost-item { display: flex; align-items: center; gap: 4px; }
+.cost-val { font-weight: bold; }
+.cost-gold  { color: #f5e859; }
+.cost-arch  { color: #c084fc; }
+.cost-level { color: #4ade80; }
+#card-btn {
+  width: 100%;
+  padding: 9px;
+  border-radius: 7px;
+  border: 1px solid;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: background 0.12s, color 0.12s;
+}
+#card-btn.state-unlockable {
+  background: rgba(20,60,90,0.9);
+  border-color: #2a7aaa;
+  color: #7ac0e0;
+}
+#card-btn.state-unlockable:hover {
+  background: rgba(30,90,130,0.9);
+  color: #b8e0f8;
+}
+#card-btn.state-no-points {
+  background: rgba(30,10,10,0.9);
+  border-color: #5a2222;
+  color: #aa5050;
+  cursor: not-allowed;
+}
+#card-btn.state-locked {
+  background: rgba(12,18,26,0.9);
+  border-color: #1e2e3e;
+  color: #344a5a;
+  cursor: not-allowed;
+}
+#card-btn.state-done {
+  background: rgba(10,30,20,0.9);
+  border-color: #1e5a3e;
+  color: #4ade80;
+  cursor: default;
+}
+#hint {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; color: #1e2e40; pointer-events: none; letter-spacing: .04em;
+}
+
+/* ── Stats Panel ─────────────────────────────────────────────────── */
+#stats-panel {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 220px;
+  background: rgba(5,10,18,0.95);
+  border-left: 1px solid #0e2030;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  z-index: 200;
+  pointer-events: auto;
+}
+#stats-panel.open { transform: translateX(0); }
+#stats-header {
+  padding: 11px 14px 9px;
+  font-size: 11px; color: #57d1b8; letter-spacing: .1em;
+  border-bottom: 1px solid #0e2030; flex-shrink: 0;
+}
+#stats-body {
+  flex: 1; overflow-y: auto; padding: 8px 0;
+}
+#stats-body::-webkit-scrollbar { width: 3px; }
+#stats-body::-webkit-scrollbar-thumb { background: #1e3040; border-radius: 2px; }
+.stats-section-title {
+  font-size: 9px; color: #2a4a5e; letter-spacing: .12em;
+  padding: 8px 14px 4px; text-transform: uppercase;
+}
+.stats-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 14px; font-size: 10px; color: #4a6a7a;
+  transition: background 0.15s, color 0.15s;
+}
+.stats-row .sr-name { color: #4a6a7a; }
+.stats-row .sr-val  { font-weight: bold; color: #7ab8d0; font-size: 10px; }
+.stats-row.active .sr-name { color: #b0cce0; }
+.stats-row.active .sr-val  { color: #e0f0ff; }
+.stats-row.highlight {
+  background: rgba(87,209,184,0.07);
+}
+.stats-row.highlight .sr-val { color: #57d1b8; }
+.stats-badge {
+  font-size: 9px; padding: 1px 5px; border-radius: 3px;
+  font-weight: bold; letter-spacing: .04em;
+}
+.badge-unlocked { background: rgba(87,209,184,0.15); color: #57d1b8; }
+.badge-locked   { background: rgba(30,50,60,0.4);    color: #2a4050; }
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+#toast-stack {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column-reverse; gap: 7px;
+  z-index: 600; pointer-events: none;
+}
+.toast {
+  background: rgba(5,10,18,0.96); border: 1px solid #1e3a58;
+  border-radius: 8px; padding: 9px 14px;
+  font-size: 11px; color: #a0c8e0;
+  font-family: 'Consolas', monospace; max-width: 260px;
+  opacity: 0; transform: translateX(14px);
+  transition: opacity 0.16s, transform 0.16s;
+}
+.toast.show   { opacity: 1; transform: translateX(0); }
+.toast.resource { border-color: #1e5a3e; color: #7addb8; }
+#weapon-toast {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -56%) scale(0.88);
+  background: rgba(5,10,18,0.97); border: 1px solid #aaa;
+  border-radius: 13px; padding: 22px 38px;
+  font-size: 20px; font-weight: bold;
+  font-family: 'Consolas', monospace; text-align: center;
+  z-index: 600; pointer-events: none; letter-spacing: .06em;
+  opacity: 0; transition: opacity 0.18s, transform 0.18s;
+}
+#weapon-toast .wt-sub {
+  display: block; font-size: 11px; font-weight: normal;
+  color: #5a7a8a; margin-top: 5px; letter-spacing: .04em;
+}
+#weapon-toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>◈ SKILL TREE</h1>
+  <div class="sep"></div>
+  <div class="legend">
+    <div class="li"><canvas class="ld" id="ld-stat"></canvas>스탯</div>
+    <div class="li"><canvas class="ld" id="ld-lang"></canvas>언어/리소스</div>
+    <div class="li"><canvas class="ld" id="ld-weapon"></canvas>무기</div>
+    <div class="li"><canvas class="ld" id="ld-awaken"></canvas>각성</div>
+    <div class="li"><canvas class="ld" id="ld-core"></canvas>코어</div>
+  </div>
+  <div class="sep"></div>
+  <div class="currency">
+    🪙 <span id="hd-gold">500</span>
+    &nbsp;<span style="color:#1e3040">|</span>&nbsp;
+    <span style="color:#4ade80">◎</span> <span id="hd-commit" style="color:#4ade80;font-weight:bold">0</span>
+    &nbsp;<span style="color:#1e3040">|</span>&nbsp;
+    <span style="color:#38bdf8">₿</span> <span id="hd-bcoin" style="color:#38bdf8;font-weight:bold">0</span>
+    &nbsp;<span style="color:#1e3040">|</span>&nbsp;
+    <span style="color:#c084fc">◆</span> <span id="hd-arch" style="color:#c084fc;font-weight:bold">3</span>
+  </div>
+  <div class="sep"></div>
+  <button class="test-btn" id="btn-gold">+500 🪙</button>
+  <button class="test-btn" id="btn-commit" style="color:#4ade80;border-color:#1e4830">+50 ◎</button>
+  <button class="test-btn" id="btn-bcoin" style="color:#38bdf8;border-color:#1e3850">+10 ₿</button>
+  <button class="test-btn" id="btn-arch">+5 ◆</button>
+  <div class="sep"></div>
+  <button class="test-btn" id="btn-stats" style="color:#57d1b8;border-color:#1e4040">STATS ▶</button>
+</div>
+<div id="wrap">
+  <canvas id="c"></canvas>
+
+  <!-- Hover Detail Card -->
+  <div id="card">
+    <div id="card-header">
+      <div id="card-icon-row">
+        <div id="card-icon-bg"><span id="card-icon-char">◈</span></div>
+        <div>
+          <div id="card-name">—</div>
+          <div id="card-etype">—</div>
+        </div>
+      </div>
+    </div>
+    <div id="card-body">
+      <div id="card-effect">—</div>
+      <div id="card-desc">—</div>
+    </div>
+    <div id="card-footer">
+      <div id="card-cost">
+        <div class="cost-item"><span>비용</span></div>
+        <div class="cost-item cost-gold" id="card-cost-gold" style="display:none">🪙 <span class="cost-val" id="card-gold-val">0</span></div>
+        <div class="cost-item cost-arch" id="card-cost-arch" style="display:none">◆ <span class="cost-val" id="card-arch-val">0</span></div>
+        <div class="cost-item cost-level">Lv <span class="cost-val" id="card-lv-val">0</span></div>
+      </div>
+      <button id="card-btn" class="state-locked">선행 노드 필요</button>
+    </div>
+  </div>
+
+  <div id="hint">호버 → 상세보기 · 스크롤 줌 · 드래그 패닝</div>
+  <div id="toast-stack"></div>
+  <div id="weapon-toast"><span id="wt-main">★</span><span class="wt-sub">UNLOCKED</span></div>
+
+  <!-- Stats Panel -->
+  <div id="stats-panel">
+    <div id="stats-header">현재 스탯</div>
+    <div id="stats-body"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── ENUMS ───────────────────────────────────────────────────────
+const S  = { STAT:'stat', LANG:'lang', WEAPON:'weapon', AWAKEN:'awaken', CORE:'core' };
+const ST = { HIDDEN:'hidden', LOCKED:'locked', UNLOCKABLE:'unlockable', UNLOCKED:'unlocked' };
+
+// ─── EFFECT TYPE METADATA ─────────────────────────────────────────
+const EFFECT_META = {
+  ClickPower:          { icon:'⚔', desc:'클릭 공격력', color:'#e67e22' },
+  ClickCritChance:     { icon:'◎', desc:'크리티컬 확률', color:'#f97316' },
+  ClickCritMultiplier: { icon:'◈', desc:'크리티컬 배율', color:'#f97316' },
+  ClickRange:          { icon:'◉', desc:'AOE 범위', color:'#57d1b8' },
+  GlobalDamage:        { icon:'▲', desc:'전체 데미지', color:'#ef4444' },
+  GlobalCritChance:    { icon:'◎', desc:'전체 크리티컬', color:'#f97316' },
+  GlobalCritMultiplier:{ icon:'◈', desc:'전체 크리 배율', color:'#f97316' },
+  ChainDamage:         { icon:'⚡', desc:'체인 피해', color:'#00bcd4' },
+  ChainDepth:          { icon:'⚡', desc:'체인 횟수', color:'#00bcd4' },
+  ChainRange:          { icon:'⚡', desc:'체인 탐색 범위', color:'#00bcd4' },
+  ChainCooldown:       { icon:'⚡', desc:'체인 쿨다운', color:'#00bcd4' },
+  ChainInitialTargets: { icon:'⚡', desc:'초기 발사 수', color:'#00bcd4' },
+  TxTickDamage:        { icon:'⌚', desc:'지속 데미지', color:'#3498db' },
+  TxDuration:          { icon:'⌚', desc:'트랜잭션 지속', color:'#3498db' },
+  TxRadius:            { icon:'⌚', desc:'트랜잭션 범위', color:'#3498db' },
+  TxCooldown:          { icon:'⌚', desc:'트랜잭션 쿨다운', color:'#3498db' },
+  TxMaxTargets:        { icon:'⌚', desc:'최대 연결 대상', color:'#3498db' },
+  WorkerCount:         { icon:'⚙', desc:'Worker 수', color:'#2ecc71' },
+  WorkerDamage:        { icon:'⚙', desc:'Worker 피해', color:'#2ecc71' },
+  WorkerSpeed:         { icon:'⚙', desc:'Worker 속도', color:'#2ecc71' },
+  WorkerLifetime:      { icon:'⚙', desc:'Worker 지속', color:'#2ecc71' },
+  WorkerBonusYield:    { icon:'⚙', desc:'보너스 채굴', color:'#2ecc71' },
+  VdomPatchDamage:     { icon:'◆', desc:'Patch 피해', color:'#9b59b6' },
+  VdomDiffCount:       { icon:'◆', desc:'Diff 감지 수', color:'#9b59b6' },
+  VdomScanInterval:    { icon:'◆', desc:'스캔 주기', color:'#9b59b6' },
+  VdomPatchRadius:     { icon:'◆', desc:'Patch 범위', color:'#9b59b6' },
+  VdomDiffDamageScale: { icon:'◆', desc:'Diff 데미지', color:'#9b59b6' },
+  GlobalSpawnCount:    { icon:'⊕', desc:'스폰 슬롯', color:'#27ae60' },
+  InitialSpawnCount:   { icon:'⊕', desc:'초기 스폰', color:'#27ae60' },
+  SpawnInterval:       { icon:'↑', desc:'리스폰 속도', color:'#4ade80' },
+  SpawnWeight:         { icon:'↑', desc:'출현 빈도', color:'#4ade80' },
+  ResourceUnlock:      { icon:'⊞', desc:'리소스 해금', color:'#f7df1e' },
+  ResourceGoldBonus:   { icon:'¤', desc:'골드 보너스', color:'#f5e859' },
+  ResourceInterval:    { icon:'↑', desc:'리스폰 속도', color:'#4ade80' },
+  PassiveGoldPerSec:   { icon:'¤', desc:'패시브 골드/s', color:'#f5e859' },
+  PassiveEfficiency:   { icon:'×', desc:'패시브 효율', color:'#f5e859' },
+  StudyEfficiency:     { icon:'◈', desc:'학습 효율', color:'#1abc9c' },
+  StudyTime:           { icon:'⏱', desc:'런 시간', color:'#1abc9c' },
+  InsightDropChance:   { icon:'◆', desc:'Insight 확률', color:'#c084fc' },
+  InsightDropAmount:   { icon:'◆', desc:'Insight 량', color:'#c084fc' },
+  WeaponUnlock:        { icon:'★', desc:'무기 해금', color:'#a78bfa' },
+  WeaponAwaken:        { icon:'✦', desc:'무기 각성', color:'#fbbf24' },
+};
+function emeta(et) {
+  return EFFECT_META[et] || { icon:'◈', desc:et||'', color:'#778899' };
+}
+function effectLabel(et, val, maxLv) {
+  if (!et) return '';
+  const m = emeta(et);
+  if (et === 'WeaponUnlock' || et === 'WeaponAwaken') return m.desc;
+  if (et === 'ResourceUnlock') return `${m.desc}`;
+  if (typeof val === 'number' && val !== 0) {
+    const pct = Math.abs(val) < 1 ? `${Math.round(Math.abs(val)*100)}%` : `${Math.abs(val)}`;
+    const prefix = val < 0 ? '-' : '+';
+    return `${prefix}${pct} ${m.desc}  (최대 ${maxLv}레벨)`;
+  }
+  return m.desc;
+}
+
+// ─── NODE DEFINITIONS (from skill_tree_nodes_draft.json) ──────────
+// displayName = action name (메인), baseLabel = short code, effectType drives icon + desc
+const NODES = [
+  // Core
+  { id:'core',      gx: 0, gy: 0, shape:S.CORE,
+    displayName:'Skill Core',     baseLabel:'CORE', effectType:'',          color:'#57d1b8', costGold:0,   costArchToken:0, maxLevel:1, effectValue:0 },
+  // Right — coding study path
+  { id:'hw',        gx: 1, gy: 0, shape:S.STAT,
+    displayName:'Hello World',    baseLabel:'HW',   effectType:'ClickPower',       color:'#e67e22', costGold:80,  costArchToken:0, maxLevel:5, effectValue:1 },
+  { id:'var',       gx: 2, gy: 0, shape:S.STAT,
+    displayName:'변수와 자료형',  baseLabel:'VAR',  effectType:'ClickCritChance',  color:'#e67e22', costGold:100, costArchToken:0, maxLevel:5, effectValue:0.02 },
+  { id:'ifbranch',  gx: 3, gy: 0, shape:S.STAT,
+    displayName:'조건 분기',      baseLabel:'IF',   effectType:'ClickRange',       color:'#e67e22', costGold:120, costArchToken:0, maxLevel:3, effectValue:0.1 },
+  { id:'forloop',   gx: 4, gy: 0, shape:S.STAT,
+    displayName:'반복과 순회',    baseLabel:'FOR',  effectType:'ClickCritMultiplier',color:'#e67e22',costGold:150, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  // Method Chaining weapon
+  { id:'chain',     gx: 5, gy: 0, shape:S.WEAPON,
+    displayName:'Method Chaining',baseLabel:'MC',   effectType:'WeaponUnlock',     color:'#00bcd4', costGold:0,   costArchToken:1, maxLevel:1, effectValue:0 },
+  { id:'chain_dmg', gx: 6, gy: 0, shape:S.STAT,
+    displayName:'체인 피해 증가', baseLabel:'CDmg', effectType:'ChainDamage',      color:'#00bcd4', costGold:200, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'chain_dep', gx: 6, gy: 1, shape:S.STAT,
+    displayName:'체인 횟수 증가', baseLabel:'CDep', effectType:'ChainDepth',       color:'#00bcd4', costGold:220, costArchToken:0, maxLevel:5, effectValue:1 },
+  { id:'chain_cd',  gx: 7, gy: 0, shape:S.STAT,
+    displayName:'발동 주기 감소', baseLabel:'CCld', effectType:'ChainCooldown',    color:'#00bcd4', costGold:260, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'chain_rng', gx: 6, gy:-1, shape:S.STAT,
+    displayName:'탐색 범위 증가', baseLabel:'CRng', effectType:'ChainRange',       color:'#00bcd4', costGold:240, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  // Community events
+  { id:'conf',      gx: 8, gy: 0, shape:S.STAT,
+    displayName:'IT 컨퍼런스',   baseLabel:'CONF', effectType:'InsightDropAmount', color:'#e91e63', costGold:260, costArchToken:0, maxLevel:3, effectValue:1 },
+  { id:'talk',      gx: 9, gy: 0, shape:S.STAT,
+    displayName:'발표/테크톡',   baseLabel:'TALK', effectType:'GlobalCritChance',  color:'#e74c3c', costGold:280, costArchToken:0, maxLevel:5, effectValue:0.02 },
+  { id:'hack',      gx:10, gy: 0, shape:S.STAT,
+    displayName:'해커톤 참가',   baseLabel:'HACK', effectType:'GlobalCritMultiplier',color:'#e74c3c',costGold:300, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'pair',      gx:11, gy: 0, shape:S.STAT,
+    displayName:'페어 프로그래밍',baseLabel:'PAIR', effectType:'ClickCritChance',  color:'#e67e22', costGold:320, costArchToken:0, maxLevel:5, effectValue:0.02 },
+  // Chain Awakening
+  { id:'chain_awk', gx:15, gy: 0, shape:S.AWAKEN,
+    displayName:'Branch Chaining',baseLabel:'MC★', effectType:'WeaponAwaken',     color:'#fbbf24', costGold:0,   costArchToken:2, maxLevel:1, effectValue:0 },
+  { id:'pr',        gx:14, gy: 0, shape:S.STAT,
+    displayName:'Pull Request 머지',baseLabel:'PR', effectType:'ClickPower',       color:'#e67e22', costGold:360, costArchToken:0, maxLevel:5, effectValue:1 },
+  { id:'review',    gx:13, gy: 0, shape:S.STAT,
+    displayName:'코드 리뷰 참여', baseLabel:'REVW',effectType:'StudyEfficiency',   color:'#1abc9c', costGold:340, costArchToken:0, maxLevel:5, effectValue:0.05 },
+  { id:'review2',   gx:12, gy: 0, shape:S.STAT,
+    displayName:'페어리뷰 세션', baseLabel:'REVW2',effectType:'GlobalDamage',     color:'#e74c3c', costGold:320, costArchToken:0, maxLevel:5, effectValue:0.05 },
+
+  // Up — OOP path
+  { id:'cls',       gx: 0, gy: 1, shape:S.STAT,
+    displayName:'클래스 정의',    baseLabel:'CLS',  effectType:'GlobalSpawnCount', color:'#27ae60', costGold:80,  costArchToken:0, maxLevel:3, effectValue:1 },
+  { id:'new',       gx: 0, gy: 2, shape:S.STAT,
+    displayName:'인스턴스 생성',  baseLabel:'NEW',  effectType:'InitialSpawnCount',color:'#27ae60', costGold:100, costArchToken:0, maxLevel:3, effectValue:1 },
+  { id:'ext',       gx: 0, gy: 3, shape:S.STAT,
+    displayName:'상속 구조',      baseLabel:'EXT',  effectType:'PassiveGoldPerSec',color:'#f39c12', costGold:120, costArchToken:0, maxLevel:5, effectValue:1 },
+  { id:'ovr',       gx: 0, gy: 4, shape:S.STAT,
+    displayName:'다형성',         baseLabel:'OVR',  effectType:'PassiveEfficiency',color:'#f39c12', costGold:150, costArchToken:0, maxLevel:5, effectValue:0.05 },
+  // Java resource
+  { id:'java',      gx: 1, gy: 3, shape:S.LANG,
+    displayName:'Java',           baseLabel:'Java', effectType:'ResourceUnlock',   color:'#ED8B00', costGold:200, costArchToken:0, maxLevel:1, effectValue:1 },
+  { id:'java_w',    gx: 2, gy: 3, shape:S.STAT,
+    displayName:'Java 초기 생성', baseLabel:'Java', effectType:'InitialSpawnCount',color:'#ED8B00', costGold:80,  costArchToken:0, maxLevel:3, effectValue:1 },
+  { id:'java_g',    gx: 2, gy: 4, shape:S.STAT,
+    displayName:'Java 골드 보너스',baseLabel:'Java',effectType:'ResourceGoldBonus',color:'#ED8B00', costGold:80,  costArchToken:0, maxLevel:5, effectValue:0.1 },
+
+  // Down — algorithm path
+  { id:'bigo',      gx: 0, gy:-1, shape:S.STAT,
+    displayName:'Big-O 분석',     baseLabel:'O(n)', effectType:'StudyEfficiency',  color:'#f39c12', costGold:80,  costArchToken:0, maxLevel:5, effectValue:0.05 },
+  { id:'sort',      gx: 0, gy:-2, shape:S.STAT,
+    displayName:'정렬 알고리즘',  baseLabel:'SORT', effectType:'PassiveGoldPerSec',color:'#f39c12', costGold:100, costArchToken:0, maxLevel:5, effectValue:1 },
+  { id:'find',      gx: 0, gy:-3, shape:S.STAT,
+    displayName:'탐색 알고리즘',  baseLabel:'FIND', effectType:'PassiveEfficiency',color:'#f39c12', costGold:120, costArchToken:0, maxLevel:5, effectValue:0.05 },
+  { id:'hash',      gx: 0, gy:-4, shape:S.STAT,
+    displayName:'해시맵',         baseLabel:'HASH', effectType:'InsightDropChance',color:'#e91e63', costGold:250, costArchToken:0, maxLevel:5, effectValue:0.02 },
+  { id:'rec',       gx: 0, gy:-5, shape:S.STAT,
+    displayName:'재귀',           baseLabel:'REC',  effectType:'GlobalCritMultiplier',color:'#e74c3c',costGold:150, costArchToken:0, maxLevel:5, effectValue:0.1 },
+
+  // Left — Transaction path
+  { id:'arr',       gx:-1, gy: 0, shape:S.STAT,
+    displayName:'배열 선언',      baseLabel:'ARR',  effectType:'GlobalDamage',     color:'#e74c3c', costGold:80,  costArchToken:0, maxLevel:5, effectValue:0.05 },
+  { id:'list',      gx:-2, gy: 0, shape:S.STAT,
+    displayName:'컬렉션 탐색',    baseLabel:'LIST', effectType:'GlobalCritChance', color:'#e74c3c', costGold:100, costArchToken:0, maxLevel:5, effectValue:0.02 },
+  { id:'io',        gx:-3, gy: 0, shape:S.STAT,
+    displayName:'파일 입출력',    baseLabel:'I/O',  effectType:'GlobalCritMultiplier',color:'#e74c3c',costGold:120, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'trycatch',  gx:-4, gy: 0, shape:S.STAT,
+    displayName:'예외 처리',      baseLabel:'TRY',  effectType:'StudyTime',        color:'#1abc9c', costGold:150, costArchToken:0, maxLevel:3, effectValue:30 },
+  // Transaction weapon
+  { id:'tx',        gx:-5, gy: 0, shape:S.WEAPON,
+    displayName:'Transaction',    baseLabel:'TX',   effectType:'WeaponUnlock',     color:'#3498db', costGold:0,   costArchToken:1, maxLevel:1, effectValue:0 },
+  { id:'tx_dot',    gx:-6, gy: 0, shape:S.STAT,
+    displayName:'초당 지속 피해', baseLabel:'TxDot',effectType:'TxTickDamage',    color:'#3498db', costGold:200, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'tx_dur',    gx:-6, gy: 1, shape:S.STAT,
+    displayName:'트랜잭션 지속',  baseLabel:'TxDur',effectType:'TxDuration',      color:'#3498db', costGold:220, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'tx_rad',    gx:-6, gy:-1, shape:S.STAT,
+    displayName:'트랜잭션 범위',  baseLabel:'TxRad',effectType:'TxRadius',        color:'#3498db', costGold:240, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  { id:'tx_cd',     gx:-7, gy: 0, shape:S.STAT,
+    displayName:'발동 주기 감소', baseLabel:'TxCld',effectType:'TxCooldown',      color:'#3498db', costGold:260, costArchToken:0, maxLevel:5, effectValue:0.1 },
+  // Community — left side
+  { id:'meet',      gx:-8, gy: 0, shape:S.STAT,
+    displayName:'개발자 밋업',    baseLabel:'MEET', effectType:'PassiveGoldPerSec',color:'#f39c12', costGold:260, costArchToken:0, maxLevel:5, effectValue:1 },
+  // Transaction Awakening
+  { id:'tx_awk',    gx:-15,gy: 0, shape:S.AWAKEN,
+    displayName:'Rollback',       baseLabel:'TX★', effectType:'WeaponAwaken',     color:'#fb923c', costGold:0,   costArchToken:2, maxLevel:1, effectValue:0 },
+  // C++ resource
+  { id:'cpp',       gx:-3, gy:-2, shape:S.LANG,
+    displayName:'C++',            baseLabel:'C++',  effectType:'ResourceUnlock',   color:'#00599C', costGold:200, costArchToken:0, maxLevel:1, effectValue:1 },
+  { id:'cpp_g',     gx:-4, gy:-3, shape:S.STAT,
+    displayName:'C++ 골드 +',     baseLabel:'C++',  effectType:'ResourceGoldBonus',color:'#00599C', costGold:80,  costArchToken:0, maxLevel:5, effectValue:0.1 },
+];
+
+// ─── EXPLICIT EDGES ───────────────────────────────────────────────
+const EDGES = [
+  // Core → 4 directions
+  ['core','hw'], ['core','cls'], ['core','arr'], ['core','bigo'],
+  // Right coding path
+  ['hw','var'], ['var','ifbranch'], ['ifbranch','forloop'], ['forloop','chain'],
+  // Method Chain tree
+  ['chain','chain_dmg'], ['chain','chain_dep'], ['chain','chain_rng'],
+  ['chain_dmg','chain_cd'], ['chain_dep','chain_cd'], ['chain_rng','chain_cd'],
+  ['chain_cd','conf'], ['conf','talk'], ['talk','hack'], ['hack','pair'],
+  ['pair','review2'], ['review2','review'], ['review','pr'], ['pr','chain_awk'],
+  // Up OOP path
+  ['cls','new'], ['new','ext'], ['ext','ovr'],
+  ['ext','java'], ['java','java_w'], ['java_w','java_g'],
+  // Down algorithm path
+  ['bigo','sort'], ['sort','find'], ['find','hash'], ['hash','rec'],
+  // Left Transaction path
+  ['arr','list'], ['list','io'], ['io','trycatch'], ['trycatch','tx'],
+  ['tx','tx_dot'], ['tx','tx_dur'], ['tx','tx_rad'],
+  ['tx_dot','tx_cd'], ['tx_dur','tx_cd'], ['tx_rad','tx_cd'],
+  ['tx_cd','meet'],
+  // C++ language
+  ['io','cpp'], ['cpp','cpp_g'],
+  // Awakenings (far nodes - shown hidden until you get close)
+  ['pr','chain_awk'],
+  ['meet','tx_awk'],
+];
+
+// ─── STATE & UNLOCK ───────────────────────────────────────────────
+const LOOKUP = {};
+NODES.forEach(n => LOOKUP[n.id] = n);
+
+const ADJ = {};
+NODES.forEach(n => ADJ[n.id] = []);
+EDGES.forEach(([a,b]) => { ADJ[a] && ADJ[a].push(b); ADJ[b] && ADJ[b].push(a); });
+
+const nodeLevels = {};
+['core','hw','arr','cls','bigo'].forEach(id => nodeLevels[id] = 1);
+let gold = 500, commit = 0, bcoin = 0, archToken = 3;
+
+function isUnlocked(id) { return (nodeLevels[id]||0) >= 1; }
+function getState(id) {
+  if (isUnlocked(id)) return ST.UNLOCKED;
+  if (ADJ[id] && ADJ[id].some(nb => isUnlocked(nb))) return ST.UNLOCKABLE;
+  if (ADJ[id] && ADJ[id].some(nb =>
+    ADJ[nb] && ADJ[nb].some(nb2 => isUnlocked(nb2)))) return ST.LOCKED;
+  return ST.HIDDEN;
+}
+function updateHUD() {
+  document.getElementById('hd-gold').textContent = gold;
+  document.getElementById('hd-commit').textContent = commit;
+  document.getElementById('hd-bcoin').textContent = bcoin;
+  document.getElementById('hd-arch').textContent = archToken;
+}
+
+// ─── CANVAS SETUP ─────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('wrap');
+let W = 0, H = 0;
+
+const GRID    = 90;
+const BASE_SZ = 50;
+
+let camX = 0, camY = 0, zoom = 1.0;
+let animT = 0, prevTs = 0;
+let hovId = null, selId = null;
+let panning = false, panPrev = null;
+
+// ─── SCREEN SHAKE ────────────────────────────────────────────────
+let shakeT = 1, shakeDur = 0.001, shakeMag = 0;
+function triggerShake(mag = 6, dur = 0.28) { shakeMag = mag; shakeDur = dur; shakeT = 0; }
+
+// ─── VFX QUEUE ───────────────────────────────────────────────────
+const vfxQueue = [];
+
+function resize() {
+  W = canvas.width  = wrap.clientWidth;
+  H = canvas.height = wrap.clientHeight;
+  camX = W * 0.5 - 2 * GRID * zoom;
+  camY = H * 0.5;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function w2s(gx, gy) { return [camX + gx*GRID*zoom, camY + gy*GRID*zoom]; }
+function hexRgb(h)    { return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+function rgba(hex,a)  { const[r,g,b]=hexRgb(hex); return `rgba(${r},${g},${b},${+a.toFixed(3)})`; }
+function nodeSz(n) {
+  const b = BASE_SZ * zoom;
+  if (n.shape===S.AWAKEN) return b*1.58;
+  if (n.shape===S.WEAPON) return b*1.4;
+  if (n.shape===S.CORE)   return b*1.48;
+  if (n.shape===S.LANG)   return b*1.14;
+  return b;
+}
+function bodyBg(hex, st) {
+  const [r,g,b] = hexRgb(hex);
+  const m = st===ST.UNLOCKED ? 0.38 : st===ST.UNLOCKABLE ? 0.22 : 0.08;
+  return `rgba(${Math.round(r*m+4)},${Math.round(g*m+8)},${Math.round(b*m+13)},0.97)`;
+}
+
+// ─── PATH HELPERS ─────────────────────────────────────────────────
+function pathRRect(x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+function pathHex(cx,cy,r) {
+  ctx.beginPath();
+  for (let i=0;i<6;i++) {
+    const a=Math.PI/3*i-Math.PI/6;
+    i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
+  }
+  ctx.closePath();
+}
+function pathOct(cx,cy,r) {
+  ctx.beginPath();
+  for (let i=0;i<8;i++) {
+    const a=Math.PI/4*i+Math.PI/8;
+    i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
+  }
+  ctx.closePath();
+}
+function pathDiamond(cx,cy,r) {
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r*0.66,cy);
+  ctx.lineTo(cx,cy+r); ctx.lineTo(cx-r*0.66,cy); ctx.closePath();
+}
+function makeNodePath(n, sx, sy, r) {
+  if (n.shape===S.STAT) { const rr=Math.max(4,r*0.2); pathRRect(sx-r,sy-r,r*2,r*2,rr); }
+  else if (n.shape===S.LANG)   pathHex(sx,sy,r);
+  else if (n.shape===S.WEAPON) pathOct(sx,sy,r);
+  else if (n.shape===S.AWAKEN) pathDiamond(sx,sy,r);
+  else { ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); }
+}
+
+// ─── DRAW EDGE ────────────────────────────────────────────────────
+function drawEdge(idA, idB, pulseT) {
+  const nA=LOOKUP[idA], nB=LOOKUP[idB];
+  if (!nA||!nB) return;
+  const stA=getState(idA), stB=getState(idB);
+  if (stA===ST.HIDDEN && stB===ST.HIDDEN) return;
+  const [x1,y1]=w2s(nA.gx,nA.gy), [x2,y2]=w2s(nB.gx,nB.gy);
+  const bothOn = stA===ST.UNLOCKED && stB===ST.UNLOCKED;
+  const ecol   = bothOn ? (nA.color===nB.color?nA.color:'#57d1b8') : stA===ST.UNLOCKED||stB===ST.UNLOCKED ? '#3a6688' : '#202f3a';
+  const ealpha = bothOn?0.72:stA===ST.UNLOCKED||stB===ST.UNLOCKED?0.32:0.16;
+  const elw    = bothOn?1.6:1.0;
+
+  const isH = Math.abs(y2-y1)<2, isV = Math.abs(x2-x1)<2;
+  const pts  = (isH||isV) ? [[x1,y1],[x2,y2]] : [[x1,y1],[x1,y2],[x2,y2]];
+
+  ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round'; ctx.setLineDash([]);
+  ctx.beginPath(); pts.forEach(([px,py],i)=>i===0?ctx.moveTo(px,py):ctx.lineTo(px,py));
+  ctx.strokeStyle=rgba(ecol,ealpha*0.28); ctx.lineWidth=elw*3; ctx.stroke();
+  if (bothOn) { ctx.shadowBlur=7; ctx.shadowColor=rgba(ecol,0.6); }
+  ctx.beginPath(); pts.forEach(([px,py],i)=>i===0?ctx.moveTo(px,py):ctx.lineTo(px,py));
+  ctx.strokeStyle=rgba(ecol,ealpha); ctx.lineWidth=elw; ctx.stroke();
+  ctx.shadowBlur=0;
+  if (!isH&&!isV&&pts.length===3) {
+    ctx.beginPath(); ctx.arc(pts[1][0],pts[1][1],elw*1.8,0,Math.PI*2);
+    ctx.fillStyle=rgba(ecol,ealpha*0.9); ctx.fill();
+  }
+  if (bothOn && pulseT!==undefined) {
+    let total=0; const segs=[];
+    for (let i=0;i<pts.length-1;i++) {
+      const d=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);
+      segs.push({from:pts[i],to:pts[i+1],len:d}); total+=d;
+    }
+    if (total>1) {
+      let rem=(pulseT%1)*total;
+      for (const seg of segs) {
+        if (rem<=seg.len) {
+          const f=rem/seg.len;
+          const px=seg.from[0]+(seg.to[0]-seg.from[0])*f;
+          const py=seg.from[1]+(seg.to[1]-seg.from[1])*f;
+          ctx.beginPath(); ctx.arc(px,py,elw*3,0,Math.PI*2);
+          ctx.fillStyle=rgba(ecol,0.92);
+          ctx.shadowBlur=14; ctx.shadowColor=rgba(ecol,1);
+          ctx.fill(); ctx.shadowBlur=0; break;
+        }
+        rem-=seg.len;
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// ─── DRAW NODE ────────────────────────────────────────────────────
+function drawNode(n) {
+  const st=getState(n.id);
+  if (st===ST.HIDDEN) return;
+  const [sx,sy]=w2s(n.gx,n.gy), sz=nodeSz(n), r=sz*0.5;
+  const isOn=st===ST.UNLOCKED, isAv=st===ST.UNLOCKABLE;
+  const dimA=isOn?1.0:isAv?0.88:0.40;
+  const isSel=selId===n.id;
+  const body=bodyBg(n.color,st);
+  const beat=Math.sin(animT*1.7+n.gx*0.55+n.gy*0.7)*0.5+0.5;
+
+  // outer glow
+  if (isOn)      { ctx.shadowBlur=18+beat*12; ctx.shadowColor=rgba(n.color,0.38); }
+  else if (isAv) { ctx.shadowBlur=10+beat*8;  ctx.shadowColor=`rgba(140,190,240,${0.28+beat*0.16})`; }
+
+  // ── body ──────────────────────────────────────────────────────
+  if (n.shape===S.STAT) {
+    const rr=Math.max(4,r*0.2);
+    pathRRect(sx-r,sy-r,sz,sz,rr); ctx.fillStyle=body; ctx.fill();
+    // color band top 24%
+    const bh=sz*0.24+rr;
+    pathRRect(sx-r,sy-r,sz,bh,rr);
+    const bg=ctx.createLinearGradient(0,sy-r,0,sy-r+bh);
+    bg.addColorStop(0,rgba(n.color,dimA*0.9)); bg.addColorStop(1,rgba(n.color,dimA*0.28));
+    ctx.fillStyle=bg; ctx.fill();
+  } else if (n.shape===S.LANG) {
+    pathHex(sx,sy,r); ctx.fillStyle=body; ctx.fill();
+    pathHex(sx,sy,r); ctx.fillStyle=rgba(n.color,dimA*(isOn?0.44:isAv?0.26:0.10)); ctx.fill();
+    pathHex(sx,sy,r*0.58); ctx.strokeStyle=rgba(n.color,dimA*0.35); ctx.lineWidth=0.8; ctx.stroke();
+  } else if (n.shape===S.WEAPON) {
+    pathOct(sx,sy,r); ctx.fillStyle=body; ctx.fill();
+    pathOct(sx,sy,r);
+    const wg=ctx.createLinearGradient(0,sy-r,0,sy+r*0.2);
+    wg.addColorStop(0,rgba(n.color,dimA*0.72)); wg.addColorStop(1,rgba(n.color,0));
+    ctx.fillStyle=wg; ctx.fill();
+    pathOct(sx,sy,r*0.62); ctx.strokeStyle=rgba(n.color,dimA*0.32); ctx.lineWidth=1; ctx.stroke();
+    if (isOn) { pathOct(sx,sy,r*0.62+beat*r*0.06); ctx.strokeStyle=rgba(n.color,0.2*beat); ctx.lineWidth=1.5; ctx.stroke(); }
+  } else if (n.shape===S.AWAKEN) {
+    if (isOn||isAv) {
+      for (let i=0;i<8;i++) {
+        const a=Math.PI*2/8*i+animT*0.35;
+        const d0=r*1.14, d1=r*(1.44+(i%2===0?0.24:0))+beat*r*0.14;
+        ctx.beginPath();
+        ctx.moveTo(sx+d0*Math.cos(a),sy+d0*Math.sin(a));
+        ctx.lineTo(sx+d1*Math.cos(a),sy+d1*Math.sin(a));
+        ctx.strokeStyle=rgba(n.color,isOn?0.58:0.26);
+        ctx.lineWidth=i%2===0?1.5:0.8;
+        ctx.shadowBlur=isOn?6:0; ctx.shadowColor=rgba(n.color,0.8);
+        ctx.stroke(); ctx.shadowBlur=0;
+      }
+    }
+    pathDiamond(sx,sy,r); ctx.fillStyle=body; ctx.fill();
+    pathDiamond(sx,sy,r);
+    const ag=ctx.createLinearGradient(0,sy-r,0,sy+r*0.4);
+    ag.addColorStop(0,rgba(n.color,dimA*0.78)); ag.addColorStop(1,rgba(n.color,0));
+    ctx.fillStyle=ag; ctx.fill();
+    pathDiamond(sx,sy,r*0.5); ctx.strokeStyle=rgba(n.color,dimA*0.42); ctx.lineWidth=0.9; ctx.stroke();
+  } else if (n.shape===S.CORE) {
+    ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fillStyle=body; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+    const cg=ctx.createRadialGradient(sx,sy-r*0.3,r*0.1,sx,sy,r);
+    cg.addColorStop(0,rgba(n.color,0.52)); cg.addColorStop(1,rgba(n.color,0.07));
+    ctx.fillStyle=cg; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx,sy,r*0.66,0,Math.PI*2);
+    ctx.strokeStyle=rgba(n.color,0.44); ctx.lineWidth=1; ctx.stroke();
+    for (let i=0;i<8;i++) {
+      const a=Math.PI/4*i+animT*0.18;
+      ctx.beginPath();
+      ctx.moveTo(sx+r*0.70*Math.cos(a),sy+r*0.70*Math.sin(a));
+      ctx.lineTo(sx+r*0.94*Math.cos(a),sy+r*0.94*Math.sin(a));
+      ctx.strokeStyle=rgba(n.color,0.52); ctx.lineWidth=1; ctx.stroke();
+    }
+  }
+  ctx.shadowBlur=0;
+
+  // ── border ────────────────────────────────────────────────────
+  let bcol, blw;
+  if (isSel)     { bcol='#ffd700'; blw=2.6; }
+  else if (isOn) { bcol=n.color;   blw=1.8; }
+  else if (isAv) { bcol='#b0ccde'; blw=1.5; }
+  else           { bcol='#2a3a4a'; blw=0.9; }
+  if (isOn) { ctx.shadowBlur=6; ctx.shadowColor=rgba(n.color,0.5); }
+  makeNodePath(n,sx,sy,r);
+  ctx.strokeStyle=rgba(bcol,dimA); ctx.lineWidth=blw; ctx.stroke();
+  ctx.shadowBlur=0;
+
+  // selected outer ring
+  if (isSel) {
+    ctx.shadowBlur=16; ctx.shadowColor='rgba(255,210,0,0.55)';
+    const d=5.5;
+    if (n.shape===S.STAT){const rr=Math.max(4,r*0.2);pathRRect(sx-r-d,sy-r-d,sz+d*2,sz+d*2,rr+2);}
+    else if(n.shape===S.LANG) pathHex(sx,sy,r+d);
+    else if(n.shape===S.WEAPON) pathOct(sx,sy,r+d);
+    else if(n.shape===S.AWAKEN) pathDiamond(sx,sy,r+d);
+    else {ctx.beginPath();ctx.arc(sx,sy,r+d,0,Math.PI*2);}
+    ctx.strokeStyle='rgba(255,210,0,0.38)'; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+
+  // ── effectType icon badge — top-right, inside border ─────────
+  if (n.effectType && n.shape !== S.CORE && zoom > 0.45) {
+    const meta = emeta(n.effectType);
+    const ibx  = sx + r*0.64;
+    const iby  = sy - r*0.64;
+    const ib_r = Math.max(6.5, r*0.22);
+    ctx.beginPath(); ctx.arc(ibx,iby,ib_r,0,Math.PI*2);
+    ctx.fillStyle = `rgba(8,14,22,0.92)`;
+    ctx.fill();
+    ctx.strokeStyle = rgba(meta.color, dimA*0.65);
+    ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.fillStyle = rgba(meta.color, dimA*0.9);
+    ctx.font = `${Math.round(Math.max(7,ib_r*0.95))}px Consolas`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(meta.icon, ibx, iby+0.5);
+  }
+
+  // action badge — outside border corner, always visible when actionable
+  const curLvBadge = nodeLevels[n.id] || 0;
+  const canUpgrade = isOn && curLvBadge < n.maxLevel;
+  if (isAv || canUpgrade) {
+    const bx=sx+r*0.90, by=sy-r*0.90, br=Math.max(5.5, 6*zoom);
+    const isUpgrade = canUpgrade;
+    ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2);
+    ctx.fillStyle = isUpgrade ? 'rgba(200,140,20,0.97)' : 'rgba(20,178,48,0.97)';
+    ctx.shadowBlur=10;
+    ctx.shadowColor = isUpgrade ? 'rgba(255,200,40,0.6)' : 'rgba(40,255,70,0.6)';
+    ctx.fill(); ctx.shadowBlur=0;
+    ctx.strokeStyle = isUpgrade ? 'rgba(255,220,80,0.6)' : 'rgba(110,255,130,0.6)';
+    ctx.lineWidth=0.8; ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.95)';
+    ctx.font=`bold ${Math.round(Math.max(9,10*zoom))}px Consolas`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(isUpgrade ? '▲' : '+', bx, by+0.5);
+  }
+
+  // ── labels ────────────────────────────────────────────────────
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const textA = isOn?1.0:isAv?0.86:0.36;
+
+  if (n.shape===S.CORE) {
+    ctx.font=`bold ${Math.round(Math.max(9,11*zoom))}px Consolas`;
+    ctx.fillStyle=rgba(n.color,textA);
+    ctx.fillText(n.displayName,sx,sy);
+    return;
+  }
+
+  // All other shapes: displayName as main, effectDesc as sub
+  const meta  = emeta(n.effectType);
+  const dname = n.displayName;
+  const maxW  = sz * 0.82;
+
+  // Choose font size to fit displayName
+  let fSize = Math.round(Math.max(7.5, Math.min(11, sz*0.175))*zoom);
+  ctx.font = `bold ${fSize}px Consolas`;
+  const dnW = ctx.measureText(dname).width;
+  if (dnW > maxW) fSize = Math.max(6, Math.round(fSize * maxW / dnW));
+  ctx.font = `bold ${fSize}px Consolas`;
+
+  let mainY, subY;
+  if (n.shape===S.LANG) {
+    mainY = sy - 3*zoom; subY = sy + 8*zoom;
+  } else if (n.shape===S.WEAPON || n.shape===S.AWAKEN) {
+    mainY = sy - 5*zoom; subY = sy + 7*zoom;
+  } else {
+    mainY = sy - 4*zoom; subY = sy + 8*zoom;
+  }
+
+  ctx.fillStyle = rgba(n.color, textA * (n.shape===S.LANG ? 1.0 : 0.9) + (isOn ? 0.1 : 0));
+  ctx.fillText(dname, sx, mainY);
+
+  // sub: effectType short desc
+  if (n.effectType && zoom > 0.52) {
+    const shortDesc = meta.desc.length > 8 ? meta.desc.slice(0,8) : meta.desc;
+    ctx.font=`${Math.round(Math.max(6,fSize*0.72))}px Consolas`;
+    ctx.fillStyle=rgba(meta.color, textA*0.65);
+    ctx.fillText(shortDesc,sx,subY);
+  }
+}
+
+// ─── GRID DOTS ────────────────────────────────────────────────────
+function drawGrid() {
+  const sp=GRID*zoom, ox=((camX%sp)+sp)%sp, oy=((camY%sp)+sp)%sp;
+  ctx.fillStyle='rgba(255,255,255,0.034)';
+  for (let x=ox-sp;x<W+sp;x+=sp)
+    for (let y=oy-sp;y<H+sp;y+=sp) {
+      ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
+    }
+}
+
+// ─── VFX DRAW ────────────────────────────────────────────────────
+function drawVfx(v) {
+  const prog = v.t / v.duration;
+  ctx.save();
+  switch (v.type) {
+    case 'ripple': {
+      const r = v.maxR * prog;
+      const a = (1 - prog) * 0.85;
+      ctx.beginPath(); ctx.arc(v.sx, v.sy, r, 0, Math.PI*2);
+      ctx.strokeStyle = rgba(v.color, a);
+      ctx.lineWidth = Math.max(0.4, 2.5*(1-prog));
+      ctx.shadowBlur=10; ctx.shadowColor=rgba(v.color, a*0.7);
+      ctx.stroke(); break;
+    }
+    case 'spark': {
+      const x1=v.sx+v.vx*v.t*0.2, y1=v.sy+v.vy*v.t*0.2;
+      const x2=v.sx+v.vx*v.t,     y2=v.sy+v.vy*v.t;
+      const a = Math.max(0, 1-prog*1.1);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle=rgba(v.color,a); ctx.lineWidth=Math.max(0.3,1.8*(1-prog));
+      ctx.shadowBlur=5; ctx.shadowColor=rgba(v.color,a*0.5);
+      ctx.stroke(); break;
+    }
+    case 'particle': {
+      const x=v.sx+v.vx*v.t, y=v.sy+v.vy*v.t - v.t*v.t*55;
+      const a=Math.max(0,1-prog*1.3);
+      ctx.fillStyle=rgba(v.color,a*0.9);
+      ctx.font=`bold ${Math.round(Math.max(6,8*zoom))}px Consolas`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(v.text,x,y); break;
+    }
+    case 'float': {
+      const y=v.sy - prog*50;
+      const a=prog<0.25 ? prog/0.25 : Math.max(0,1-(prog-0.25)/0.75);
+      ctx.fillStyle=rgba(v.color,a);
+      ctx.font=`bold ${Math.round(Math.max(9,13*zoom))}px Consolas`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.shadowBlur=8; ctx.shadowColor=rgba(v.color,a*0.8);
+      ctx.fillText(v.label,v.sx,y); break;
+    }
+    case 'edge-flash': {
+      const a=Math.max(0,1-prog*prog)*0.42;
+      const g=ctx.createRadialGradient(W/2,H/2,H*0.22,W/2,H/2,Math.max(W,H)*0.72);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,rgba(v.color,a));
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H); break;
+    }
+    case 'edge-trace': {
+      const traveled = prog * v.totalLen;
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      // lit trail up to dot position
+      let rem = traveled;
+      for (const seg of v.segs) {
+        if (rem <= 0) break;
+        const f = Math.min(1, rem / seg.len);
+        ctx.beginPath();
+        ctx.moveTo(seg.x1, seg.y1);
+        ctx.lineTo(seg.x1+(seg.x2-seg.x1)*f, seg.y1+(seg.y2-seg.y1)*f);
+        ctx.strokeStyle = rgba(v.color, (1-prog)*0.5);
+        ctx.lineWidth = 2;
+        ctx.shadowBlur=10; ctx.shadowColor=rgba(v.color,0.7);
+        ctx.stroke();
+        rem -= seg.len;
+      }
+      // bright dot at front
+      let dotRem = traveled;
+      for (const seg of v.segs) {
+        if (dotRem <= seg.len) {
+          const f = dotRem / seg.len;
+          const dx = seg.x1+(seg.x2-seg.x1)*f;
+          const dy = seg.y1+(seg.y2-seg.y1)*f;
+          const dr = Math.max(2.5, 3*zoom);
+          ctx.beginPath(); ctx.arc(dx,dy,dr*2.2,0,Math.PI*2);
+          ctx.fillStyle=rgba(v.color,0.18); ctx.shadowBlur=0; ctx.fill();
+          ctx.beginPath(); ctx.arc(dx,dy,dr,0,Math.PI*2);
+          ctx.fillStyle=rgba(v.color,0.95);
+          ctx.shadowBlur=20; ctx.shadowColor=rgba(v.color,1);
+          ctx.fill();
+          break;
+        }
+        dotRem -= seg.len;
+      }
+      break;
+    }
+  }
+  ctx.shadowBlur=0; ctx.restore();
+}
+
+function updateAndDrawVfx(dt) {
+  let len = vfxQueue.length;
+  while (len--) {
+    const v = vfxQueue[len];
+    v.t += dt;
+    if (v.t >= v.duration) {
+      vfxQueue[len] = vfxQueue[vfxQueue.length-1]; vfxQueue.pop(); continue;
+    }
+    drawVfx(v);
+  }
+}
+
+// ─── MAIN LOOP ────────────────────────────────────────────────────
+function frame(ts) {
+  const dt = Math.min((ts-prevTs)*0.001, 0.05); prevTs=ts;
+  animT = ts*0.001;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,W,H);
+
+  let sx=0, sy=0;
+  if (shakeT < shakeDur) {
+    shakeT += dt;
+    const s = Math.max(0,1-shakeT/shakeDur);
+    sx = Math.sin(shakeT*80)*shakeMag*s;
+    sy = Math.cos(shakeT*60)*shakeMag*s*0.6;
+  }
+  ctx.save(); ctx.translate(sx,sy);
+
+  drawGrid();
+  for (const [a,b] of EDGES) {
+    const bothOn=getState(a)===ST.UNLOCKED&&getState(b)===ST.UNLOCKED;
+    const pOff=(LOOKUP[a]?LOOKUP[a].gx*0.11+LOOKUP[a].gy*0.17:0);
+    drawEdge(a,b,bothOn?animT*0.52+pOff:undefined);
+  }
+  for (const order of [ST.LOCKED,ST.UNLOCKABLE,ST.UNLOCKED])
+    for (const n of NODES) if (getState(n.id)===order) drawNode(n);
+
+  updateAndDrawVfx(dt);
+
+  ctx.restore();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ─── HIT TEST ─────────────────────────────────────────────────────
+function hitTest(n,mx,my) {
+  const [sx,sy]=w2s(n.gx,n.gy), r=nodeSz(n)*0.5;
+  const dx=mx-sx, dy=my-sy;
+  if (n.shape===S.LANG||n.shape===S.CORE) return Math.hypot(dx,dy)<=r;
+  if (n.shape===S.AWAKEN) return Math.abs(dx)/(r*0.66)+Math.abs(dy)/r<=1;
+  return Math.abs(dx)<=r&&Math.abs(dy)<=r;
+}
+function nodeAt(mx,my) {
+  for (let i=NODES.length-1;i>=0;i--) {
+    const n=NODES[i];
+    if (getState(n.id)===ST.HIDDEN) continue;
+    if (hitTest(n,mx,my)) return n;
+  }
+  return null;
+}
+
+// ─── HOVER CARD ───────────────────────────────────────────────────
+const card    = document.getElementById('card');
+const cardBtn = document.getElementById('card-btn');
+let cardNode  = null;
+let hoverTimer= null;
+let cardVisible = false;
+
+function showCard(n, cx, cy, keepPos=false) {
+  cardNode = n;
+  const st = getState(n.id);
+  const meta = emeta(n.effectType);
+  // Header
+  document.getElementById('card-icon-char').textContent = meta.icon || '◈';
+  document.getElementById('card-icon-bg').style.background = rgba(meta.color, 0.18);
+  document.getElementById('card-icon-bg').style.border = `1px solid ${rgba(meta.color, 0.4)}`;
+  document.getElementById('card-name').textContent = n.displayName;
+  document.getElementById('card-name').style.color = n.color;
+  document.getElementById('card-etype').textContent = n.effectType || '—';
+  // Body
+  document.getElementById('card-effect').textContent = effectLabel(n.effectType, n.effectValue, n.maxLevel);
+  document.getElementById('card-effect').style.color = meta.color;
+  document.getElementById('card-desc').textContent =
+    `${n.baseLabel} · 레벨당 ${n.effectType&&n.effectValue?
+      (Math.abs(n.effectValue)<1?`+${Math.round(n.effectValue*100)}%`:`+${n.effectValue}`):
+      '—'} 증가`;
+  // Cost
+  const curLv = nodeLevels[n.id] || 0;
+  const costGoldEl = document.getElementById('card-cost-gold');
+  const costArchEl = document.getElementById('card-cost-arch');
+  const costLvEl   = document.getElementById('card-lv-val');
+  costGoldEl.style.display = n.costGold      > 0 ? '' : 'none';
+  costArchEl.style.display = n.costArchToken > 0 ? '' : 'none';
+  document.getElementById('card-gold-val').textContent = n.costGold;
+  document.getElementById('card-arch-val').textContent = n.costArchToken;
+  costLvEl.textContent = `${curLv} / ${n.maxLevel}`;
+  // Button
+  cardBtn.onclick = null;
+  const canAfford = gold >= n.costGold && archToken >= n.costArchToken;
+  const costStr = `${n.costGold?'🪙'+n.costGold:''}${n.costArchToken?' ◆'+n.costArchToken:''}`;
+  if (st===ST.UNLOCKED) {
+    if (curLv < n.maxLevel) {
+      if (canAfford) {
+        cardBtn.className='state-unlockable';
+        cardBtn.textContent=`업그레이드 (${costStr})`;
+        cardBtn.onclick = () => upgrade(n);
+      } else {
+        cardBtn.className='state-no-points'; cardBtn.textContent='재화 부족';
+      }
+    } else {
+      cardBtn.className='state-done'; cardBtn.textContent='✓ 최대 레벨';
+    }
+  } else if (st===ST.UNLOCKABLE) {
+    if (canAfford) {
+      cardBtn.className='state-unlockable';
+      cardBtn.textContent=`해금하기 (${costStr})`;
+      cardBtn.onclick = () => unlock(n);
+    } else {
+      cardBtn.className='state-no-points'; cardBtn.textContent='재화 부족';
+    }
+  } else {
+    cardBtn.className='state-locked'; cardBtn.textContent='선행 노드 필요';
+  }
+  // Position
+  if (!keepPos) {
+    const cw=252, ch=200;
+    let tx=cx+18, ty=cy-ch*0.5;
+    if (tx+cw > window.innerWidth-6) tx=cx-cw-18;
+    if (ty < 6) ty=6;
+    if (ty+ch > window.innerHeight-6) ty=window.innerHeight-ch-6;
+    card.style.left=tx+'px'; card.style.top=ty+'px';
+  }
+  card.classList.add('visible');
+  cardVisible = true;
+}
+function hideCard() {
+  card.classList.remove('visible');
+  cardVisible = false;
+  cardNode = null;
+}
+
+function refreshCard(n) {
+  if (cardNode && cardNode.id===n.id) {
+    clearTimeout(hoverTimer);
+    setTimeout(()=>{
+      if (cardNode && cardNode.id===n.id) {
+        clearTimeout(hoverTimer);
+        showCard(n, 0, 0, true); // keepPos: don't reposition, just update content
+      }
+    }, 60);
+  }
+}
+function unlock(n) {
+  if (getState(n.id)!==ST.UNLOCKABLE) return;
+  if (gold < n.costGold || archToken < n.costArchToken) return;
+  gold -= n.costGold;
+  archToken -= n.costArchToken;
+  nodeLevels[n.id] = 1;
+  selId = n.id;
+  updateHUD();
+  refreshCard(n);
+  maybeRefreshStats(n);
+  spawnNodeVfx(n);
+}
+function upgrade(n) {
+  const cur = nodeLevels[n.id] || 0;
+  if (cur >= n.maxLevel) return;
+  if (gold < n.costGold || archToken < n.costArchToken) return;
+  gold -= n.costGold;
+  archToken -= n.costArchToken;
+  nodeLevels[n.id] = cur + 1;
+  updateHUD();
+  refreshCard(n);
+  maybeRefreshStats(n);
+  spawnNodeVfx(n);
+}
+
+// ─── EDGE TRACE VFX ──────────────────────────────────────────────
+function bfsPath(targetId) {
+  const start = 'core';
+  if (start === targetId) return [start];
+  const prev = { [start]: null };
+  const queue = [start];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const nb of (ADJ[cur] || [])) {
+      if (prev[nb] !== undefined) continue;
+      if (!isUnlocked(nb)) continue;
+      prev[nb] = cur;
+      if (nb === targetId) {
+        const path = [nb];
+        let c = cur;
+        while (c !== null) { path.unshift(c); c = prev[c]; }
+        return path;
+      }
+      queue.push(nb);
+    }
+  }
+  return null;
+}
+
+function spawnEdgeTrace(targetId, color) {
+  const path = bfsPath(targetId);
+  if (!path || path.length < 2) return;
+  const waypoints = [];
+  for (let i = 0; i < path.length; i++) {
+    const n = LOOKUP[path[i]]; if (!n) continue;
+    const [px, py] = w2s(n.gx, n.gy);
+    if (i === 0) { waypoints.push([px, py]); continue; }
+    const p = LOOKUP[path[i-1]]; if (!p) continue;
+    const [px0, py0] = w2s(p.gx, p.gy);
+    const isH = Math.abs(py-py0) < 2, isV = Math.abs(px-px0) < 2;
+    if (!isH && !isV) waypoints.push([px0, py]); // L-shape corner
+    waypoints.push([px, py]);
+  }
+  const segs = []; let totalLen = 0;
+  for (let i = 0; i < waypoints.length-1; i++) {
+    const [x1,y1]=waypoints[i], [x2,y2]=waypoints[i+1];
+    const len = Math.hypot(x2-x1, y2-y1);
+    segs.push({x1,y1,x2,y2,len}); totalLen += len;
+  }
+  if (totalLen < 1) return;
+  const duration = Math.min(0.72, Math.max(0.32, totalLen / 380));
+  vfxQueue.push({ type:'edge-trace', segs, totalLen, t:0, duration, color });
+}
+
+// ─── VFX SPAWN ───────────────────────────────────────────────────
+function getNodeCategory(n) {
+  if (n.effectType==='WeaponUnlock'||n.effectType==='WeaponAwaken') return 'weapon';
+  if (n.effectType==='ResourceUnlock') return 'resource';
+  return 'stat';
+}
+function getFloatLabel(n) {
+  if (!n.effectType||!n.effectValue) return '▲';
+  if (Math.abs(n.effectValue)<1) return `+${Math.round(n.effectValue*100)}%`;
+  return `+${n.effectValue}`;
+}
+function showToast(msg, type='resource') {
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.textContent=msg;
+  document.getElementById('toast-stack').appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),200); },2000);
+}
+function showWeaponToast(msg, sub, color) {
+  const el=document.getElementById('weapon-toast');
+  document.getElementById('wt-main').textContent=msg;
+  el.querySelector('.wt-sub').textContent=sub;
+  el.style.color=color; el.style.borderColor=rgba(color,0.7);
+  el.style.boxShadow=`0 0 40px ${rgba(color,0.22)}`;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),3000);
+}
+function spawnNodeVfx(n) {
+  const [sx,sy]=w2s(n.gx,n.gy);
+  const r=nodeSz(n)*0.5;
+  const cat=getNodeCategory(n);
+  const isFirstUnlock = (nodeLevels[n.id]||0) === 1;
+
+  if (cat==='stat') {
+    vfxQueue.push({type:'ripple',sx,sy,maxR:r*2.4,t:0,duration:0.65,color:n.color});
+    vfxQueue.push({type:'float',sx,sy:sy-r*0.2,label:getFloatLabel(n),t:0,duration:0.95,color:n.color});
+    for (let i=0;i<8;i++) {
+      const a=(Math.PI*2/8)*i;
+      vfxQueue.push({type:'particle',sx,sy,
+        vx:Math.cos(a)*(55+Math.random()*35), vy:Math.sin(a)*(55+Math.random()*35),
+        text:Math.random()>0.5?'1':'0', t:0, duration:0.38+Math.random()*0.28, color:n.color});
+    }
+    if (isFirstUnlock) spawnEdgeTrace(n.id, n.color);
+  } else if (cat==='resource') {
+    vfxQueue.push({type:'ripple',sx,sy,maxR:r*2.8,t:0,duration:0.55,color:n.color});
+    for (let i=0;i<12;i++) {
+      const a=(Math.PI*2/12)*i+Math.random()*0.18;
+      vfxQueue.push({type:'spark',sx,sy,
+        vx:Math.cos(a)*(90+Math.random()*60), vy:Math.sin(a)*(90+Math.random()*60),
+        t:0, duration:0.45+Math.random()*0.2, color:n.color});
+    }
+    showToast(`✦ ${n.displayName} 자원 해금됨`,'resource');
+    spawnEdgeTrace(n.id, n.color);
+  } else { // weapon
+    vfxQueue.push({type:'edge-flash',sx:W/2,sy:H/2,t:0,duration:0.75,color:n.color});
+    vfxQueue.push({type:'ripple',sx,sy,maxR:r*3.8,t:0,duration:0.9,color:n.color});
+    vfxQueue.push({type:'ripple',sx,sy,maxR:r*2.2,t:0,duration:0.55,color:n.color});
+    for (let i=0;i<20;i++) {
+      const a=(Math.PI*2/20)*i+Math.random()*0.12;
+      vfxQueue.push({type:'spark',sx,sy,
+        vx:Math.cos(a)*(140+Math.random()*80), vy:Math.sin(a)*(140+Math.random()*80),
+        t:0, duration:0.55+Math.random()*0.35, color:n.color});
+    }
+    const isAwaken=n.effectType==='WeaponAwaken';
+    triggerShake(isAwaken?9:6, 0.28);
+    showWeaponToast(
+      `${isAwaken?'✦':'★'} ${n.displayName}`,
+      isAwaken ? 'AWAKENED' : 'UNLOCKED',
+      n.color
+    );
+    spawnEdgeTrace(n.id, n.color);
+  }
+}
+
+// ─── INPUT ────────────────────────────────────────────────────────
+function evXY(e) {
+  const r=canvas.getBoundingClientRect();
+  return [(e.clientX-r.left)*(canvas.width/r.width),(e.clientY-r.top)*(canvas.height/r.height)];
+}
+
+canvas.addEventListener('mousemove', e => {
+  const [mx,my]=evXY(e);
+  if (panning && panPrev) {
+    camX+=mx-panPrev[0]; camY+=my-panPrev[1]; panPrev=[mx,my];
+    clearTimeout(hoverTimer); if (!cardVisible) return;
+    hideCard(); return;
+  }
+  const n = nodeAt(mx,my);
+  hovId = n ? n.id : null;
+  canvas.style.cursor = n ? 'pointer' : 'grab';
+  if (n) {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(()=>showCard(n, e.clientX, e.clientY), 160);
+  } else {
+    clearTimeout(hoverTimer);
+    // don't hide if mouse might be moving to card
+    hoverTimer = setTimeout(()=>{ if (hovId===null) hideCard(); }, 220);
+  }
+});
+canvas.addEventListener('mousedown', e => {
+  const [mx,my]=evXY(e);
+  const n=nodeAt(mx,my);
+  if (!n) {
+    panning=true; panPrev=[mx,my];
+    canvas.classList.add('panning');
+    clearTimeout(hoverTimer); hideCard();
+  } else {
+    selId=n.id;
+  }
+});
+canvas.addEventListener('mouseup', ()=>{ panning=false; panPrev=null; canvas.classList.remove('panning'); });
+canvas.addEventListener('mouseleave', ()=>{
+  panning=false; panPrev=null; hovId=null;
+  clearTimeout(hoverTimer);
+  hoverTimer = setTimeout(hideCard, 250);
+});
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const [mx,my]=evXY(e);
+  const f=e.deltaY<0?1.11:0.90;
+  const nz=Math.max(0.28,Math.min(2.8,zoom*f));
+  camX=mx-(mx-camX)*(nz/zoom); camY=my-(my-camY)*(nz/zoom); zoom=nz;
+  hideCard();
+},{passive:false});
+
+// Keep card open when mouse moves to it
+card.addEventListener('mouseenter', ()=>clearTimeout(hoverTimer));
+card.addEventListener('mouseleave', ()=>{ hoverTimer=setTimeout(hideCard,200); });
+
+// ─── STATS PANEL ─────────────────────────────────────────────────
+const STAT_SECTIONS = {
+  COMBAT: {
+    label: '전투',
+    types: ['ClickPower','ClickCritChance','ClickCritMultiplier','ClickRange',
+            'GlobalDamage','GlobalCritChance','GlobalCritMultiplier'],
+  },
+  WEAPONS: {
+    label: '무기',
+    types: ['WeaponUnlock','WeaponAwaken',
+            'ChainDamage','ChainDepth','ChainRange','ChainCooldown','ChainInitialTargets',
+            'TxTickDamage','TxDuration','TxRadius','TxCooldown','TxMaxTargets'],
+  },
+  RESOURCES: {
+    label: '자원',
+    types: ['ResourceUnlock','ResourceGoldBonus','ResourceInterval',
+            'GlobalSpawnCount','InitialSpawnCount','SpawnInterval','SpawnWeight'],
+  },
+  ECONOMY: {
+    label: '경제',
+    types: ['StudyEfficiency','PassiveGoldPerSec','PassiveEfficiency',
+            'StudyTime','InsightDropChance','InsightDropAmount'],
+  },
+};
+
+const BOOLEAN_TYPES = new Set(['WeaponUnlock','WeaponAwaken','ResourceUnlock']);
+
+function computeStats() {
+  const result = {}; // effectType → { total, nodes: [{n, lv}] }
+  for (const n of NODES) {
+    if (!n.effectType) continue;
+    const lv = nodeLevels[n.id] || 0;
+    if (lv === 0) continue;
+    if (!result[n.effectType]) result[n.effectType] = { total: 0, items: [] };
+    if (BOOLEAN_TYPES.has(n.effectType)) {
+      result[n.effectType].items.push({ label: n.displayName, lv });
+    } else if (n.effectValue !== 0) {
+      result[n.effectType].total += n.effectValue * lv;
+      result[n.effectType].items.push({ label: n.displayName, lv, val: n.effectValue * lv });
+    }
+  }
+  return result;
+}
+
+function fmtVal(et, total) {
+  if (BOOLEAN_TYPES.has(et)) return '';
+  const m = emeta(et);
+  if (Math.abs(total) < 1) return `+${Math.round(total * 100)}%`;
+  return `+${total % 1 === 0 ? total : total.toFixed(1)}`;
+}
+
+let statsPanelOpen = false;
+function renderStatsPanel() {
+  const stats = computeStats();
+  const body  = document.getElementById('stats-body');
+  body.innerHTML = '';
+
+  for (const [secKey, sec] of Object.entries(STAT_SECTIONS)) {
+    // collect rows for this section
+    const rows = [];
+    for (const et of sec.types) {
+      const meta = emeta(et);
+      const data = stats[et];
+      if (BOOLEAN_TYPES.has(et)) {
+        if (data && data.items.length > 0) {
+          for (const item of data.items) {
+            rows.push({ name: item.label, meta, badge: 'unlocked', et });
+          }
+        }
+      } else {
+        if (data && data.total !== 0) {
+          rows.push({ name: meta.desc, meta, val: fmtVal(et, data.total), et });
+        }
+      }
+    }
+    if (rows.length === 0) continue;
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'stats-section-title';
+    titleEl.textContent = sec.label;
+    body.appendChild(titleEl);
+
+    for (const row of rows) {
+      const el = document.createElement('div');
+      el.className = 'stats-row active';
+      el.dataset.effect = row.et;
+      if (row.badge) {
+        el.innerHTML = `<span class="sr-name">${row.name}</span><span class="stats-badge badge-${row.badge}">해금</span>`;
+      } else {
+        el.innerHTML = `<span class="sr-name">${row.name}</span><span class="sr-val">${row.val}</span>`;
+      }
+      body.appendChild(el);
+    }
+  }
+
+  if (!body.children.length) {
+    body.innerHTML = '<div style="padding:20px 14px;font-size:10px;color:#2a3a4a">해금된 스탯 없음</div>';
+  }
+}
+
+function pulseStatRow(effectType) {
+  const els = document.querySelectorAll(`[data-effect="${effectType}"]`);
+  els.forEach(el => {
+    el.classList.add('highlight');
+    setTimeout(() => el.classList.remove('highlight'), 500);
+  });
+}
+
+function toggleStats() {
+  statsPanelOpen = !statsPanelOpen;
+  document.getElementById('stats-panel').classList.toggle('open', statsPanelOpen);
+  document.getElementById('btn-stats').textContent = statsPanelOpen ? 'STATS ◀' : 'STATS ▶';
+  if (statsPanelOpen) renderStatsPanel();
+}
+
+// Re-render stats panel after unlock/upgrade (if open)
+function maybeRefreshStats(n) {
+  if (statsPanelOpen) {
+    renderStatsPanel();
+    setTimeout(() => pulseStatRow(n.effectType), 60);
+  }
+}
+
+// Patch unlock and upgrade to also refresh stats
+// ─── TEST BUTTONS ─────────────────────────────────────────────────
+document.getElementById('btn-gold').addEventListener('click', () => {
+  gold += 500; updateHUD();
+  if (cardNode) refreshCard(cardNode);
+});
+document.getElementById('btn-commit').addEventListener('click', () => {
+  commit += 50; updateHUD();
+  if (cardNode) refreshCard(cardNode);
+});
+document.getElementById('btn-bcoin').addEventListener('click', () => {
+  bcoin += 10; updateHUD();
+  if (cardNode) refreshCard(cardNode);
+});
+document.getElementById('btn-arch').addEventListener('click', () => {
+  archToken += 5; updateHUD();
+  if (cardNode) refreshCard(cardNode);
+});
+document.getElementById('btn-stats').addEventListener('click', toggleStats);
+
+// ─── LEGEND MINI ICONS ────────────────────────────────────────────
+(function() {
+  function mini(id, fn) {
+    const el=document.getElementById(id); if (!el) return;
+    el.width=el.height=12; fn(el.getContext('2d'),6,6,5);
+  }
+  mini('ld-stat',(c,x,y,r)=>{
+    c.beginPath(); const rr=1.2;
+    c.moveTo(x-r+rr,y-r);c.lineTo(x+r-rr,y-r);c.arcTo(x+r,y-r,x+r,y-r+rr,rr);
+    c.lineTo(x+r,y+r-rr);c.arcTo(x+r,y+r,x+r-rr,y+r,rr);
+    c.lineTo(x-r+rr,y+r);c.arcTo(x-r,y+r,x-r,y+r-rr,rr);
+    c.lineTo(x-r,y-r+rr);c.arcTo(x-r,y-r,x-r+rr,y-r,rr);
+    c.closePath(); c.fillStyle='#e67e22'; c.fill();
+  });
+  mini('ld-lang',(c,x,y,r)=>{
+    c.beginPath();
+    for(let i=0;i<6;i++){const a=Math.PI/3*i-Math.PI/6;i===0?c.moveTo(x+r*Math.cos(a),y+r*Math.sin(a)):c.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));}
+    c.closePath(); c.fillStyle='#ED8B00'; c.fill();
+  });
+  mini('ld-weapon',(c,x,y,r)=>{
+    c.beginPath();
+    for(let i=0;i<8;i++){const a=Math.PI/4*i+Math.PI/8;i===0?c.moveTo(x+r*Math.cos(a),y+r*Math.sin(a)):c.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));}
+    c.closePath(); c.fillStyle='#00bcd4'; c.fill();
+  });
+  mini('ld-awaken',(c,x,y,r)=>{
+    c.beginPath(); c.moveTo(x,y-r);c.lineTo(x+r*0.65,y);c.lineTo(x,y+r);c.lineTo(x-r*0.65,y);
+    c.closePath(); c.fillStyle='#fbbf24'; c.fill();
+  });
+  mini('ld-core',(c,x,y,r)=>{
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fillStyle='#57d1b8'; c.fill();
+  });
+})();
+</script>
+</body>
+</html>

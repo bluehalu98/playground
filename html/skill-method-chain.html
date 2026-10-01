@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Method Chaining — Skill Prototype</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #060b14;
+  color: #c8d0e0;
+  font-family: 'Courier New', monospace;
+  padding: 32px;
+  user-select: none;
+}
+
+h1 { font-size:13px; letter-spacing:3px; color:#5BE8FF; text-transform:uppercase; margin-bottom:4px; }
+.desc { font-size:10px; color:#2a4a6a; letter-spacing:1px; margin-bottom:28px; }
+
+/* ── LAYOUT ── */
+.scene-wrap {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  margin-left: 40px;
+}
+.field-area {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ── SOURCE (outside the field, left side) ── */
+.chain-source {
+  position: absolute;
+  left: -52px;
+  top: 155px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.source-core {
+  width: 22px;
+  height: 22px;
+  clip-path: polygon(29% 4%, 71% 4%, 96% 29%, 96% 71%, 71% 96%, 29% 96%, 4% 71%, 4% 29%);
+  background: radial-gradient(circle at 40% 38%, rgba(91,232,255,0.6), rgba(4,18,30,0.95));
+  box-shadow: 0 0 8px rgba(91,232,255,0.7);
+  position: relative;
+  z-index: 1;
+}
+.source-ring {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(91,232,255,0.25);
+  animation: source-idle 2s ease-in-out infinite;
+}
+.source-label {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: rgba(91,232,255,0.4);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+@keyframes source-idle {
+  0%,100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 0.5;  transform: scale(1.15); }
+}
+@keyframes source-charge {
+  0%   { transform: scale(1) translateX(0);   filter: brightness(1); }
+  20%  { transform: scale(1.4) translateX(-3px); filter: brightness(4) saturate(0); }
+  40%  { transform: scale(0.85) translateX(2px);  filter: brightness(2); }
+  60%  { transform: scale(1.5) translateX(-2px); filter: brightness(6) saturate(0); }
+  80%  { transform: scale(0.9) translateX(1px);  filter: brightness(3); }
+  100% { transform: scale(1.3) translateX(0);   filter: brightness(5) saturate(0); }
+}
+.source-core.charging {
+  animation: source-charge 0.1s ease-in-out infinite;
+}
+
+/* ── MINING FIELD ── */
+.field {
+  width: 520px;
+  height: 340px;
+  background: #0b1218;
+  border: 1px solid #1a3a5a;
+  position: relative;
+  overflow: visible;
+}
+.field-label {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-size: 8px;
+  color: #1a3a5a;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* SVG arc layer */
+.arc-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* ── NODES ── */
+.node {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  cursor: default;
+}
+.node-body {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius, 6px);
+  background: var(--bg);
+  border: 2px solid var(--col);
+  box-shadow: 0 0 6px var(--glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.1s, transform 0.1s;
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--col);
+  text-shadow: 0 0 5px var(--glow);
+}
+.node-ring {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--col);
+  opacity: 0.12;
+  animation: node-idle 2.4s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes node-idle {
+  0%,100% { opacity: 0.12; transform: scale(1); }
+  50%     { opacity: 0.24; transform: scale(1.1); }
+}
+
+/* ── DEBUG: range circle ── */
+.range-circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(91,232,255,0.18);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: none;
+}
+.range-circle.visible { display: block; }
+
+/* ── SPARKS ── */
+@keyframes spark-fly {
+  0%   { opacity: 1; transform: translate(0,0) scale(1.2); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+}
+.spark {
+  position: absolute;
+  width: 4px;
+  height: 3px;
+  clip-path: polygon(0% 50%, 40% 0%, 100% 30%, 60% 100%, 20% 80%);
+  background: #5BE8FF;
+  pointer-events: none;
+  animation: spark-fly var(--dur, 0.35s) ease-out forwards;
+  margin-left: -2px;
+  margin-top: -1.5px;
+  filter: drop-shadow(0 0 3px #5BE8FF);
+  z-index: 20;
+}
+.spark.white { background: #ffffff; filter: drop-shadow(0 0 2px #ffffff); }
+.spark.branch { background: rgba(200,240,255,0.8); filter: drop-shadow(0 0 2px rgba(200,240,255,0.8)); }
+
+/* ── HIT FLASH on node ── */
+@keyframes node-hit {
+  0%   { transform: scale(1); filter: brightness(1); }
+  20%  { transform: scale(1.18); filter: brightness(5) saturate(0); }
+  60%  { transform: scale(1.04); filter: brightness(2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.node-body.flashing { animation: node-hit 0.4s ease-out forwards; }
+
+/* ── CONTROLS PANEL ── */
+.panel {
+  width: 200px;
+  flex-shrink: 0;
+}
+.panel-section {
+  margin-bottom: 20px;
+}
+.panel-title {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #2a4a6a;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #0e1a28;
+  padding-bottom: 6px;
+}
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+.ctrl-label {
+  font-size: 10px;
+  color: #4a7a9a;
+  letter-spacing: 1px;
+  min-width: 60px;
+}
+.ctrl-val {
+  font-size: 10px;
+  color: #5BE8FF;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Cooldown bar */
+.cooldown-wrap {
+  margin-bottom: 10px;
+}
+.cooldown-bar-bg {
+  width: 100%;
+  height: 4px;
+  background: #0e1a28;
+  border: 1px solid #1a3a5a;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.cooldown-bar-fill {
+  height: 100%;
+  background: #5BE8FF;
+  box-shadow: 0 0 6px rgba(91,232,255,0.6);
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+/* Slider */
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: #1a3a5a;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  margin-top: 4px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #5BE8FF;
+  box-shadow: 0 0 4px rgba(91,232,255,0.7);
+  cursor: pointer;
+}
+
+/* Toggle button */
+.toggle-btn {
+  background: #0e1a28;
+  border: 1px solid #1a3a5a;
+  color: #4a7a9a;
+  padding: 3px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  min-width: 52px;
+  text-align: center;
+}
+.toggle-btn.on {
+  border-color: #5BE8FF;
+  color: #5BE8FF;
+  box-shadow: 0 0 6px rgba(91,232,255,0.25);
+}
+.toggle-btn:hover { background: #1a2a3a; }
+
+/* Fire button */
+.fire-btn {
+  width: 100%;
+  padding: 8px;
+  background: #0a1e30;
+  border: 1px solid #5BE8FF;
+  color: #5BE8FF;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(91,232,255,0.2);
+  margin-top: 4px;
+}
+.fire-btn:hover { background: #0e2a40; box-shadow: 0 0 14px rgba(91,232,255,0.4); }
+.fire-btn:disabled { opacity: 0.3; cursor: default; box-shadow: none; }
+
+/* Stats */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.stat-key { color: #2a4a6a; }
+.stat-val { color: #c8d0e0; }
+.stat-val.highlight { color: #5BE8FF; }
+
+/* Phase indicator */
+.phase-indicator {
+  font-size: 9px;
+  color: #5BE8FF;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.2s;
+  margin-top: 8px;
+  height: 12px;
+}
+.phase-indicator.visible { opacity: 1; }
+
+/* Debug path labels */
+.path-label {
+  position: absolute;
+  font-size: 8px;
+  color: rgba(91,232,255,0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  letter-spacing: 1px;
+  display: none;
+}
+.path-label.visible { display: block; }
+
+/* ── CONCEPT PANEL ── */
+.concept-panel {
+  width: 220px;
+  flex-shrink: 0;
+  border-left: 1px solid #0e1a28;
+  padding-left: 24px;
+}
+.concept-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #5BE8FF;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #0e1a28;
+}
+.concept-block {
+  margin-bottom: 18px;
+}
+.concept-block-title {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #2a6a8a;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.concept-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #4a7a9a;
+}
+.concept-item::before {
+  content: '·';
+  color: #5BE8FF;
+  flex-shrink: 0;
+}
+.concept-item strong {
+  color: #8ab8d0;
+  font-weight: normal;
+}
+.concept-tag {
+  display: inline-block;
+  font-size: 8px;
+  padding: 1px 6px;
+  border: 1px solid #1a4a6a;
+  color: #2a6a8a;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.concept-tag.awaken {
+  border-color: #5BE8FF;
+  color: #5BE8FF;
+  box-shadow: 0 0 4px rgba(91,232,255,0.2);
+}
+
+/* ── METHOD TEXT PARTICLES ── */
+@keyframes method-text-float {
+  0%   { opacity: 0.7; }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(0, -10px); }
+}
+.method-text-particle {
+  animation: method-text-float 0.72s ease-out forwards;
+  pointer-events: none;
+  font-size: 8px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  fill: rgba(91,232,255,0.65);
+}
+
+/* ── SPRITE OVERLAYS ── */
+@keyframes chain-crackle-frames  { to { background-position-x: -512px; } }
+@keyframes chain-hit-burst-frames { to { background-position-x: -512px; } }
+
+.chain-crackle-spr {
+  position: absolute;
+  width: 64px; height: 64px;
+  background: url('sprites/skill-effects/strips/chain_crackle_strip.png') 0 0 / 512px 64px no-repeat;
+  animation: chain-crackle-frames 0.571s steps(8, start) infinite;
+  pointer-events: none;
+  image-rendering: pixelated;
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+}
+.chain-hit-burst-spr {
+  position: absolute;
+  width: 64px; height: 64px;
+  background: url('sprites/skill-effects/strips/chain_hit_burst_strip.png') 0 0 / 512px 64px no-repeat;
+  animation: chain-hit-burst-frames 0.444s steps(8, start) forwards;
+  pointer-events: none;
+  image-rendering: pixelated;
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+}
+</style>
+</head>
+<body>
+
+<h1>⚡ Method Chaining</h1>
+<p class="desc">cooldown-based auto skill · arc chains through nearest nodes · range upgradeable</p>
+
+<div class="scene-wrap">
+
+  <!-- ── FIELD AREA ── -->
+  <div class="field-area">
+
+    <!-- Source (left of field) -->
+    <div class="chain-source" id="source">
+      <div class="source-ring"></div>
+      <div class="source-core" id="source-core"></div>
+      <div class="source-label">AUTO</div>
+    </div>
+
+    <!-- Mining Field -->
+    <div class="field" id="field">
+      <div class="field-label">mining field</div>
+
+      <!-- SVG overlay for arcs -->
+      <svg class="arc-svg" id="arc-svg">
+        <defs>
+          <filter id="arc-glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="2.5" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="arc-glow-soft" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="1.5" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+      </svg>
+
+      <!-- Range circle (debug) -->
+      <div class="range-circle" id="range-circle"></div>
+
+    </div><!-- /.field -->
+  </div><!-- /.field-area -->
+
+  <!-- ── CONTROLS ── -->
+  <div class="panel">
+
+    <div class="panel-section">
+      <div class="panel-title">Cooldown</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">remaining</span>
+        <span class="ctrl-val" id="cd-text">4.0s</span>
+      </div>
+      <div class="cooldown-bar-bg">
+        <div class="cooldown-bar-fill" id="cd-bar"></div>
+      </div>
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">total</span>
+        <span class="ctrl-val" id="cd-total-val">4s</span>
+      </div>
+      <input type="range" id="cd-total-slider" min="1" max="10" value="4" step="1">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Parameters</div>
+
+      <div class="ctrl-row">
+        <span class="ctrl-label">range</span>
+        <span class="ctrl-val" id="range-val">180px</span>
+      </div>
+      <input type="range" id="range-slider" min="80" max="280" value="180" step="10">
+
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">chains</span>
+        <span class="ctrl-val" id="chain-val">3</span>
+      </div>
+      <input type="range" id="chain-slider" min="1" max="6" value="3" step="1">
+
+      <div class="ctrl-row" style="margin-top:12px;">
+        <span class="ctrl-label">branch %</span>
+        <span class="ctrl-val" id="branch-val" style="color: #506070;">10%</span>
+      </div>
+      <input type="range" id="branch-slider" min="10" max="50" value="10" step="5" style="opacity:0.3;">
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Modes</div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">awaken</span>
+        <button class="toggle-btn" id="awaken-btn" onclick="toggleAwaken()">OFF</button>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">debug</span>
+        <button class="toggle-btn" id="debug-btn" onclick="toggleDebug()">OFF</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Stats</div>
+      <div class="stat-row"><span class="stat-key">total fires</span><span class="stat-val" id="stat-fires">0</span></div>
+      <div class="stat-row"><span class="stat-key">total hits</span><span class="stat-val highlight" id="stat-hits">0</span></div>
+      <div class="stat-row"><span class="stat-key">last chain</span><span class="stat-val" id="stat-last">—</span></div>
+    </div>
+
+    <button class="fire-btn" id="fire-btn" onclick="manualFire()">▶ FIRE NOW</button>
+    <div class="phase-indicator" id="phase-indicator"></div>
+
+  </div><!-- /.panel -->
+
+  <!-- ── CONCEPT NOTES ── -->
+  <div class="concept-panel">
+    <div class="concept-title">컨셉 노트</div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">발동</div>
+      <div class="concept-item"><strong>쿨다운 자동 발사</strong> — 수동 조작 없이 타이머마다 자동 시전</div>
+      <div class="concept-item"><strong>소스</strong>는 필드 왼쪽 바깥에 고정 — 발사 직전 차지 연출</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">체인 로직</div>
+      <div class="concept-item">항상 사거리 내 <strong>가장 가까운 미방문 노드</strong>로 아크 연결</div>
+      <div class="concept-item"><strong>방문 집합</strong>으로 한 사이클 내 중복 타격 방지</div>
+      <div class="concept-item">체인 횟수 <strong>1~6회</strong> 조절 가능</div>
+      <div class="concept-item">사거리 <strong>80~280px</strong> 조절 가능</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">비주얼 FX</div>
+      <div class="concept-item"><strong>회로 아크</strong> — 직각(90°) L-shape 트레이스 + 글로우 헤일로</div>
+      <div class="concept-item"><strong>방전 스파크</strong> — 아크 수직 방향으로 짧은 번개 분기 (노멀 3개, 각성 6개)</div>
+      <div class="concept-item"><strong>텍스트 파티클</strong> — 꺾임 지점에 <code>.next()</code> / <code>[0]</code> 등 부유</div>
+      <div class="concept-item"><strong>타격 버스트</strong> — 노드 도달 시 대각선 임팩트 스프라이트</div>
+      <div class="concept-item"><strong>각성 합성</strong> — 코로나(22px) + 밝은 헤일로(13px) + 방전 2배</div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">각성 모드 <span class="concept-tag awaken">Y자 갈래</span></div>
+      <div class="concept-item">각 홉에서 아크 발사 전 메인·갈래 대상을 <strong>동시 계산</strong></div>
+      <div class="concept-item">갈래번개는 메인 체인과 <strong>병렬 시전</strong></div>
+      <div class="concept-item">기본 발동 확률 <strong>10~50%</strong> (슬라이더)</div>
+      <div class="concept-item">갈래 뎁스가 깊어질수록 확률 <strong>절반씩 감소</strong> (재귀)</div>
+      <div class="concept-item">최대 뎁스 <strong>3</strong>, 갈래 체인 최대 <strong>2홉</strong></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="concept-block-title">유니티 구현 메모</div>
+      <div class="concept-item">아크 → <strong>LineRenderer</strong> (지그재그 노이즈, 짧은 수명)</div>
+      <div class="concept-item">스파크 → <strong>ParticleSystem</strong> 버스트 (노드 타격 시)</div>
+      <div class="concept-item">갈래 로직 → HashSet&lt;int&gt; 공유하는 재귀 코루틴</div>
+    </div>
+  </div><!-- /.concept-panel -->
+
+</div><!-- /.scene-wrap -->
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+let COOLDOWN_MS = 4000;
+const CHARGE_MS   = 420;   // source crackle duration
+const ARC_MS      = 130;   // time to draw one arc segment
+const SPARK_MS    = 340;   // spark lifetime
+const TRAIL_FADE_DELAY  = 180;
+const TRAIL_FADE_MS     = 900;
+const MAX_BRANCH_DEPTH  = 3;   // 갈래번개 최대 재귀 깊이
+const BRANCH_HOPS       = 2;   // 갈래번개가 연속 체인할 수 있는 최대 횟수
+
+// Source position in field-relative SVG coords (outside left edge)
+const SRC = { x: -46, y: 170 };
+
+// Node data
+const NODES = [
+  { id:'cs',      x: 82,  y: 75,  col:'#66c8fa', bg:'rgba(8,20,40,0.9)',   glow:'rgba(100,200,250,0.5)', name:'C#',    r:'6px' },
+  { id:'js',      x: 195, y: 55,  col:'#fae248', bg:'rgba(30,24,4,0.9)',   glow:'rgba(250,220,70,0.5)',  name:'JS',    r:'6px' },
+  { id:'ts',      x: 320, y: 80,  col:'#54a4fa', bg:'rgba(6,14,38,0.9)',   glow:'rgba(80,160,250,0.5)',  name:'TS',    r:'6px' },
+  { id:'sql',     x: 440, y: 60,  col:'#7ae8cc', bg:'rgba(4,22,22,0.9)',   glow:'rgba(100,230,200,0.5)', name:'SQL',   r:'6px' },
+  { id:'git',     x: 110, y: 185, col:'#f88a4c', bg:'rgba(30,10,4,0.9)',   glow:'rgba(248,138,76,0.5)',  name:'Git',   r:'0%'  },
+  { id:'ci',      x: 255, y: 170, col:'#c870f0', bg:'rgba(20,4,30,0.9)',   glow:'rgba(200,110,240,0.5)', name:'CI',    r:'0%'  },
+  { id:'unity',   x: 400, y: 190, col:'#f27c6e', bg:'rgba(30,6,6,0.9)',    glow:'rgba(242,124,110,0.5)', name:'Unity', r:'50%' },
+  { id:'react',   x: 155, y: 295, col:'#52eaf2', bg:'rgba(4,22,26,0.9)',   glow:'rgba(80,235,242,0.5)',  name:'React', r:'50%' },
+  { id:'pattern', x: 300, y: 280, col:'#eebe54', bg:'rgba(26,18,4,0.9)',   glow:'rgba(238,190,80,0.5)',  name:'Pat.',  r:'0%'  },
+  { id:'clean',   x: 455, y: 295, col:'#9ee06c', bg:'rgba(8,22,4,0.9)',    glow:'rgba(158,224,108,0.5)', name:'Clean', r:'0%'  },
+];
+
+// ── STATE ────────────────────────────────────────────────
+let firing    = false;
+let awaken      = false;
+let branchProb  = 0.10; // 10% default
+let debugMode = false;
+let range     = 180;
+let maxChain  = 3;
+let totalFires = 0;
+let totalHits  = 0;
+let cdInterval = null;
+let cdStart    = 0;
+let activeTrails = []; // SVG path elements to clean up
+
+// ── DOM REFS ─────────────────────────────────────────────
+const field      = document.getElementById('field');
+const arcSvg     = document.getElementById('arc-svg');
+const sourceCore = document.getElementById('source-core');
+const rangeCircle = document.getElementById('range-circle');
+const cdBar      = document.getElementById('cd-bar');
+const cdText     = document.getElementById('cd-text');
+const fireBtn    = document.getElementById('fire-btn');
+const phaseEl    = document.getElementById('phase-indicator');
+
+// ── BUILD NODES ──────────────────────────────────────────
+NODES.forEach((n, i) => {
+  const el = document.createElement('div');
+  el.className = 'node';
+  el.id = `node-${n.id}`;
+  el.style.left = n.x + 'px';
+  el.style.top  = n.y + 'px';
+
+  const ring = document.createElement('div');
+  ring.className = 'node-ring';
+  ring.style.setProperty('--col',   n.col);
+  ring.style.setProperty('--delay', (i * 0.24) + 's');
+
+  const body = document.createElement('div');
+  body.className = 'node-body';
+  body.style.setProperty('--col',    n.col);
+  body.style.setProperty('--bg',     n.bg);
+  body.style.setProperty('--glow',   n.glow);
+  body.style.setProperty('--radius', n.r);
+  body.textContent = n.name;
+
+  el.appendChild(ring);
+  el.appendChild(body);
+  field.appendChild(el);
+});
+
+// ── HELPERS ──────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function dist(a, b) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+function setPhase(text) {
+  phaseEl.textContent = text;
+  phaseEl.classList.toggle('visible', !!text);
+}
+
+// ── ARC DRAWING ──────────────────────────────────────────
+// Returns L-shape circuit path (two 90° segments) + corner point
+function makeCircuitPath(x1, y1, x2, y2) {
+  const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
+  // Horizontal-first when wider than tall, vertical-first otherwise
+  const cx = dx >= dy ? x2 : x1;
+  const cy = dx >= dy ? y1 : y2;
+  return {
+    d: `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${cx.toFixed(1)} ${cy.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)}`,
+    corner: { x: cx, y: cy },
+  };
+}
+
+// Text particles at the L-corner
+const METHOD_TEXTS = ['.next()', '.chain()', '[0]', '[1]', '.map()', '.then()'];
+let _methodTextIdx = 0;
+function spawnMethodText(x, y) {
+  const t = METHOD_TEXTS[_methodTextIdx % METHOD_TEXTS.length];
+  _methodTextIdx++;
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  el.setAttribute('x', (x + 5).toFixed(1));
+  el.setAttribute('y', (y - 5).toFixed(1));
+  el.setAttribute('class', 'method-text-particle');
+  el.textContent = t;
+  arcSvg.appendChild(el);
+  setTimeout(() => el.remove(), 750);
+}
+
+// Conductive spark branches shooting off the arc (perpendicular to each segment)
+function makeSparksAlongPath(from, corner, to, isBranch) {
+  if (isBranch) return [];
+  const lit    = awaken;
+  const count  = lit ? 6 : 3;   // branches per 120px of arc
+  const maxLen = lit ? 18 : 10;
+  const op     = lit ? 0.70 : 0.42;
+  const sw     = lit ? 1.2 : 0.8;
+  const color  = `rgba(91,232,255,${op})`;
+  const els    = [];
+
+  [[from.x, from.y, corner.x, corner.y], [corner.x, corner.y, to.x, to.y]].forEach(([x1,y1,x2,y2]) => {
+    const dx = x2-x1, dy = y2-y1, len = Math.hypot(dx,dy);
+    if (len < 12) return;
+    const nx = -dy/len, ny = dx/len;  // unit perpendicular
+    const n  = Math.max(1, Math.round(count * len / 120));
+    for (let i = 0; i < n; i++) {
+      const t  = (i + 0.3 + Math.random()*0.4) / n;
+      const bx = x1+dx*t, by = y1+dy*t;
+      const sign = Math.random() < 0.5 ? 1 : -1;
+      const bl = (0.4+Math.random()*0.6)*maxLen;
+      const ex = bx + nx*sign*bl + (Math.random()-0.5)*3;
+      const ey = by + ny*sign*bl + (Math.random()-0.5)*3;
+      const mx2 = (bx+ex)/2 + (Math.random()-0.5)*5;
+      const my2 = (by+ey)/2 + (Math.random()-0.5)*5;
+      const el = document.createElementNS('http://www.w3.org/2000/svg','path');
+      el.setAttribute('d',`M${bx.toFixed(1)} ${by.toFixed(1)} L${mx2.toFixed(1)} ${my2.toFixed(1)} L${ex.toFixed(1)} ${ey.toFixed(1)}`);
+      el.setAttribute('fill','none');
+      el.setAttribute('stroke',color);
+      el.setAttribute('stroke-width',String(sw));
+      el.setAttribute('stroke-linecap','round');
+      els.push(el);
+    }
+  });
+  return els;
+}
+
+// Returns the main SVG path element (leave cleanup to caller)
+async function drawArc(from, to, isBranch = false) {
+  const { d, corner } = makeCircuitPath(from.x, from.y, to.x, to.y);
+  const lit = awaken && !isBranch;  // awaken-enhanced visuals on main chain only
+
+  // Awaken: extra-wide outer corona
+  let corona = null;
+  if (lit) {
+    corona = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    corona.setAttribute('d', d);
+    corona.setAttribute('fill', 'none');
+    corona.setAttribute('stroke', 'rgba(91,232,255,0.12)');
+    corona.setAttribute('stroke-width', '22');
+    corona.setAttribute('stroke-linecap', 'round');
+    arcSvg.appendChild(corona);
+  }
+
+  // Glow halo
+  const halo = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  halo.setAttribute('d', d);
+  halo.setAttribute('fill', 'none');
+  halo.setAttribute('stroke', isBranch ? 'rgba(200,240,255,0.3)' : `rgba(91,232,255,${lit?0.65:0.45})`);
+  halo.setAttribute('stroke-width', isBranch ? '5' : (lit ? '13' : '8'));
+  halo.setAttribute('stroke-linecap', 'round');
+  halo.setAttribute('stroke-linejoin', 'round');
+  halo.setAttribute('filter', 'url(#arc-glow)');
+  arcSvg.appendChild(halo);
+
+  // Main circuit trace
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', isBranch ? 'rgba(200,240,255,0.8)' : (lit ? 'rgba(220,248,255,0.98)' : '#5BE8FF'));
+  path.setAttribute('stroke-width', isBranch ? '1.5' : (lit ? '3.5' : '2.5'));
+  path.setAttribute('stroke-linecap', 'square');
+  path.setAttribute('stroke-linejoin', 'miter');
+  arcSvg.appendChild(path);
+
+  // Conductive spark branches (appear instantly, fade with trail)
+  const sparks = makeSparksAlongPath(from, corner, to, isBranch);
+  sparks.forEach(el => arcSvg.appendChild(el));
+
+  // Stroke-dashoffset draw animation
+  const length = path.getTotalLength();
+  for (const el of [path, halo]) {
+    el.style.strokeDasharray = length;
+    el.style.strokeDashoffset = length;
+    el.style.transition = `stroke-dashoffset ${ARC_MS}ms linear`;
+  }
+
+  await sleep(16);
+  path.style.strokeDashoffset = '0';
+  halo.style.strokeDashoffset = '0';
+  await sleep(ARC_MS);
+
+  // Text particle at corner (main chain only)
+  if (!isBranch) spawnMethodText(corner.x, corner.y);
+
+  // Transition to faint trail
+  const ft = '200ms ease';
+  path.style.transition = `stroke ${ft}, stroke-width ${ft}, opacity ${ft}`;
+  halo.style.transition  = `opacity ${ft}`;
+  path.style.stroke      = isBranch ? 'rgba(180,230,255,0.10)' : 'rgba(91,232,255,0.15)';
+  path.style.strokeWidth = '1';
+  halo.style.opacity     = '0';
+  sparks.forEach(el => { el.style.transition = `opacity ${ft}`; el.style.opacity = '0'; });
+  if (corona) { corona.style.transition = `opacity ${ft}`; corona.style.opacity = '0'; }
+
+  activeTrails.push(path, halo, ...sparks, ...(corona ? [corona] : []));
+  return path;
+}
+
+// ── SPARKS ───────────────────────────────────────────────
+function spawnSparks(x, y, count = 7, isBranch = false) {
+  const container = field;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('div');
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.6;
+    const d = 12 + Math.random() * 22;
+    const dur = (0.22 + Math.random() * 0.18).toFixed(2);
+    s.className = 'spark' + (i === 0 ? ' white' : '') + (isBranch ? ' branch' : '');
+    s.style.setProperty('--tx', (Math.cos(angle) * d).toFixed(1) + 'px');
+    s.style.setProperty('--ty', (Math.sin(angle) * d).toFixed(1) + 'px');
+    s.style.setProperty('--dur', dur + 's');
+    s.style.left = x + 'px';
+    s.style.top  = y + 'px';
+    container.appendChild(s);
+    setTimeout(() => s.remove(), parseFloat(dur) * 1000 + 50);
+  }
+}
+
+// ── SPRITE OVERLAYS ──────────────────────────────────────
+function spawnCrackle(durationMs) {
+  const src = document.getElementById('source');
+  const spr = document.createElement('div');
+  spr.className = 'chain-crackle-spr';
+  spr.style.left = '18px';
+  spr.style.top  = '18px';
+  src.appendChild(spr);
+  setTimeout(() => spr.remove(), durationMs + 80);
+}
+
+function spawnHitBurst(x, y) {
+  const spr = document.createElement('div');
+  spr.className = 'chain-hit-burst-spr';
+  spr.style.left = x + 'px';
+  spr.style.top  = y + 'px';
+  field.appendChild(spr);
+  setTimeout(() => spr.remove(), 480);
+}
+
+// ── NODE HIT FLASH ────────────────────────────────────────
+function hitNode(node) {
+  const body = document.querySelector(`#node-${node.id} .node-body`);
+  if (!body) return;
+  body.classList.remove('flashing');
+  void body.offsetWidth;
+  body.classList.add('flashing');
+  setTimeout(() => body.classList.remove('flashing'), 500);
+  spawnHitBurst(node.x, node.y);
+}
+
+// ── RANGE CIRCLE (debug) ──────────────────────────────────
+function showRangeAt(x, y) {
+  const px = range;
+  rangeCircle.style.left  = x + 'px';
+  rangeCircle.style.top   = y + 'px';
+  rangeCircle.style.width  = px * 2 + 'px';
+  rangeCircle.style.height = px * 2 + 'px';
+  if (debugMode) rangeCircle.classList.add('visible');
+}
+function hideRange() {
+  rangeCircle.classList.remove('visible');
+}
+
+// ── CHAIN LOGIC ───────────────────────────────────────────
+function nearestInRange(from, visited) {
+  let best = null, bestD = Infinity;
+  for (const n of NODES) {
+    if (visited.has(n.id)) continue;
+    const d = dist(from, n);
+    if (d <= range && d < bestD) { bestD = d; best = n; }
+  }
+  return best;
+}
+
+// ── FADE ALL TRAILS ───────────────────────────────────────
+function fadeAllTrails() {
+  activeTrails.forEach(p => {
+    p.style.transition = `opacity ${TRAIL_FADE_MS}ms ease-out`;
+    p.style.opacity = '0';
+  });
+  setTimeout(() => {
+    activeTrails.forEach(p => p.remove());
+    activeTrails = [];
+  }, TRAIL_FADE_MS + 100);
+}
+
+// ── HIT COUNTER ──────────────────────────────────────────
+let lastFireHits = 0;
+function addHit() {
+  totalHits++;
+  lastFireHits++;
+  document.getElementById('stat-hits').textContent = totalHits;
+  document.getElementById('stat-last').textContent = lastFireHits;
+}
+
+// ── RECURSIVE CHAIN ───────────────────────────────────────
+// node     : 방금 타격된 노드
+// visited  : 공유 방문 목록 (동시 탐색에서 중복 예방)
+// prob     : 이 호출에서 분기 발동 확률
+// hopsLeft : 남은 연속 타격 횟수
+// depth    : 갈래번개 깊이 (0 = 메인 체인)
+async function chainFrom(node, visited, prob, hopsLeft, depth) {
+  if (hopsLeft <= 0) return;
+
+  // ── 타겟 선정은 반드시 동기(sync)로 사전 예약 ──
+  // → Promise.all 실행 전에 visited 확보해 경쟁 없애기
+  let nextMain   = null;
+  let nextBranch = null;
+
+  nextMain = nearestInRange(node, visited);
+  if (nextMain) visited.add(nextMain.id);
+
+  if (awaken && depth < MAX_BRANCH_DEPTH && Math.random() < prob) {
+    nextBranch = nearestInRange(node, visited); // nextMain이 이미 제외된 상태
+    if (nextBranch) visited.add(nextBranch.id);
+  }
+
+  // ── 메인 체인 + 갈래번개 동시 발사 ──
+  const promises = [];
+
+  if (nextMain) {
+    promises.push((async () => {
+      await drawArc(node, nextMain, depth > 0);
+      spawnSparks(nextMain.x, nextMain.y, depth > 0 ? 4 : 7, depth > 0);
+      hitNode(nextMain);
+      addHit();
+      if (debugMode) showRangeAt(nextMain.x, nextMain.y);
+      await chainFrom(nextMain, visited, prob, hopsLeft - 1, depth);
+    })());
+  }
+
+  if (nextBranch) {
+    // 갈래번개: 현재 prob 절반 전달
+    const subProb = prob * 0.5;
+    promises.push((async () => {
+      await drawArc(node, nextBranch, true);
+      spawnSparks(nextBranch.x, nextBranch.y, 4, true);
+      hitNode(nextBranch);
+      addHit();
+      // 갈래번개 노드도 BRANCH_HOPS 만큼 추가 체인 + 재귀 분기 가능
+      await chainFrom(nextBranch, visited, subProb, BRANCH_HOPS, depth + 1);
+    })());
+  }
+
+  await Promise.all(promises);
+}
+
+// ── MAIN FIRE SEQUENCE ────────────────────────────────────
+async function fireChain() {
+  if (firing) return;
+  firing = true;
+  fireBtn.disabled = true;
+  lastFireHits = 0;
+  totalFires++;
+  document.getElementById('stat-fires').textContent = totalFires;
+
+  // 1. CHARGE
+  setPhase('CHARGING');
+  sourceCore.classList.add('charging');
+  spawnCrackle(CHARGE_MS);
+  await sleep(CHARGE_MS);
+  sourceCore.classList.remove('charging');
+
+  // 2. 소스 → 첫 번째 노드
+  const visited = new Set();
+  const first = nearestInRange(SRC, visited);
+
+  if (first) {
+    visited.add(first.id);
+    setPhase('ARC 1');
+    if (debugMode) showRangeAt(first.x, first.y);
+    await drawArc(SRC, first, false);
+    spawnSparks(first.x, first.y, 7, false);
+    hitNode(first);
+    addHit();
+
+    // 재귀 체인 시작 (첫 타격 이후 maxChain - 1 회 남음)
+    await chainFrom(first, visited, branchProb, maxChain - 1, 0);
+  }
+
+  // 3. FADE TRAILS
+  setPhase('TRAIL FADE');
+  hideRange();
+  await sleep(TRAIL_FADE_DELAY);
+  fadeAllTrails();
+  await sleep(TRAIL_FADE_MS * 0.6);
+
+  setPhase('');
+  firing = false;
+  startCooldown();
+}
+
+// ── COOLDOWN BAR ──────────────────────────────────────────
+function startCooldown() {
+  fireBtn.disabled = true;
+  cdStart = Date.now();
+  if (cdInterval) clearInterval(cdInterval);
+  cdInterval = setInterval(() => {
+    const elapsed = Date.now() - cdStart;
+    const pct = Math.min(elapsed / COOLDOWN_MS * 100, 100);
+    const rem = Math.max((COOLDOWN_MS - elapsed) / 1000, 0);
+    cdBar.style.width = pct + '%';
+    cdText.textContent = rem.toFixed(1) + 's';
+    if (elapsed >= COOLDOWN_MS) {
+      clearInterval(cdInterval);
+      cdBar.style.width = '100%';
+      cdText.textContent = 'READY';
+      fireBtn.disabled = false;
+      fireChain(); // auto-fire
+    }
+  }, 50);
+}
+
+function manualFire() {
+  if (firing) return;
+  if (cdInterval) clearInterval(cdInterval);
+  cdBar.style.width = '100%';
+  cdText.textContent = 'READY';
+  fireChain();
+}
+
+// ── CONTROLS ─────────────────────────────────────────────
+document.getElementById('range-slider').addEventListener('input', e => {
+  range = +e.target.value;
+  document.getElementById('range-val').textContent = range + 'px';
+});
+
+document.getElementById('chain-slider').addEventListener('input', e => {
+  maxChain = +e.target.value;
+  document.getElementById('chain-val').textContent = maxChain;
+});
+
+function toggleAwaken() {
+  awaken = !awaken;
+  const btn = document.getElementById('awaken-btn');
+  btn.textContent = awaken ? 'ON' : 'OFF';
+  btn.classList.toggle('on', awaken);
+  const branchSlider = document.getElementById('branch-slider');
+  const branchValEl  = document.getElementById('branch-val');
+  branchSlider.style.opacity = awaken ? '1' : '0.3';
+  branchValEl.style.color    = awaken ? '#5BE8FF' : '#506070';
+}
+
+document.getElementById('branch-slider').addEventListener('input', e => {
+  branchProb = +e.target.value / 100;
+  document.getElementById('branch-val').textContent = e.target.value + '%';
+});
+
+document.getElementById('cd-total-slider').addEventListener('input', e => {
+  COOLDOWN_MS = +e.target.value * 1000;
+  document.getElementById('cd-total-val').textContent = e.target.value + 's';
+});
+
+function toggleDebug() {
+  debugMode = !debugMode;
+  const btn = document.getElementById('debug-btn');
+  btn.textContent = debugMode ? 'ON' : 'OFF';
+  btn.classList.toggle('on', debugMode);
+  if (!debugMode) hideRange();
+}
+
+// ── INIT ─────────────────────────────────────────────────
+startCooldown();
+</script>
+</body>
+</html>

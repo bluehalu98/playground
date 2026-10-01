@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>gem-screen-ia-redesign T0 — V1(현재) vs V2(제안) 비교</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0b1218;
+  --panel:   #111b24;
+  --border:  #c9a227;
+  --teal:    #57d1b8;
+  --gold:    #f5e859;
+  --text:    #e2e8f0;
+  --muted:   #8c99ad;
+  --muted2:  #2a3a4a;
+  --red:     #ff6b6b;
+  --g-common:    #9ca3af;
+  --g-rare:      #3b82f6;
+  --g-epic:      #a855f7;
+  --g-legendary: #f5a623;
+  --g-mythic:    #ffffff;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  padding: 20px;
+  user-select: none;
+}
+h1 { font-size: 18px; color: var(--gold); margin-bottom: 6px; }
+.sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+.note-box {
+  background: #0e1620; border: 1px solid rgba(87,209,184,.25); border-radius: 6px;
+  padding: 12px 14px; margin-bottom: 18px; font-size: 12px; line-height: 1.7;
+}
+.note-box b { color: var(--teal); }
+.note-box .warn { color: var(--red); }
+.gate-callout {
+  display: inline-block; font-size: 10px; background: rgba(245,232,89,.12);
+  border: 1px solid rgba(245,232,89,.4); color: var(--gold); border-radius: 3px;
+  padding: 1px 6px; margin-left: 6px;
+}
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .compare-grid { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid #1a2535; border-radius: 8px; padding: 14px; }
+.col-label { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+.col-label.v1 { color: var(--muted); }
+.col-label.v2 { color: var(--teal); }
+.col-sub { font-size: 10px; color: var(--muted); margin-bottom: 12px; }
+
+/* ── weapon art placeholder ───────────────────────── */
+.weapon-art { position: relative; width: 100%; max-width: 260px; margin: 0 auto 14px; aspect-ratio: 1/0.62; background: #0e1620; border: 1px solid #1a2535; border-radius: 6px; }
+.socket-dot { position: absolute; width: 34px; height: 34px; transform: translate(-50%,-50%); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.socket-dot.locked { background: #14202c; border: 1px dashed #263548; cursor: default; }
+.socket-dot.empty { background: #16202b; border: 2px dashed rgba(87,209,184,.5); }
+.socket-dot.filled { border: 2px solid var(--g-rare); }
+.socket-dot .shape { width: 60%; height: 60%; }
+.socket-dot.drag-target { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+/* ── shapes (Assets/_Game/Runtime/MvpGameController.Armament.cs GemShape 그대로) ── */
+.shape { display: inline-block; }
+.shape-circle   { border-radius: 50%; }
+.shape-square   { border-radius: 2px; }
+.shape-triangle { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+.shape-pentagon { clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+.shape-hexagon  { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+.shape-star     { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.gem-fill-common    { background: radial-gradient(circle at 35% 30%, #e5e7eb, var(--g-common) 70%); box-shadow: 0 0 8px rgba(156,163,175,.5); }
+.gem-fill-rare      { background: radial-gradient(circle at 35% 30%, #93c5fd, var(--g-rare) 70%); box-shadow: 0 0 10px rgba(59,130,246,.6); }
+.gem-fill-epic      { background: radial-gradient(circle at 35% 30%, #d8b4fe, var(--g-epic) 70%); box-shadow: 0 0 10px rgba(168,85,247,.6); }
+.gem-fill-legendary { background: radial-gradient(circle at 35% 30%, #ffe1a8, var(--g-legendary) 70%); box-shadow: 0 0 12px rgba(245,166,35,.7); }
+.gem-fill-mythic    { background: conic-gradient(from 0deg, #ff5b5b, #ffb545, #f7f75a, #63e6a3, #5ac8ff, #b98cff, #ff5b5b); box-shadow: 0 0 16px rgba(255,255,255,.75); }
+
+/* ── V1: 현재 재현 — 칩 나열 필터 + 개별 보더 타일 + 소켓 버튼 스트립 ─────── */
+.v1-strip { background: #0e1620; border: 1px solid #1a2535; border-radius: 5px; padding: 8px 10px; margin-bottom: 12px; font-size: 11px; }
+.v1-strip .summary { color: var(--muted); margin: 4px 0 8px; }
+.v1-actions { display: flex; gap: 6px; }
+.v1-actions button { flex: 1; font-size: 10px; padding: 5px 0; background: #17222e; border: 1px solid #263548; color: var(--text); border-radius: 3px; font-family: inherit; cursor: pointer; }
+.v1-filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.v1-chip { font-size: 9px; padding: 3px 8px; border-radius: 10px; background: #17222e; border: 1px solid #263548; color: var(--muted); cursor: pointer; }
+.v1-chip.active { background: rgba(87,209,184,.15); border-color: var(--teal); color: var(--teal); }
+.v1-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.v1-tile { width: 40px; height: 40px; border: 1px solid #263548; border-radius: 4px; background: #0e1620; display: flex; align-items: center; justify-content: center; }
+.v1-tile .shape { width: 60%; height: 60%; }
+.v1-empty-note { font-size: 10px; color: var(--muted); padding: 20px 0; text-align: center; border: 1px dashed #1a2535; border-radius: 4px; margin-top: 8px; }
+
+/* ── V2: 제안 — 공유 격자선 + 드롭다운 + 팝오버 + 자동채우기 ──────────────── */
+.v2-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+.v2-btn { font-size: 10px; padding: 6px 10px; background: rgba(87,209,184,.12); border: 1px solid var(--teal); color: var(--teal); border-radius: 4px; font-family: inherit; cursor: pointer; }
+.v2-btn:hover { background: rgba(87,209,184,.22); }
+.v2-filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.v2-check { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); cursor: pointer; }
+.v2-select {
+  font-family: inherit; font-size: 10px; background: #17222e; color: var(--text);
+  border: 1px solid #263548; border-radius: 4px; padding: 4px 6px; cursor: pointer;
+}
+.v2-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 0;
+  border-top: 1px solid #263548; border-left: 1px solid #263548;
+  border-radius: 4px; overflow: hidden;
+}
+.v2-cell {
+  aspect-ratio: 1/1; border-right: 1px solid #263548; border-bottom: 1px solid #263548;
+  display: flex; align-items: center; justify-content: center; position: relative; background: #0e1620;
+}
+.v2-cell.pickable { cursor: grab; }
+.v2-cell.pickable:hover { background: #142230; }
+.v2-cell.drag-target { outline: 2px solid var(--teal); outline-offset: -2px; }
+.v2-cell .shape { width: 55%; height: 55%; }
+.v2-cell.dragging-source { opacity: .25; }
+
+.popover {
+  position: fixed; z-index: 50; background: #111b24; border: 1px solid var(--teal);
+  border-radius: 6px; padding: 10px 12px; font-size: 11px; width: 200px; box-shadow: 0 4px 18px rgba(0,0,0,.5);
+}
+.popover .spec { color: var(--text); margin-bottom: 8px; line-height: 1.5; }
+.popover button { width: 100%; font-size: 10px; padding: 6px 0; background: rgba(255,107,107,.12); border: 1px solid var(--red); color: var(--red); border-radius: 4px; font-family: inherit; cursor: pointer; }
+
+.gem-drag-ghost {
+  position: fixed; width: 34px; height: 34px; pointer-events: none; z-index: 100;
+  transform: translate(-50%, -50%); opacity: .9;
+}
+.gem-drag-ghost .shape { width: 100%; height: 100%; }
+
+.status-line { font-size: 10px; color: var(--teal); min-height: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>gem-screen-ia-redesign-plan — T0 비교 목업</h1>
+<div class="sub">owner Play QA 2026-08-20 지적 4건(A~D)에 대한 V1(현재 구현 재현) ↔ V2(제안, 조작 가능) 비교. 정본 <code>armament-menu.html</code>은 무접촉 — T4에서 확정본을 반영한다.</div>
+
+<div class="note-box">
+  <b>T0 실측 ①</b> — 젬 보유 상한이 지금 코드에 <b>존재하지 않는다</b>(<code>_gemInventory</code>는 순수 <code>List&lt;GemInstance&gt;</code>, 모든 <code>.Add()</code> 호출부에 개수 상한 검사 0건 — <code>MvpGameController.cs:291</code> · <code>Armament.cs</code>/<code>Currency.cs</code>/<code>GemGacha.cs</code> 전수 확인). ⇒ <b class="warn">G2=(a) 고정 N칸은 성립하지 않는다</b> — 이 목업은 <b>G2=(b) 보유 수 + 여유 1행</b>으로 만들었다(아래 V2 격자, 보유한 만큼 채우고 한 행 여유를 둠). <span class="gate-callout">G2</span><br>
+  <b>T0 실측 ②</b> — 현재 온-아트 소켓 클릭은 <b>단발 버튼</b>(<code>DrawActionButton</code>)이라 누르기/드래그 시작을 구분하는 임계값 로직이 없다(인벤토리 타일에는 이미 있음 — 4px 임계값, <code>UI.cs</code> 드래그 수명 관리). <b>역방향 드래그(소켓→인벤토리)를 넣으려면 소켓 히트 영역도 인벤토리 타일과 같은 press/drag 임계값 제스처로 다시 지어야 한다</b> — 이게 G4=(a)를 택할 때 가장 비싼 지점이다. <span class="gate-callout">G4</span>
+</div>
+
+<div class="compare-grid">
+
+  <!-- ══════════════════ V1 — 현재 ══════════════════ -->
+  <div class="col">
+    <div class="col-label v1">V1 — 현재 (정적 재현)</div>
+    <div class="col-sub">지적 A·B(격자 없음) · C(칩 나열) · D(버튼 행) 재현. 클릭해도 반응하지 않음.</div>
+
+    <div class="weapon-art">
+      <div class="socket-dot filled" style="left:35%; top:40%;"><span class="shape shape-hexagon gem-fill-rare"></span></div>
+      <div class="socket-dot empty" style="left:60%; top:35%;"></div>
+      <div class="socket-dot filled" style="left:50%; top:65%;"><span class="shape shape-star gem-fill-legendary"></span></div>
+      <div class="socket-dot locked" style="left:72%; top:60%;">🔒</div>
+    </div>
+
+    <div class="v1-strip">
+      <div>SOCKET 3 — 무기 위 소켓을 클릭하거나 아래 젬을 드래그하세요.</div>
+      <div class="summary">S1: RARE&nbsp;&nbsp;&nbsp;S2: 빈 슬롯&nbsp;&nbsp;&nbsp;S3: LEGENDARY&nbsp;&nbsp;&nbsp;S4: 잠김</div>
+      <div class="v1-actions">
+        <button disabled>S1 해제</button>
+        <button disabled>S2 장착</button>
+        <button disabled>S3 해제</button>
+        <button disabled>S4 잠김</button>
+      </div>
+    </div>
+
+    <div class="v1-filter-row">
+      <span class="v1-chip active">장착 가능만</span>
+      <span class="v1-chip">전체</span><span class="v1-chip">커먼</span><span class="v1-chip">레어</span><span class="v1-chip">에픽</span><span class="v1-chip">레전더리</span><span class="v1-chip">신화</span>
+    </div>
+    <div class="v1-filter-row">
+      <span class="v1-chip">전체</span><span class="v1-chip">원</span><span class="v1-chip">네모</span><span class="v1-chip">세모</span><span class="v1-chip">오각</span><span class="v1-chip">육각</span><span class="v1-chip">별</span>
+    </div>
+
+    <div class="v1-tiles" id="v1-tiles"></div>
+  </div>
+
+  <!-- ══════════════════ V2 — 제안 ══════════════════ -->
+  <div class="col">
+    <div class="col-label v2">V2 — 제안 (조작 가능)</div>
+    <div class="col-sub">권장 게이트로 구현: G1=(a) 격자+선 · G2=(b) 보유+여유1행 · G3=(b) 드롭다운2+체크박스1 · G4=(a) 팝오버+역방향 드래그 · G5=(a)+빈 소켓만</div>
+
+    <div class="weapon-art" id="v2-weapon-art">
+      <div class="socket-dot filled" data-socket="0" style="left:35%; top:40%;"><span class="shape shape-hexagon gem-fill-rare"></span></div>
+      <div class="socket-dot empty" data-socket="1" style="left:60%; top:35%;"></div>
+      <div class="socket-dot filled" data-socket="2" style="left:50%; top:65%;"><span class="shape shape-star gem-fill-legendary"></span></div>
+      <div class="socket-dot locked" style="left:72%; top:60%;">🔒</div>
+    </div>
+
+    <div class="v2-toolbar">
+      <button class="v2-btn" onclick="autoFill()">⚡ 자동 채우기<span class="gate-callout" style="margin-left:4px;">G5</span></button>
+    </div>
+
+    <div class="v2-filter-row">
+      <label class="v2-check"><input type="checkbox" id="v2-equippable-only"> 장착 가능만</label>
+      <select class="v2-select" id="v2-grade-select" onchange="renderV2()">
+        <option value="">등급: 전체</option>
+        <option value="common">커먼</option><option value="rare">레어</option><option value="epic">에픽</option>
+        <option value="legendary">레전더리</option><option value="mythic">신화</option>
+      </select>
+      <select class="v2-select" id="v2-shape-select" onchange="renderV2()">
+        <option value="">효과군: 전체</option>
+        <option value="circle">원</option><option value="square">네모</option><option value="triangle">세모</option>
+        <option value="pentagon">오각</option><option value="hexagon">육각</option><option value="star">별</option>
+      </select>
+      <span class="gate-callout">G3</span>
+    </div>
+
+    <div class="v2-grid" id="v2-grid"></div>
+    <div class="status-line" id="v2-status">타일을 클릭하면 소켓에 장착 · 소켓을 클릭하면 명세+해제 · 드래그로 양방향 이동</div>
+  </div>
+
+</div>
+
+<div id="popover-root"></div>
+
+<script>
+// ── 데모 데이터 ──────────────────────────────────────────────────────────
+const SHAPES = ['circle','square','triangle','pentagon','hexagon','star'];
+const SHAPE_LABEL = { circle:'원', square:'네모', triangle:'세모', pentagon:'오각', hexagon:'육각', star:'별' };
+const GRADES = ['common','rare','epic','legendary','mythic'];
+const GRADE_LABEL = { common:'커먼', rare:'레어', epic:'에픽', legendary:'레전더리', mythic:'신화' };
+
+let seed = 7;
+function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+const INVENTORY = [];
+for (let i = 0; i < 14; i++) {
+  INVENTORY.push({
+    id: 'g' + i,
+    shape: SHAPES[Math.floor(rnd() * SHAPES.length)],
+    grade: GRADES[Math.floor(rnd() * (rnd() < 0.15 ? GRADES.length : 3))], // 상위 등급 희소성 근사
+  });
+}
+
+// V2 소켓 상태(무기 = 육각/별 소켓 2개 채워짐, 오각 1개 비어있음, 1개 잠김)
+const V2_SOCKETS = [
+  { shape: 'hexagon', locked: false, gemId: 'g0' },
+  { shape: 'pentagon', locked: false, gemId: null },
+  { shape: 'star', locked: false, gemId: 'g1' },
+  { shape: 'square', locked: true, gemId: null },
+];
+// 소켓에 낀 두 젬은 인벤토리 목록과 분리(장착 중 = 인벤토리에 안 보임, 실제 게임과 동일)
+INVENTORY[0].shape = 'hexagon'; INVENTORY[0].grade = 'rare';
+INVENTORY[1].shape = 'star'; INVENTORY[1].grade = 'legendary';
+
+function shapeEl(shape, grade, cls) {
+  const span = document.createElement('span');
+  span.className = `shape shape-${shape} gem-fill-${grade} ${cls || ''}`;
+  return span;
+}
+
+function findGem(id) { return INVENTORY.find(g => g.id === id); }
+function isSocketed(id) { return V2_SOCKETS.some(s => s.gemId === id); }
+
+// ── V1 렌더(정적) ────────────────────────────────────────────────────────
+function renderV1() {
+  const box = document.getElementById('v1-tiles');
+  box.innerHTML = '';
+  INVENTORY.filter(g => !isSocketed(g.id)).forEach(g => {
+    const tile = document.createElement('div');
+    tile.className = 'v1-tile';
+    tile.appendChild(shapeEl(g.shape, g.grade));
+    box.appendChild(tile);
+  });
+}
+
+// ── V2 상태/판정 ─────────────────────────────────────────────────────────
+function getEquipBlock(socketIndex, gemId) {
+  const socket = V2_SOCKETS[socketIndex];
+  const gem = findGem(gemId);
+  if (!socket || !gem) return 'none-target';
+  if (socket.locked) return 'locked';
+  if (socket.shape !== gem.shape) return 'shape-mismatch';
+  return null; // 장착 가능
+}
+
+function passesFilter(g) {
+  const equippableOnly = document.getElementById('v2-equippable-only').checked;
+  const gradeSel = document.getElementById('v2-grade-select').value;
+  const shapeSel = document.getElementById('v2-shape-select').value;
+  if (gradeSel && g.grade !== gradeSel) return false;
+  if (shapeSel && g.shape !== shapeSel) return false;
+  if (equippableOnly) {
+    const fitsAny = V2_SOCKETS.some((s, i) => !s.locked && s.shape === g.shape);
+    if (!fitsAny) return false;
+  }
+  return true;
+}
+
+function renderV2WeaponArt() {
+  const art = document.getElementById('v2-weapon-art');
+  art.querySelectorAll('.socket-dot').forEach((el, i) => {
+    if (el.classList.contains('locked')) return;
+    const socket = V2_SOCKETS[i];
+    el.innerHTML = '';
+    el.classList.toggle('filled', !!socket.gemId);
+    el.classList.toggle('empty', !socket.gemId);
+    if (socket.gemId) {
+      const gem = findGem(socket.gemId);
+      el.appendChild(shapeEl(gem.shape, gem.grade));
+    }
+  });
+}
+
+function renderV2() {
+  renderV2WeaponArt();
+  const grid = document.getElementById('v2-grid');
+  grid.innerHTML = '';
+  const shown = INVENTORY.filter(g => !isSocketed(g.id)).filter(passesFilter);
+  // G2=(b) 보유 수 + 여유 1행(6열 그리드 기준)
+  const cols = 6;
+  const emptyRow = cols;
+  const totalCells = Math.ceil((shown.length + emptyRow) / cols) * cols;
+  for (let i = 0; i < totalCells; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'v2-cell';
+    if (i < shown.length) {
+      const g = shown[i];
+      cell.classList.add('pickable');
+      cell.dataset.gemId = g.id;
+      cell.appendChild(shapeEl(g.shape, g.grade));
+      cell.addEventListener('mousedown', ev => beginDrag(g.id, 'inventory', ev));
+      cell.addEventListener('click', ev => { if (!dragState.wasDrag) onInventoryTileClick(g.id); });
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function setStatus(msg) { document.getElementById('v2-status').textContent = msg; }
+
+// ── 소켓 클릭 → 팝오버(장착 젬) / 장착(빈 소켓, 인벤토리 pick 모드) ───────
+let pickForSocket = null;
+
+function onInventoryTileClick(gemId) {
+  if (pickForSocket === null) return;
+  const block = getEquipBlock(pickForSocket, gemId);
+  if (block) { setStatus(`장착 불가: ${block === 'shape-mismatch' ? '모양이 다름' : block}`); return; }
+  V2_SOCKETS[pickForSocket].gemId = gemId;
+  pickForSocket = null;
+  closePopover();
+  renderV2();
+  setStatus('장착 완료');
+}
+
+document.getElementById('v2-weapon-art').addEventListener('click', ev => {
+  const dot = ev.target.closest('.socket-dot');
+  if (!dot || dot.classList.contains('locked') || dragState.wasDrag) return;
+  const i = parseInt(dot.dataset.socket, 10);
+  const socket = V2_SOCKETS[i];
+  if (socket.gemId) {
+    openSpecPopover(i, ev.clientX, ev.clientY);
+  } else {
+    pickForSocket = i;
+    setStatus(`소켓 ${i + 1} 선택됨 — 아래에서 맞는 젬을 클릭하거나 드래그하세요`);
+  }
+});
+
+function openSpecPopover(socketIndex, x, y) {
+  closePopover();
+  const gem = findGem(V2_SOCKETS[socketIndex].gemId);
+  const root = document.getElementById('popover-root');
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  pop.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+  pop.style.top = (y + 12) + 'px';
+  pop.innerHTML = `<div class="spec">SOCKET ${socketIndex + 1}<br>${SHAPE_LABEL[gem.shape]} · ${GRADE_LABEL[gem.grade]}</div>
+    <button id="popover-unequip">해제</button>`;
+  root.appendChild(pop);
+  document.getElementById('popover-unequip').onclick = () => {
+    V2_SOCKETS[socketIndex].gemId = null;
+    closePopover();
+    renderV2();
+    setStatus('해제 완료 — 인벤토리로 돌아감');
+  };
+  setTimeout(() => document.addEventListener('click', outsidePopoverClose), 0);
+}
+function outsidePopoverClose(ev) {
+  if (ev.target.closest('.popover') || ev.target.closest('.socket-dot')) return;
+  closePopover();
+}
+function closePopover() {
+  document.getElementById('popover-root').innerHTML = '';
+  document.removeEventListener('click', outsidePopoverClose);
+}
+
+// ── 양방향 드래그(4px 임계값 — Unity UpdateArmamentGemDragLifetime 규약과 같은 발상) ──
+const DRAG_THRESHOLD = 4;
+const dragState = { gemId: null, from: null, socketIndex: null, active: false, ox: 0, oy: 0, ghost: null, wasDrag: false };
+
+function beginDrag(gemId, from, ev) {
+  dragState.gemId = gemId; dragState.from = from; dragState.active = false;
+  dragState.ox = ev.clientX; dragState.oy = ev.clientY; dragState.wasDrag = false;
+  ev.stopPropagation();
+}
+
+document.getElementById('v2-weapon-art').addEventListener('mousedown', ev => {
+  const dot = ev.target.closest('.socket-dot');
+  if (!dot || dot.classList.contains('locked')) return;
+  const i = parseInt(dot.dataset.socket, 10);
+  if (!V2_SOCKETS[i].gemId) return; // 빈 소켓은 드래그 시작점이 아니다(클릭만)
+  dragState.gemId = V2_SOCKETS[i].gemId; dragState.from = 'socket'; dragState.socketIndex = i;
+  dragState.active = false; dragState.ox = ev.clientX; dragState.oy = ev.clientY; dragState.wasDrag = false;
+});
+
+function activateDrag() {
+  dragState.active = true;
+  const gem = findGem(dragState.gemId);
+  const ghost = document.createElement('div');
+  ghost.className = 'gem-drag-ghost';
+  ghost.appendChild(shapeEl(gem.shape, gem.grade));
+  document.body.appendChild(ghost);
+  dragState.ghost = ghost;
+}
+
+document.addEventListener('mousemove', ev => {
+  if (!dragState.gemId) return;
+  if (!dragState.active) {
+    const dx = ev.clientX - dragState.ox, dy = ev.clientY - dragState.oy;
+    if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+    activateDrag();
+    dragState.wasDrag = true;
+  }
+  if (dragState.ghost) { dragState.ghost.style.left = ev.clientX + 'px'; dragState.ghost.style.top = ev.clientY + 'px'; }
+  document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+  const target = document.elementFromPoint(ev.clientX, ev.clientY);
+  const dropZone = dragState.from === 'inventory' ? target && target.closest('.socket-dot:not(.locked)') : target && target.closest('#v2-grid');
+  if (dropZone && dropZone.classList) dropZone.classList.add('drag-target');
+});
+
+document.addEventListener('mouseup', ev => {
+  if (!dragState.gemId) return;
+  if (!dragState.active) { dragState.gemId = null; dragState.from = null; return; } // 클릭 경로로 넘김
+  document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+  if (dragState.ghost) { dragState.ghost.remove(); dragState.ghost = null; }
+  const target = document.elementFromPoint(ev.clientX, ev.clientY);
+
+  if (dragState.from === 'inventory') {
+    const dot = target && target.closest('.socket-dot:not(.locked)');
+    if (dot) {
+      const i = parseInt(dot.dataset.socket, 10);
+      const block = getEquipBlock(i, dragState.gemId);
+      if (block) setStatus(`장착 불가: ${block === 'shape-mismatch' ? '모양이 다름' : block}`);
+      else { V2_SOCKETS[i].gemId = dragState.gemId; setStatus('드래그 장착 완료'); }
+    }
+  } else if (dragState.from === 'socket') {
+    const inGrid = target && target.closest('#v2-grid');
+    if (inGrid) {
+      V2_SOCKETS[dragState.socketIndex].gemId = null;
+      setStatus('역방향 드래그로 해제 — 인벤토리로 돌아감');
+    }
+  }
+
+  dragState.gemId = null; dragState.from = null; dragState.socketIndex = null; dragState.active = false;
+  renderV2();
+  // wasDrag 는 다음 click 이벤트가 이 mouseup 직후 발생하기 전에 리셋하면 클릭이 재발화된다 — 한 틱 늦춘다.
+  setTimeout(() => { dragState.wasDrag = false; }, 0);
+});
+
+// ── G5 자동 채우기 — 모양 맞는 것 중 최고 등급, 빈 소켓만(이미 장착된 건 안 건드림) ──
+const GRADE_RANK = { common: 0, rare: 1, epic: 2, legendary: 3, mythic: 4 };
+function autoFill() {
+  let filled = 0;
+  V2_SOCKETS.forEach((socket, i) => {
+    if (socket.locked || socket.gemId) return; // 빈 소켓만(교체 안 함)
+    const candidates = INVENTORY.filter(g => !isSocketed(g.id) && g.shape === socket.shape);
+    if (candidates.length === 0) return;
+    candidates.sort((a, b) => GRADE_RANK[b.grade] - GRADE_RANK[a.grade]);
+    socket.gemId = candidates[0].id;
+    filled++;
+  });
+  renderV2();
+  setStatus(filled > 0 ? `자동 채우기 — 빈 소켓 ${filled}개 채움(기존 장착은 무변경)` : '채울 수 있는 빈 소켓이 없음');
+}
+
+renderV1();
+renderV2();
+</script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<title>젬 스프라이트 비교 — 현행 vs 안 A/B/C (P1)</title>
+<style>
+@font-face {
+  font-family: 'PretendardRuntime';
+  /* ⚠ `<base href="../">` 가 이미 리포 루트다 — `../` 를 붙이면 이중 상대화로 404(2026-07-29·09-05 실측). */
+  src: url('Assets/Resources/Fonts/Pretendard-Regular.otf') format('opentype');
+  font-display: swap;
+}
+:root{
+  --bg:#0b1016; --panel:#111823; --line:#1e2937; --txt:#e6ecf3; --dim:#8b95a3;
+  /* 등급 5색 — 코드 정본 `GetGemGradeColor`(MvpGameController.UI.cs) 와 같은 값 */
+  --g-common:#9ca3af; --g-rare:#3b82f6; --g-epic:#a855f7; --g-legendary:#f5a623;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:PretendardRuntime,system-ui,sans-serif;padding:28px 32px 80px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:34px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+p.note{color:var(--dim);font-size:12px;line-height:1.7;margin:6px 0 14px;max-width:1100px}
+code{background:#0e1620;padding:1px 5px;border-radius:4px;font-size:11px;color:#9fd0c4}
+b.hi{color:#57d1b8}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+table{border-collapse:collapse}
+th,td{padding:6px 10px;text-align:center;vertical-align:middle}
+th{color:var(--dim);font-size:11px;font-weight:500}
+th.rowlab{text-align:left;min-width:132px}
+td.rowlab{text-align:left;color:var(--dim);font-size:12px;min-width:132px}
+.cell{display:inline-flex;align-items:center;justify-content:center}
+.sz-215{width:215px;height:215px}
+.sz-112{width:112px;height:112px}
+.sz-80{width:80px;height:80px}
+.sz-26{width:26px;height:26px}
+.sz-16{width:16px;height:16px}
+svg{display:block;width:100%;height:100%}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.pick{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 2px}
+.pick button{background:#16202c;border:1px solid var(--line);color:var(--txt);border-radius:8px;
+  padding:7px 14px;font-size:12px;font-family:inherit;cursor:pointer}
+.pick button.on{border-color:#57d1b8;color:#57d1b8}
+.tile{background:#0e1620;border:1px solid var(--line);border-radius:10px;padding:10px;display:inline-block;margin:4px}
+.tilelab{font-size:10px;color:var(--dim);text-align:center;margin-top:4px}
+.socketrow{display:flex;align-items:center;gap:8px;background:#0e1620;border:1px solid var(--line);
+  border-radius:8px;padding:8px 12px;margin:4px 0;max-width:520px}
+.socketrow .nm{font-size:12px}
+.socketrow .dots{margin-left:auto;display:flex;gap:5px;align-items:center}
+</style>
+</head>
+<body>
+
+<h1>젬 스프라이트 — 현행 vs 신규 3안 (procedural-art-inventory P1)</h1>
+<p class="note">
+  <b class="hi">문제</b>: 젬은 <code>CreatePolygonSprite</code>(<code>Rendering.cs:1737</code>)가 128px 텍스처를
+  픽셀 루프로 채워 <b class="hi">알파 0/1 하드에지 평면 다각형</b>을 만든다 — AA·패싯·하이라이트가 전무하다.
+  6모양 × 5등급이 <b class="hi">색만 다르다</b>. 관련 에셋은 리포에 <b class="hi">0장</b>이다.<br>
+  <b class="hi">제약 1 — 틴트를 못 버린다</b>: Mythic 등급은 <code>HSVToRGB</code> 회전 무지개라
+  (<code>UI.cs:3018</code>) 등급별 고정 색 아트를 구우면 <b class="hi">무지개가 죽는다</b>.
+  ⇒ 에셋은 <b class="hi">그레이스케일</b>로 굽고 색은 런타임 틴트가 정본이어야 한다. 이 페이지는 그
+  곱연산 틴트를 그대로 시뮬레이션한다(회색값 × 등급색).<br>
+  <b class="hi">제약 2 — 작은 판</b>: 온아트 소켓 <b class="hi">25.9px</b>, 무기 목록 점 <b class="hi">15.5px</b>.
+  이 크기에서 6모양 실루엣 구분은 원래 불가능하다 — 그래서 각 안의 <b class="hi">작은 판이 진짜 판정 기준</b>이다.
+</p>
+
+<h2>A. 한 화면 비교 — 같은 모양·같은 등급, 안만 다르게</h2>
+<div class="pick" id="pickShape"></div>
+<div class="pick" id="pickGrade"></div>
+<div class="panel"><div id="compare"></div></div>
+<p class="note" id="approachNote"></p>
+
+<h2>B. 실제 크기 판독 — 여기서 갈린다</h2>
+<p class="note">
+  왼쪽부터 <b class="hi">215px</b>(뽑기 결과) · <b class="hi">112px</b>(인벤토리 타일) ·
+  <b class="hi">80px</b>(작은 타일) · <b class="hi">26px</b>(온아트 소켓) · <b class="hi">16px</b>(무기 목록 점).
+  마지막 두 칸에서 <b class="hi">모양이 구분되는가</b>와 <b class="hi">등급이 구분되는가</b>가 합격 기준이다.
+</p>
+<div class="panel"><div id="sizes"></div></div>
+
+<h2>C. 6모양 × 5등급 전수 (선택한 안)</h2>
+<p class="note">Mythic 은 게임과 같은 속도(<code>Time.unscaledTime * 0.25</code>)로 색이 돈다 — 정지 컷으로 판단하지 말 것.</p>
+<div class="panel"><div id="grid"></div></div>
+
+<h2>D. 맥락 — 무기 목록 행 안에서 (16px)</h2>
+<p class="note">실제로 가장 자주 보는 크기다. 소켓 점 3~5개가 한 줄에 붙는다(<code>ArmamentWeaponView</code> 행).</p>
+<div class="panel"><div id="ctx"></div></div>
+
+<script>
+// ── 데이터 ──────────────────────────────────────────────────────────
+const SHAPES = ['Circle', 'Square', 'Triangle', 'Pentagon', 'Hexagon', 'Star'];
+const GRADES = [
+  { key:'Common',    color:'#9ca3af' },
+  { key:'Rare',      color:'#3b82f6' },
+  { key:'Epic',      color:'#a855f7' },
+  { key:'Legendary', color:'#f5a623' },
+  { key:'Mythic',    color:null },   // 회전 무지개 — 매 프레임 계산
+];
+
+// 등급색 × 회색값 = 곱연산 틴트(Unity `Image.color` 와 같은 연산).
+function tint(hex, gray) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n >> 16) & 255) * gray);
+  const g = Math.round(((n >> 8) & 255) * gray);
+  const b = Math.round((n & 255) * gray);
+  return `rgb(${r},${g},${b})`;
+}
+// 1.0 을 넘는 밝기 — 곱연산으로는 못 만들므로 흰색을 섞는다.
+// ⚠ 게임에서 이 자리는 **에셋의 회색값이 1.0 을 넘을 수 없다**는 뜻이다 ⇒ 밝은 단은
+//   "흰색에 가까운 회색"으로 굽고 등급색을 곱하는 방식이 된다(그래서 여기 근사가 실제와 맞는다).
+function mixWhite(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const m = (c) => Math.round(c + (255 - c) * Math.min(1, k));
+  return `rgb(${m((n >> 16) & 255)},${m((n >> 8) & 255)},${m(n & 255)})`;
+}
+function mythicHex(t) {
+  // Color.HSVToRGB(hue, 0.55, 1) 과 같은 값 — hue 는 0.25/s 로 돈다.
+  const h = (t * 0.25) % 1, s = 0.55, v = 1;
+  const i = Math.floor(h * 6), f = h * 6 - i;
+  const p = v * (1 - s), q = v * (1 - f * s), u = v * (1 - (1 - f) * s);
+  const [r, g, b] = [[v,u,p],[q,v,p],[p,v,u],[p,q,v],[u,p,v],[v,p,q]][i % 6];
+  const hx = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+  return `#${hx(r)}${hx(g)}${hx(b)}`;
+}
+
+// 모양별 꼭짓점 — viewBox 100 기준, 코드의 회전값을 그대로 따른다
+// (`EnsureSprites`: 삼각형 -90° · 오각형 -90° · 육각형 -30°).
+function poly(sides, rotDeg, r = 44) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = (rotDeg * Math.PI) / 180 + (Math.PI * 2 * i) / sides;
+    pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]);
+  }
+  return pts;
+}
+function starPts(outer = 46, inner = 20) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = (-90 * Math.PI) / 180 + (Math.PI * i) / 5;
+    const r = i % 2 ? inner : outer;
+    pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]);
+  }
+  return pts;
+}
+const d = (pts) => `M${pts.map(p => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L')} Z`;
+
+function outline(shape) {
+  switch (shape) {
+    case 'Circle': return { kind:'circle' };
+    case 'Square': return { kind:'path', d:d(poly(4, 45, 46)) };            // 코드의 마름모(4각 45°)
+    case 'Triangle': return { kind:'path', d:d(poly(3, -90, 48)) };
+    case 'Pentagon': return { kind:'path', d:d(poly(5, -90)) };
+    case 'Hexagon': return { kind:'path', d:d(poly(6, -30)) };
+    case 'Star': return { kind:'path', d:d(starPts()) };
+  }
+}
+// 같은 실루엣을 반지름만 줄여 안쪽 면을 만든다(패싯·림·베벨 공용).
+// `dx`/`dy` 는 광원 쪽으로 미는 양 — 이게 0 이면 대칭 동심원, 값이 있으면 기울어 솟은 면이 된다.
+function inner(shape, scale, dx = 0, dy = 0) {
+  const s = (pts) => pts.map(([x, y]) => [50 + (x - 50) * scale + dx, 50 + (y - 50) * scale + dy]);
+  switch (shape) {
+    case 'Circle': return { kind:'circle', r: 44 * scale, cx: 50 + dx, cy: 50 + dy };
+    case 'Square': return { kind:'path', d:d(s(poly(4, 45, 46))) };
+    case 'Triangle': return { kind:'path', d:d(s(poly(3, -90, 48))) };
+    case 'Pentagon': return { kind:'path', d:d(s(poly(5, -90))) };
+    case 'Hexagon': return { kind:'path', d:d(s(poly(6, -30))) };
+    case 'Star': return { kind:'path', d:d(s(starPts())) };
+  }
+}
+const shapeEl = (o, fill, extra = '') =>
+  o.kind === 'circle'
+    ? `<circle cx="${o.cx ?? 50}" cy="${o.cy ?? 50}" r="${o.r ?? 44}" fill="${fill}" ${extra}/>`
+    : `<path d="${o.d}" fill="${fill}" ${extra}/>`;
+
+// ── 4개 안 ─────────────────────────────────────────────────────────
+// 각 안은 "회색값 레이어의 목록"이다. 회색값 1.0 = 등급색 그대로, 0.5 = 절반 어둡게.
+const APPROACHES = {
+  now: {
+    name:'현행 (코드 도형)',
+    note:'`CreatePolygonSprite` 재현 — 단색 채움 · 알파 0/1 · AA 없음. 큰 판에서 계단이 보이고 작은 판에서는 뭉갠다.',
+    render: (shape) => shapeEl(outline(shape), 'var(--fill-1)', 'shape-rendering="crispEdges"'),
+  },
+  A: {
+    name:'안 A — 패싯 컷',
+    note:'보석 컷을 흉내낸다. 바깥 면(1.0) 안에 위쪽 밝은 면(1.35 클램프)과 아래쪽 그늘 면(0.55)을 겹쳐 **평면인데 각이 보이게** 한다. 작은 판에서는 세 층이 뭉쳐 단색처럼 보이므로 실루엣이 그대로 산다.',
+    render: (shape) => shapeEl(outline(shape), 'var(--fill-1)')
+      + `<g clip-path="url(#clip-${shape})">`
+      + `<path d="M0 0 L100 0 L100 44 L0 30 Z" fill="var(--fill-hi)"/>`
+      + `<path d="M0 62 L100 52 L100 100 L0 100 Z" fill="var(--fill-lo)"/>`
+      + `</g>`
+      + shapeEl(inner(shape, 0.42), 'var(--fill-hi2)'),
+  },
+  B: {
+    name:'안 B — 림 + 속 비침',
+    note:'두꺼운 테두리(1.0)와 반투명 속(0.45)으로 **유리알**처럼. 테두리가 형태를 잡아 주므로 16px 에서도 모양이 가장 잘 남는다. 대신 면적이 비어 등급색 덩어리는 약하다.',
+    render: (shape) => shapeEl(outline(shape), 'var(--fill-mid)')
+      + shapeEl(inner(shape, 0.72), 'var(--fill-lo)')
+      + `<g clip-path="url(#clip-${shape})"><path d="M14 14 L46 14 L22 46 Z" fill="var(--fill-hi)" opacity=".9"/></g>`,
+  },
+  C: {
+    name:'안 C — 코어 발광(초판)',
+    note:'바깥은 어둡게(0.5) 가고 **가운데 코어를 밝게(1.4)** 태운다. 작은 판에서 "빛나는 점"으로 읽혀 등급 구분이 가장 강하다. 대신 3단이라 계단이 뚝뚝 끊긴다.',
+    render: (shape) => shapeEl(outline(shape), 'var(--fill-lo)')
+      + shapeEl(inner(shape, 0.62), 'var(--fill-mid)')
+      + shapeEl(inner(shape, 0.3), 'var(--fill-hi)'),
+  },
+
+  // ── owner 2026-09-05: *"C인데 가운데로 올수록 화면에 가까운… 살짝 솟아있는"* ─────────
+  // 솟음을 만드는 것은 **단조 밝기 경사**(바깥 어둡고 안쪽 밝음)다. 여기에 광원 방향(좌상단)을
+  // 얹으면 "평평한 동심원"이 아니라 "깎아 올린 면"으로 읽힌다. 아래 셋이 그 세 가지 정도다.
+  C2: {
+    name:'C2 — 스텝 베벨(5단)',
+    note:'같은 실루엣을 5단으로 줄여 겹치고 **밝기를 0.42→1.45 로 단조 증가**시킨다. 계단이 촘촘해 "깎아 올린 보석"으로 읽히고, 각 단이 등고선처럼 남아 큰 판에서 컷이 보인다. 좌우 대칭이라 광원 방향은 없다.',
+    render: (shape) => [1, 0.78, 0.58, 0.38, 0.2]
+      .map((s, i) => shapeEl(inner(shape, s), `var(--bevel-${i})`)).join(''),
+  },
+  C3: {
+    name:'C3 — 기울어진 베벨 ★',
+    note:'C2 와 같은 5단인데 **안쪽 단일수록 좌상단으로 조금씩 밀어** 광원을 만든다. 대칭이 깨지면서 평면이 아니라 **면이 기울어 솟은** 것으로 읽힌다. 리포의 아트 원칙(`equipment-art-direction` §3 좌상단 광원)과 같은 방향이다.',
+    render: (shape) => [1, 0.78, 0.58, 0.38, 0.2]
+      .map((s, i) => shapeEl(inner(shape, s, -i * 1.6, -i * 1.3), `var(--bevel-${i})`)).join(''),
+  },
+  // ⚠ C3R — **런타임이 실제로 낼 수 있는 C3**. 위 C2·C3·C4 의 밝은 단(1.12·1.45)은 흰색 혼합이라
+  //   곱연산 틴트로는 못 만든다: 회색 텍스처 × 등급색은 **등급색보다 밝아질 수 없다**(gray=1.0 이 천장).
+  //   그래서 실제로 굽는 램프는 **0.55 → 1.00**(코어 = 등급색 원본)이고, 이게 배포되는 그림이다.
+  //   경사를 얕게 잡은 이유는 현행(전면 등급색)보다 어두워 보이는 것을 막기 위해서다.
+  C3R: {
+    name:'C3R — C3 런타임 실제 ★',
+    note:'**이게 실제로 배포되는 그림이다.** 곱연산 천장(등급색) 때문에 코어가 등급색 원본이고 바깥으로 갈수록 0.55 까지 어두워진다. 단 5개 + 좌상단 밀기는 C3 와 동일하다. 위 C3 는 흰색 혼합이라 게임에서 재현 불가 — 비교용으로만 남긴다.',
+    render: (shape) => [1, 0.78, 0.58, 0.38, 0.2]
+      .map((s, i) => shapeEl(inner(shape, s, -i * 1.6, -i * 1.3), `var(--run-${i})`)).join(''),
+  },
+  C4: {
+    name:'C4 — 부드러운 돔',
+    note:'계단 대신 **방사 그라디언트** 한 장. 좌상단(38%,34%)이 가장 밝고 가장자리가 어둡다. 가장 매끄럽게 솟지만 컷(각)이 없어 **보석보다 구슬**에 가깝다. 16px 에서는 C3 와 거의 같게 보인다.',
+    render: (shape) => `<defs><radialGradient id="dome-${shape}" cx="38%" cy="34%" r="72%">
+        <stop offset="0%" stop-color="var(--bevel-4)"/>
+        <stop offset="45%" stop-color="var(--bevel-2)"/>
+        <stop offset="100%" stop-color="var(--bevel-0)"/>
+      </radialGradient></defs>` + shapeEl(outline(shape), `url(#dome-${shape})`),
+  },
+};
+const APPROACH_KEYS = ['now', 'C3', 'C3R'];
+
+// 회색값 → CSS 변수로 넣어 곱연산 틴트를 그대로 흉내낸다.
+function svgFor(shape, approach, hex) {
+  const clamp = (x) => Math.min(1, x);
+  // 베벨 5단 — 바깥(0)에서 안쪽(4)으로 **단조 증가**. 이 경사가 "솟음"을 만든다.
+  // 1.0 을 넘는 값은 곱연산으로 못 밝히므로 흰색을 섞어 근사한다(런타임은 `Image.color` 가 같은 역할).
+  const lift = (g) => (g <= 1 ? tint(hex, g) : mixWhite(hex, g - 1));
+  const vars = [
+    `--fill-1:${tint(hex, 1)}`,
+    `--fill-mid:${tint(hex, 0.78)}`,
+    `--fill-lo:${tint(hex, 0.5)}`,
+    `--fill-hi:${lift(1.35)}`,
+    `--fill-hi2:${lift(1.2)}`,
+    `--bevel-0:${tint(hex, 0.42)}`,
+    `--bevel-1:${tint(hex, 0.62)}`,
+    `--bevel-2:${tint(hex, 0.85)}`,
+    `--bevel-3:${lift(1.12)}`,
+    `--bevel-4:${lift(1.45)}`,
+    // 런타임 실제 램프 — 천장이 1.0(등급색 원본)이다. 이 5개가 그대로 굽는 회색값이다.
+    `--run-0:${tint(hex, 0.55)}`,
+    `--run-1:${tint(hex, 0.68)}`,
+    `--run-2:${tint(hex, 0.80)}`,
+    `--run-3:${tint(hex, 0.90)}`,
+    `--run-4:${tint(hex, 1.0)}`,
+  ].join(';');
+  const clip = outline(shape).kind === 'circle'
+    ? `<clipPath id="clip-${shape}"><circle cx="50" cy="50" r="44"/></clipPath>`
+    : `<clipPath id="clip-${shape}"><path d="${outline(shape).d}"/></clipPath>`;
+  return `<svg viewBox="0 0 100 100" style="${vars}"><defs>${clip}</defs>${APPROACHES[approach].render(shape)}</svg>`;
+}
+
+// ── 렌더 ───────────────────────────────────────────────────────────
+let curShape = 'Hexagon';
+let curGrade = 'Epic';
+let curApproach = 'A';
+
+const gradeHex = (key, t) => (key === 'Mythic' ? mythicHex(t) : GRADES.find(g => g.key === key).color);
+
+function renderPickers() {
+  document.getElementById('pickShape').innerHTML = SHAPES
+    .map(s => `<button data-shape="${s}" class="${s === curShape ? 'on' : ''}">${s}</button>`).join('');
+  document.getElementById('pickGrade').innerHTML = GRADES
+    .map(g => `<button data-grade="${g.key}" class="${g.key === curGrade ? 'on' : ''}">${g.key}</button>`).join('');
+  document.querySelectorAll('#pickShape button').forEach(b =>
+    b.onclick = () => { curShape = b.dataset.shape; renderPickers(); });
+  document.querySelectorAll('#pickGrade button').forEach(b =>
+    b.onclick = () => { curGrade = b.dataset.grade; renderPickers(); });
+}
+
+function frame(t) {
+  const hex = gradeHex(curGrade, t);
+
+  // A. 안 비교
+  document.getElementById('compare').innerHTML = APPROACH_KEYS.map(k => `
+    <div class="tile">
+      <div class="cell sz-215">${svgFor(curShape, k, hex)}</div>
+      <div class="tilelab">${APPROACHES[k].name}</div>
+    </div>`).join('');
+
+  // B. 크기 판독
+  document.getElementById('sizes').innerHTML = `<table>
+    <tr><th class="rowlab">안</th><th>215</th><th>112</th><th>80</th><th>26</th><th>16</th></tr>
+    ${APPROACH_KEYS.map(k => `<tr>
+      <td class="rowlab">${APPROACHES[k].name}</td>
+      ${[215, 112, 80, 26, 16].map(sz => `<td><span class="cell sz-${sz}">${svgFor(curShape, k, hex)}</span></td>`).join('')}
+    </tr>`).join('')}
+  </table>`;
+
+  // C. 전수 격자(선택한 안)
+  document.getElementById('grid').innerHTML = `<table>
+    <tr><th class="rowlab">${APPROACHES[curApproach].name}</th>${GRADES.map(g => `<th>${g.key}</th>`).join('')}</tr>
+    ${SHAPES.map(s => `<tr><td class="rowlab">${s}</td>${GRADES.map(g =>
+      `<td><span class="cell sz-80">${svgFor(s, curApproach, gradeHex(g.key, t))}</span></td>`).join('')}</tr>`).join('')}
+  </table>`;
+
+  // D. 무기 행 맥락(16px)
+  document.getElementById('ctx').innerHTML = APPROACH_KEYS.map(k => `
+    <div class="socketrow">
+      <span class="nm">T4 기계식 키보드</span>
+      <span class="dots">
+        ${['Hexagon', 'Circle', 'Triangle', 'Star', 'Square'].map((s, i) =>
+          `<span class="cell sz-16">${svgFor(s, k, gradeHex(GRADES[i % GRADES.length].key, t))}</span>`).join('')}
+        <span style="font-size:11px;color:var(--dim);margin-left:6px">${APPROACHES[k].name}</span>
+      </span>
+    </div>`).join('');
+
+  document.getElementById('approachNote').innerHTML = APPROACH_KEYS
+    .map(k => `<b class="hi">${APPROACHES[k].name}</b> — ${APPROACHES[k].note}`).join('<br>');
+}
+
+renderPickers();
+let t0 = performance.now();
+(function loop() {
+  frame((performance.now() - t0) / 1000);
+  requestAnimationFrame(loop);
+})();
+
+// 안 선택(§C 격자용) — 격자 제목을 눌러 순환한다.
+document.getElementById('grid').addEventListener('click', () => {
+  const i = APPROACH_KEYS.indexOf(curApproach);
+  curApproach = APPROACH_KEYS[(i + 1) % APPROACH_KEYS.length];
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Armament Tier · Socket Shape — Click to Commit</title>
+<!--
+  armament-tier-socket-shape-plan.md T0 목업 (2026-07-30)
+
+  ⚠ 이 파일은 armament-menu.html 과 **별도**다. 그 파일의 ① 무기 뷰는
+     armament-weapon-visual-plan(다른 세션, 무기 아트 1종 전제)이 소유하고 있어
+     같은 구역을 건드리면 충돌한다. 여기서 티어/모양 설계를 먼저 검증하고,
+     owner 확정 후 병합 여부를 판단한다.
+
+  검증 대상
+   - 키보드 10종 티어 사다리 + 병행 보유 + 장착 전환 (W1/W2/W5)
+   - 티어별 소켓 개수·모양 (S1~S3, §2-D **O5 확정** · 특화 2칸 구조)
+   - 젬 = 등급(위력) × 모양(효과 풀) × 효과 3요소 (G1/G2, §2-C)
+   - 소켓 구멍 모양 ↔ 젬 모양 매칭 게이팅 (owner 핵심 설계)
+   - 효과 풀 80개 **전량**(§2-C-1 O6 확정) · 별 전용 8개 · 구현 등급 A/B/C
+   - 키보드별 타격음 프로파일 (W7 / §2-H — 피치·볼륨 변조)
+-->
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0b1218; --panel:#0e1822; --border-gold:rgba(201,162,39,0.25);
+  --teal:#57d1b8; --gold:#f5e859; --gold2:#c9a227;
+  --text:#e2e8f0; --muted:#7d8fa1; --muted2:#4a5a6a; --err:#ff6b6b;
+  /* 등급 팔레트 — armament-menu.html 과 동일 소스 */
+  --g-common:#9ca3af; --g-rare:#3b82f6; --g-epic:#a855f7;
+  --g-legendary:#f5a623; --g-mythic:#ffffff;
+}
+body {
+  background:var(--bg); color:var(--text); font-family:'Courier New',Courier,monospace;
+  min-height:100vh; padding:24px; user-select:none;
+}
+.wrap { max-width:1560px; margin:0 auto; }
+h1 { font-size:22px; letter-spacing:.06em; margin-bottom:3px; }
+.sub { font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.7; }
+.panel {
+  background:var(--panel); border:1px solid var(--border-gold); border-radius:8px;
+  padding:18px 20px; margin-bottom:16px;
+}
+.label { font-size:12px; letter-spacing:.12em; color:#8fa3b5; text-transform:uppercase; margin-bottom:9px; }
+
+/* ── 모양 6종: clip-path 로 구현 (신규 아트 0 — 플랜 §2-E) ── */
+.shape { display:inline-block; }
+.shape-circle   { border-radius:50%; }
+.shape-square   { border-radius:2px; }
+.shape-triangle { clip-path:polygon(50% 0%, 100% 100%, 0% 100%); }
+.shape-pentagon { clip-path:polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+.shape-hexagon  { clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+.shape-star     { clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+
+/* ── 좌: 키보드 10종 ── */
+#layout { display:grid; grid-template-columns:390px 1fr; gap:18px; align-items:start; }
+@media (max-width:900px){ #layout{ grid-template-columns:1fr; } }
+
+.kb-row {
+  display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:5px;
+  background:#0e1620; border:1px solid #1a2535; border-radius:5px; cursor:pointer;
+  transition:border-color .15s, background .15s, transform .1s;
+}
+.kb-row:hover:not(.locked){ transform:translateX(2px); border-color:rgba(87,209,184,.35); }
+.kb-row.equipped { background:rgba(87,209,184,.08); border-color:rgba(87,209,184,.55); }
+.kb-row.locked { opacity:.42; cursor:not-allowed; }
+.kb-tier { font-size:11px; color:var(--muted); width:30px; }
+.kb-name { font-size:14px; font-weight:bold; flex:1; }
+.kb-lv { font-size:12px; color:var(--gold); }
+.kb-sockets { display:flex; gap:2px; }
+.kb-sockets .mini { width:11px; height:11px; background:#2a3a4a; }
+.kb-sockets .mini.star { background:var(--gold); }
+
+/* ── 우: 장착 무기 상세 ── */
+#equipped-head { display:flex; align-items:baseline; gap:9px; margin-bottom:10px; }
+#equipped-name { font-size:20px; font-weight:bold; color:var(--teal); }
+#equipped-meta { font-size:12px; color:var(--muted); }
+.sound-chip {
+  font-size:11px; padding:4px 10px; border-radius:3px; margin-left:auto;
+  background:rgba(201,162,39,.10); border:1px solid rgba(201,162,39,.4); color:var(--gold);
+}
+
+#socket-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.socket {
+  width:122px; padding:12px 7px; border-radius:6px; text-align:center;
+  background:#0c151d; border:1px solid #1a2735;
+  transition:border-color .18s, box-shadow .18s;
+}
+.socket.locked { opacity:.4; }
+.socket.spec { border-color:rgba(201,162,39,.5); background:rgba(201,162,39,.05); }
+.spec-tag { font-size:9px; color:var(--gold2); border:1px solid rgba(201,162,39,.5); border-radius:2px; padding:0 2px; }
+.kb-spec { font-size:10px; color:var(--gold2); border:1px solid rgba(201,162,39,.35); border-radius:2px; padding:0 3px; }
+.socket.can-accept { border-color:var(--teal); box-shadow:0 0 12px rgba(87,209,184,.35); }
+.socket.reject { border-color:var(--err); box-shadow:0 0 12px rgba(255,107,107,.35); }
+.socket-hole {
+  width:46px; height:46px; margin:0 auto 8px;
+  background:#070c11; border:1px dashed #35485c;
+  display:flex; align-items:center; justify-content:center;
+}
+.socket-hole.filled { border-style:solid; }
+.socket-gem { width:30px; height:30px; }
+.socket-shape-name { font-size:11px; letter-spacing:.08em; color:var(--muted); }
+.socket-req { font-size:10px; color:var(--muted2); margin-top:2px; }
+.socket-eff { font-size:10.5px; color:#9ab0c4; margin-top:5px; line-height:1.45; min-height:34px; }
+
+/* ── 젬 인벤토리 ── */
+#gem-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(228px,1fr)); gap:10px; }
+.gem-card {
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:5px;
+  background:#0e1620; border:1px solid #1a2535; cursor:pointer;
+  transition:transform .1s, opacity .15s, border-color .15s;
+}
+.gem-card:hover:not(.socketed){ transform:translateY(-2px); }
+.gem-card.socketed { opacity:.34; cursor:default; border-style:dashed; }
+.gem-card.selected { border-color:var(--teal); background:rgba(87,209,184,.08); }
+.gem-icon { width:26px; height:26px; flex-shrink:0; }
+.gem-info { min-width:0; }
+.gem-title { font-size:12.5px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gem-eff { font-size:11px; color:#8ba2b6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* 등급 색 */
+.fill-common    { background:radial-gradient(circle at 35% 30%, #e5e7eb, #9ca3af 70%); box-shadow:0 0 7px rgba(156,163,175,.5); }
+.fill-rare      { background:radial-gradient(circle at 35% 30%, #93c5fd, #3b82f6 70%); box-shadow:0 0 9px rgba(59,130,246,.6); }
+.fill-epic      { background:radial-gradient(circle at 35% 30%, #d8b4fe, #a855f7 70%); box-shadow:0 0 9px rgba(168,85,247,.6); }
+.fill-legendary { background:radial-gradient(circle at 35% 30%, #ffe1a8, #f5a623 70%); box-shadow:0 0 11px rgba(245,166,35,.7); }
+.fill-mythic    { background:conic-gradient(from 0deg,#ff5b5b,#ffb545,#f7f75a,#63e6a3,#5ac8ff,#b98cff,#ff5b5b); box-shadow:0 0 14px rgba(255,255,255,.7); }
+.hole-empty     { background:#16202b; }
+
+/* ── 효과 풀 ── */
+#pool-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+@media (max-width:1100px){ #pool-grid{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:720px){ #pool-grid{ grid-template-columns:1fr; } }
+.pool-col { background:#0c141c; border:1px solid #17222e; border-radius:6px; padding:12px; }
+.pool-head { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.pool-icon { width:20px; height:20px; }
+.pool-name { font-size:13px; font-weight:bold; letter-spacing:.06em; }
+.pool-count { font-size:11px; color:var(--muted); margin-left:auto; }
+.pool-item { font-size:11px; color:#9ab0c4; padding:3px 0; line-height:1.5;
+             display:flex; align-items:baseline; gap:5px; }
+.pool-idx { color:#52657a; font-size:10px; flex-shrink:0; }
+.gbadge { font-size:9px; padding:1px 4px; border-radius:2px; flex-shrink:0; line-height:1.5; }
+.g-A { background:rgba(87,209,184,.16); color:#57d1b8; }   /* 기존 필드 가산만 */
+.g-B { background:rgba(245,232,89,.14); color:#c9a227; }   /* 조건 판정 1곳 */
+.g-C { background:rgba(255,107,107,.14); color:#ff6b6b; }  /* 신규 로직 필요 */
+.pool-col.star-pool { border-color:rgba(245,232,89,.4); background:rgba(245,232,89,.04); }
+
+/* ── 온-아트 소켓 (키보드 스프라이트 위에 젬을 박는다) ── */
+#art-wrap { position:relative; width:100%; max-width:760px; margin:0 auto 10px; }
+#kb-art { width:100%; display:block; image-rendering:auto; }
+#art-sockets { position:absolute; inset:0; }
+.art-socket {
+  position:absolute; transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:box-shadow .15s, transform .12s;
+}
+/* 젬은 항상 정사각 — 넓은 키(Space/Enter)라고 젬을 옆으로 늘리면 별/육각 실루엣이 뭉개진다.
+   실물 아티산 키캡도 스페이스바 위에 "높이만큼"의 조각이 하나 얹히지 가로로 늘어나지 않는다.
+   소켓 div 자체는 키 rect 전체를 덮어 히트 영역·하이라이트로 쓰고, 젬만 높이 기준 정사각. */
+.art-socket .art-gem { height:66%; width:auto; aspect-ratio:1/1; flex:0 0 auto; }
+.art-socket.can-accept { box-shadow:0 0 0 2px var(--teal), 0 0 14px rgba(87,209,184,.7); border-radius:3px; }
+.art-socket.reject     { box-shadow:0 0 0 2px var(--err),  0 0 12px rgba(255,107,107,.6); border-radius:3px; }
+.art-socket.locked     { opacity:.35; cursor:not-allowed; }
+.art-socket.drag-over  { transform:translate(-50%,-50%) scale(1.22); }
+
+/* ── 드래그 앤 드롭 ── */
+.gem-card[draggable="true"] { cursor:grab; }
+.gem-card.dragging { opacity:.4; }
+
+#act-row { display:flex; gap:7px; justify-content:center; margin-bottom:10px; flex-wrap:wrap; }
+.btn-auto, .btn-clear {
+  font-family:'Courier New',monospace; font-size:13px; padding:9px 20px; border-radius:4px; cursor:pointer;
+  background:linear-gradient(135deg,#0a2420,#051512); border:1px solid var(--teal); color:var(--teal);
+  transition:box-shadow .15s;
+}
+.btn-auto:hover { box-shadow:0 0 16px rgba(87,209,184,.35); }
+.btn-clear { background:none; border-color:#1e2e3e; color:var(--muted); }
+.btn-clear:hover { color:var(--text); border-color:#4a6a80; }
+
+#status { font-size:14px; color:#9ab0c4; min-height:20px; margin-top:12px; letter-spacing:.03em; }
+#status.ok { color:var(--teal); }
+#status.err { color:var(--err); }
+.note { font-size:12px; color:var(--muted); line-height:1.8; margin-top:12px; }
+.warn { color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>⌨ 장착 무기 — 키보드 10종 티어 · 소켓 모양 매칭</h1>
+<div class="sub">
+  <code>armament-tier-socket-shape-plan.md</code> T0 목업 ·
+  <span class="warn">소켓 구성표·효과 80개 owner 승인 완료 2026-07-31 — T1 착수 가능</span> ·
+  이 파일은 <code>armament-menu.html</code>과 별도(그쪽 ① 무기 뷰는 armament-weapon-visual-plan 소유)
+</div>
+
+<div id="layout">
+
+  <!-- 좌: 키보드 10종 -->
+  <div class="panel">
+    <div class="label">보유 키보드 (클릭 = 장착 전환)</div>
+    <div id="kb-list"></div>
+    <div class="note">
+      <strong>병행 보유 + 장착 전환</strong> — 해금한 키보드는 사라지지 않고
+      각자 <strong>레벨·소켓·젬 배정을 독립 유지</strong>한다.<br>
+      DLC로 키보드를 추가해도 <strong>정의 테이블 행 1줄</strong>로 끝나야 한다(W6).
+    </div>
+  </div>
+
+  <!-- 우: 장착 무기 + 소켓 + 젬 -->
+  <div>
+    <div class="panel">
+      <div id="equipped-head">
+        <span id="equipped-name">—</span>
+        <span id="equipped-meta"></span>
+        <span class="sound-chip" id="sound-chip">타격음 —</span>
+      </div>
+      <div class="label">소켓 — 키캡 자리에 뚫려 있다 · 구멍 모양에 맞는 젬만 들어간다</div>
+
+      <!-- 온-아트 소켓: 키보드 스프라이트 위에 앵커(정규화 uv)로 젬을 박는다 -->
+      <div id="art-wrap">
+        <img id="kb-art" alt="">
+        <div id="art-sockets"></div>
+      </div>
+
+      <div id="act-row">
+        <button class="btn-auto" onclick="autoEquip()">⤓ 자동 장착 — 모양 맞는 젬 딸깍</button>
+        <button class="btn-clear" onclick="clearAll()">↺ 전부 해제</button>
+      </div>
+
+      <div id="socket-row"></div>
+      <div id="status"></div>
+      <div class="note">
+        젬을 고르면 <span style="color:var(--teal)">꽂을 수 있는 소켓</span>과
+        <span style="color:var(--err)">모양이 안 맞는 소켓</span>이 즉시 구분된다.
+        <strong>별 소켓은 T8~T10에만</strong> 존재한다 — 별 젬을 얻어도 쓸 키보드가 없으면 못 쓴다.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="label">보유 젬 — 등급(색) × 모양(효과 풀) × 효과</div>
+      <div id="gem-grid"></div>
+      <div class="note">
+        등급은 <strong>위력</strong>만 정하고, 효과 <strong>종류</strong>는 모양이 정한다.
+        같은 등급·같은 모양이어도 <strong>효과는 다를 수 있다</strong>(풀에서 롤).
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="label">효과 풀 — 총 80개 (별 전용 8개)</div>
+  <div id="pool-grid"></div>
+  <div class="note">
+    일반 풀(원~육각) 72개는 스탯 직결이라 <strong>예측 가능</strong>하고,
+    <span class="warn">별 8개는 게임의 규칙을 흔드는 메타·확률·이벤트 계열</span>이다.<br>
+    규약 <strong>R1</strong> — 별은 <strong>확률·출현률 자체를 조작</strong>하고, 일반 72개는 <strong>이미 존재하는 값을 키운다</strong>.<br>
+    72개 전량을 실재 레버(<code>RuntimeStats</code> 43필드 · 타겟 Tier/Family · 골든 · 피버)에만 매핑했다.
+    배지는 구현 등급 — <span style="color:#57d1b8">A</span> 기존 필드 가산만 /
+    <span style="color:#c9a227">B</span> 조건 판정 1곳 /
+    <span style="color:#ff6b6b">C</span> 신규 로직. <strong>A29 · B37 · C6</strong> → 72개 중 66개가 데이터 입력으로 끝난다.
+  </div>
+</div>
+
+</div>
+
+<script>
+'use strict';
+
+// ── 모양 6종 (플랜 §2-C) ──
+const SHAPES = {
+  circle:   { key:'circle',   name:'원',    cls:'shape-circle',   pool:16 },
+  square:   { key:'square',   name:'네모',  cls:'shape-square',   pool:14 },
+  triangle: { key:'triangle', name:'세모',  cls:'shape-triangle', pool:14 },
+  pentagon: { key:'pentagon', name:'오각',  cls:'shape-pentagon', pool:14 },
+  hexagon:  { key:'hexagon',  name:'육각',  cls:'shape-hexagon',  pool:14 },
+  star:     { key:'star',     name:'별',    cls:'shape-star',     pool:8  },
+};
+const GRADES = ['common','rare','epic','legendary','mythic'];
+const GRADE_LABEL = { common:'COMMON', rare:'RARE', epic:'EPIC', legendary:'LEGENDARY', mythic:'MYTHIC' };
+// 등급 = 위력 배수(§2-C G6: 기본 위력은 등급이 모든 모양에 공통 부여)
+const GRADE_POWER = { common:1, rare:2, epic:3.5, legendary:5.5, mythic:8 };
+
+// ── 효과 풀 80개 전량 (§2-C-1 · O6 **owner 확정 2026-07-31**) ──
+// g = 구현 등급.  A = 기존 RuntimeStats 필드 가산만(ApplyGemEffect 한 줄)
+//                B = 기존 필드 + 조건 판정 1곳(타겟 티어/계열/피버/HP 등)
+//                C = 신규 필드·로직 필요
+// 규약 R1: **별은 확률·출현률 자체를 조작**하고, 일반 72개는 **이미 존재하는 값을 키운다.**
+//          두 풀이 같은 레버를 놓고 겹치지 않게 하는 유일한 기준선.
+const POOL = {
+  circle: [ // 화력 — 데미지 직결
+    {t:'전체 데미지 +{v}%', g:'A'},
+    {t:'클릭 데미지 +{v}', g:'A'},
+    {t:'타격 범위 +{v}', g:'A'},
+    {t:'같은 타겟 연타 시 데미지 최대 +{v}% 누적', g:'C'},
+    {t:'T0(버그) 대상 데미지 +{v}%', g:'B'},
+    {t:'T1 대상 데미지 +{v}%', g:'B'},
+    {t:'T2 대상 데미지 +{v}%', g:'B'},
+    {t:'T3 대상 데미지 +{v}%', g:'B'},
+    {t:'Language 계열 데미지 +{v}%', g:'B'},
+    {t:'Framework 계열 데미지 +{v}%', g:'B'},
+    {t:'Tooling 계열 데미지 +{v}%', g:'B'},
+    {t:'Architecture 계열 데미지 +{v}%', g:'B'},
+    {t:'HP 30% 이하 대상 데미지 +{v}% (마무리)', g:'B'},
+    {t:'만피 대상 첫 타격 데미지 +{v}% (선제)', g:'B'},
+    {t:'피버 중 데미지 +{v}%', g:'B'},
+    {t:'골든 노드 대상 데미지 +{v}%', g:'B'},
+  ],
+  square: [ // 경제 — 재화·비용
+    {t:'골드 획득 +{v}%', g:'A'},
+    {t:'패시브 수입 +{v}%', g:'A'},
+    {t:'패시브 효율 +{v}%', g:'A'},
+    {t:'학습 효율 +{v}%', g:'A'},
+    {t:'ArchToken 드랍 확률 +{v}%p', g:'A'},
+    {t:'ArchToken 드랍량 +{v}', g:'A'},
+    {t:'클리어 보상 +{v}%', g:'B'},
+    {t:'커밋 획득 +{v}%', g:'B'},
+    {t:'B코인 획득 +{v}%', g:'B'},
+    {t:'골든 노드 보상 +{v}%', g:'B'},
+    {t:'피버 중 골드 획득 +{v}%', g:'B'},
+    {t:'업그레이드 비용 -{v}%', g:'B'},
+    {t:'젬 뽑기 비용 -{v}%', g:'B'},
+    {t:'런 종료 시 미사용 자원 {v}% 이월', g:'C'},
+  ],
+  triangle: [ // 판정 — 치명타·시간·피버
+    {t:'치명타 확률 +{v}%p', g:'A'},
+    {t:'치명타 피해 +{v}%', g:'A'},
+    {t:'런 시간 +{v}초', g:'A'},
+    {t:'피버 게이지 획득 +{v}%', g:'B'},
+    {t:'피버 지속시간 +{v}%', g:'B'},
+    {t:'피버 중 치명타 확률 +{v}%p', g:'B'},
+    {t:'치명타 시 골드 +{v}%', g:'B'},
+    {t:'치명타 시 피버 게이지 추가 획득 +{v}%', g:'B'},
+    {t:'비치명타 데미지 +{v}%', g:'B'},
+    {t:'런 초반 20초간 치명타 확률 +{v}%p', g:'B'},
+    {t:'런 종료 20초 전부터 치명타 확률 +{v}%p', g:'B'},
+    {t:'오토무기도 {v}% 확률로 치명타 판정', g:'B'},
+    {t:'치명타 시 {v}% 확률로 즉시 추가 타격 1회', g:'C'},
+    {t:'치명타 확률 100% 초과분의 {v}%를 치명타 피해로 전환', g:'C'},
+  ],
+  pentagon: [ // 필드 — 스폰·타겟·자원
+    {t:'최대 스폰 +{v}', g:'A'},
+    {t:'초기 스폰 +{v}', g:'A'},
+    {t:'스폰 간격 -{v}%', g:'A'},
+    {t:'타겟 HP -{v}%', g:'B'},
+    {t:'T3 타겟 HP -{v}%', g:'B'},
+    {t:'Architecture 타겟 HP -{v}%', g:'B'},
+    {t:'자원 드랍량 +{v}%', g:'B'},
+    {t:'T1 이하 타겟 스폰 비중 -{v}% (상위 밀도↑)', g:'B'},
+    {t:'Architecture 타겟 출현 비중 +{v}%', g:'B'},
+    {t:'골든 노드 최대 동시 수 +{v}', g:'B'},
+    {t:'필드가 가득 찼을 때 데미지 +{v}%', g:'B'},
+    {t:'필드 타겟 3개 이하일 때 스폰 간격 -{v}%', g:'B'},
+    {t:'타겟 처치 시 주변에 처치 데미지의 {v}% 광역', g:'C'},
+    {t:'런 시작 시 {v}% 확률로 타겟 1개가 골든으로 시작', g:'C'},
+  ],
+  hexagon: [ // 오토무기 — 전 항목 기존 필드 직결(구현비 최저 풀)
+    {t:'오토무기 전체 데미지 +{v}%', g:'A'},
+    {t:'오토무기 전체 쿨다운 -{v}%', g:'A'},
+    {t:'Chain 데미지 +{v}%', g:'A'},
+    {t:'Chain 사거리 +{v}', g:'A'},
+    {t:'Chain 연쇄 깊이 +{v}', g:'A'},
+    {t:'Chain 초기 대상 +{v}', g:'A'},
+    {t:'TX 틱 데미지 +{v}%', g:'A'},
+    {t:'TX 지속시간 +{v}%', g:'A'},
+    {t:'TX 최대 대상 +{v}', g:'A'},
+    {t:'Worker 수 +{v}', g:'A'},
+    {t:'Worker 속도 +{v}%', g:'A'},
+    {t:'Worker 추가 수확 +{v}%', g:'A'},
+    {t:'VDOM 패치 데미지 +{v}%', g:'A'},
+    {t:'VDOM diff 개수 +{v}', g:'A'},
+  ],
+  // ★ 별 8개 — owner 예시 3 + 설계 5.
+  //   ★8은 R1에 맞춰 정리: "젬 뽑기 비용 감소"는 확률 조작이 아니라 네모 풀로 이관하고
+  //   별에는 **합성 승급 확률**만 남긴다.
+  star: [
+    {t:'공격 시 {v}% 확률로 수 초간 데미지 배율 0.5~1.5배 변동', g:'C'},
+    {t:'보물상자 출현률 +{v}%', g:'C'},
+    {t:'파티타임 — 피버 게이지 획득 +{v}% · 피버 지속 +{v}%', g:'B'},
+    {t:'골든 노드 출현률 +{v}%', g:'B'},
+    {t:'파이프라인 효율 +{v}% (토큰 드랍·효과 강도)', g:'C'},
+    {t:'런 시작 시 무작위 버프 {v}개 미리 장전', g:'C'},
+    {t:'클리어 시 {v}% 확률로 자원 즉시 재스폰', g:'C'},
+    {t:'합성 승급 확률 +{v}%p', g:'B'},
+  ],
+};
+
+// ── 키보드 10종 (§2-D · O5 **owner 확정 2026-07-31**) ──
+// 설계 규칙
+//  ① 소켓 **개수**는 티어로만 오른다: T1~2=2, T3~4=3, T5~7=4, T8~10=5
+//  ② 각 키보드는 **특화 모양 1종을 2칸** 갖는다 → 그 축을 몰아주는 빌드가 성립한다
+//  ③ 특화는 모양별 정확히 2회, **하나는 T1~T5 / 하나는 T6~T10** → 어떤 축이든 저티어 저가판과
+//     고티어 완성판이 둘 다 존재한다(= 병행 보유 W2가 장식이 되지 않는다)
+//  ④ 5칸으로 6모양을 다 담을 수 없다 → **모든 키보드는 최소 1모양을 못 받는다.** 이게 전환의 이유다
+//  ⑤ 별은 T8~T10에만 1칸(플랜 확정 원칙) · 아트상 항상 Space 자리
+// 타격음은 기존 sfx_kb_slam 1종을 피치·볼륨으로 변조(§2-H H1, 신규 wav 0)
+// 스프라이트/앵커 SoT는 html/armament-keyboard-sprites.html(+ capture-armament-keyboard.js).
+const ART_DIR = 'Assets/Resources/Sprites/Armament/';
+const KEYBOARDS = [
+  { tier:1,  art:'kb_membrane', name:'멤브레인',     spec:'circle',   sockets:['circle','circle'],                               sound:'둔탁·낮음   vol .60 / pitch .88' },
+  { tier:2,  art:'kb_retro',    name:'옛날 키보드',  spec:'square',   sockets:['square','square'],                               sound:'딱딱·울림   vol .72 / pitch .92' },
+  { tier:3,  art:'kb_red',      name:'적축',         spec:'triangle', sockets:['triangle','triangle','circle'],                   sound:'부드러운    vol .62 / pitch .98' },
+  { tier:4,  art:'kb_brown',    name:'갈축',         spec:'pentagon', sockets:['pentagon','pentagon','circle'],                   sound:'중간 구분감 vol .70 / pitch 1.02' },
+  { tier:5,  art:'kb_blue',     name:'청축',         spec:'hexagon',  sockets:['hexagon','hexagon','circle','triangle'],          sound:'딸깍 선명   vol .82 / pitch 1.14' },
+  { tier:6,  art:'kb_silent',   name:'무소음',       spec:'square',   sockets:['square','square','circle','pentagon'],            sound:'아주 작게   vol .34 / pitch 1.00' },
+  { tier:7,  art:'kb_spider',   name:'독거미',       spec:'pentagon', sockets:['pentagon','pentagon','circle','hexagon'],         sound:'날카로움    vol .78 / pitch 1.20' },
+  { tier:8,  art:'kb_optical',  name:'레이저(광축)', spec:'triangle', sockets:['triangle','triangle','circle','square','star'],   sound:'전자음      vol .80 / pitch 1.25' },
+  { tier:9,  art:'kb_custom',   name:'커스텀 빌드',  spec:'hexagon',  sockets:['hexagon','hexagon','circle','pentagon','star'],   sound:'묵직 저음   vol .88 / pitch .84' },
+  { tier:10, art:'kb_hacker',   name:'해커 키보드',  spec:'circle',   sockets:['circle','circle','triangle','hexagon','star'],    sound:'특수·과장   vol .95 / pitch 1.30' },
+];
+
+// 소켓 해금 레벨 — 개수별 명시 테이블(계산식 금지: 별은 항상 **마지막 = 만렙 L8**이어야 한다).
+// 5소켓의 마지막 칸이 별이므로, "상위 무기 만렙"이 곧 별의 진짜 게이트가 된다.
+const SOCKET_UNLOCK = { 2:[2,5], 3:[2,4,6], 4:[2,4,6,8], 5:[2,3,5,7,8] };
+
+// ── 소켓 앵커 ──
+// SoT = html/armament-keyboard-sprites.html + capture-armament-keyboard.js 산출물
+//       (Assets/Resources/Sprites/Armament/armament_socket_anchors.json).
+// 실제 60% 배열(61키)의 아티산 키캡 자리(ESC/Caps/Enter/우Shift/Space)에서 뽑은 정규화 uv.
+// kw/kh 는 키 rect(정규화) = 히트 영역·하이라이트 범위. r 은 소켓 구멍 반지름.
+// 젬 자체는 키 높이 기준 정사각으로 그린다 — 넓은 키에서 늘리면 별/육각 실루엣이 뭉개진다.
+const SOCKET_ANCHORS = {
+  kb_membrane: [
+    {shape:'circle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+  ],
+  kb_retro: [
+    {shape:'square', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'square', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+  ],
+  kb_red: [
+    {shape:'triangle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_brown: [
+    {shape:'pentagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_blue: [
+    {shape:'hexagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_silent: [
+    {shape:'square', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'square', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_spider: [
+    {shape:'pentagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_optical: [
+    {shape:'triangle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'square', spot:'rshift', u:0.8753, v:0.6433, kw:0.1564, kh:0.1327, r:0.0162},
+    {shape:'star', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_custom: [
+    {shape:'hexagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'rshift', u:0.8753, v:0.6433, kw:0.1564, kh:0.1327, r:0.0162},
+    {shape:'star', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_hacker: [
+    {shape:'circle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'rshift', u:0.8753, v:0.6433, kw:0.1564, kh:0.1327, r:0.0162},
+    {shape:'star', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+};
+
+// 데모 상태
+let unlockedTiers = [1,2,3,4,5,6,7,8];   // T9·T10 잠김
+let equippedTier = 8;
+// T8은 만렙으로 둔다 — 별 소켓(5번째, Lv.6 필요)이 열려 있어야 모양 매칭 데모가 보인다.
+let levels = { 1:8, 2:8, 3:7, 4:6, 5:6, 6:5, 7:4, 8:8, 9:0, 10:0 };
+let selectedGemId = null;
+let draggingGemId = null;
+// 무기별 소켓 배정 — 병행 보유이므로 무기마다 독립(W2)
+let socketAssign = { 8:[null,null,null,null,null] };
+
+let gemSeq = 0;
+function mkGem(grade, shape, effIdx) {
+  const pool = POOL[shape];
+  const entry = pool[effIdx % pool.length];
+  const v = Math.round((GRADE_POWER[grade] * (shape === 'star' ? 3 : 4)) * 10) / 10;
+  return { id:'g'+(++gemSeq), grade, shape, effId: effIdx % pool.length, eff: entry.t.replace(/\{v\}/g, v) };
+}
+const GEMS = [
+  mkGem('common','circle',0), mkGem('rare','circle',2), mkGem('epic','square',0),
+  mkGem('rare','triangle',0), mkGem('legendary','triangle',1), mkGem('epic','pentagon',0),
+  mkGem('rare','hexagon',0), mkGem('legendary','hexagon',2), mkGem('mythic','star',0),
+  mkGem('common','star',2), mkGem('epic','circle',1), mkGem('common','square',3),
+];
+
+function kbOf(tier){ return KEYBOARDS.find(k => k.tier === tier); }
+function assignOf(tier){
+  if (!socketAssign[tier]) socketAssign[tier] = new Array(kbOf(tier).sockets.length).fill(null);
+  return socketAssign[tier];
+}
+// 소켓 해금 레벨 — 개수에 맞춰 균등 분배(플랜 §2-D)
+// 특화 = 그 키보드가 2칸 갖는 모양. 인덱스 0,1이 항상 특화 칸이다(§2-D 규칙 ②).
+function isSpecSocket(kb, i){ return kb.sockets[i] === kb.spec && kb.sockets.indexOf(kb.spec) <= i && i < 2; }
+function socketReqLevel(i, total){ const t = SOCKET_UNLOCK[total]; return t ? t[i] : 8; }
+function isSocketUnlocked(tier, i){ return levels[tier] >= socketReqLevel(i, kbOf(tier).sockets.length); }
+function gemById(id){ return GEMS.find(g => g.id === id); }
+function isSocketed(id){
+  return Object.values(socketAssign).some(arr => arr && arr.includes(id));
+}
+
+function setStatus(msg, cls){
+  const el = document.getElementById('status');
+  el.textContent = msg || '';
+  el.className = cls || '';
+}
+
+// ── 렌더 ──
+function renderKeyboards(){
+  const box = document.getElementById('kb-list');
+  box.innerHTML = '';
+  KEYBOARDS.forEach(kb => {
+    const unlocked = unlockedTiers.includes(kb.tier);
+    const row = document.createElement('div');
+    row.className = 'kb-row' + (kb.tier === equippedTier ? ' equipped' : '') + (unlocked ? '' : ' locked');
+    const minis = kb.sockets.map(sh =>
+      `<span class="mini ${SHAPES[sh].cls}${sh==='star'?' star':''}"></span>`).join('');
+    row.innerHTML = `<span class="kb-tier">T${kb.tier}</span>`
+      + `<span class="kb-name">${unlocked ? kb.name : '🔒 ' + kb.name}</span>`
+      + (unlocked ? `<span class="kb-lv">Lv.${levels[kb.tier]}</span>` : '')
+      + `<span class="kb-spec" title="특화 모양 — 배치/식별 용도">${SHAPES[kb.spec].name}</span>`
+      + `<span class="kb-sockets">${minis}</span>`;
+    if (unlocked) row.onclick = () => { equippedTier = kb.tier; selectedGemId = null; renderAll();
+      setStatus(`${kb.name} 장착 — 타격음이 바뀝니다.`, 'ok'); };
+    box.appendChild(row);
+  });
+}
+
+// ── 온-아트 소켓 렌더 (키보드 스프라이트 위) ──
+function renderArt(){
+  const kb = kbOf(equippedTier);
+  const img = document.getElementById('kb-art');
+  img.src = ART_DIR + kb.art + '.png';
+  img.alt = kb.name;
+
+  const host = document.getElementById('art-sockets');
+  host.innerHTML = '';
+  const list = SOCKET_ANCHORS[kb.art] || [];
+  const assign = assignOf(kb.tier);
+  const sel = selectedGemId ? gemById(selectedGemId) : null;
+
+  list.forEach((a, i) => {
+    const shapeKey = a.shape;
+    const unlocked = isSocketUnlocked(kb.tier, i);
+    const gid = assign[i];
+    const gem = gid ? gemById(gid) : null;
+
+    const el = document.createElement('div');
+    let cls = 'art-socket' + (unlocked ? '' : ' locked');
+    if (sel && unlocked) cls += (sel.shape === shapeKey) ? ' can-accept' : ' reject';
+    el.className = cls;
+    // 키 rect 를 그대로 덮는다(히트 영역·하이라이트). 젬은 CSS에서 높이 기준 정사각.
+    el.style.left   = (a.u*100)+'%';
+    el.style.top    = (a.v*100)+'%';
+    el.style.width  = (a.kw*100)+'%';
+    el.style.height = (a.kh*100)+'%';
+    el.title = `${SHAPES[shapeKey].name} 소켓 (${a.spot})`
+      + (unlocked ? '' : ` · Lv.${socketReqLevel(i, kb.sockets.length)} 필요`);
+
+    if (gem) {
+      // 아티산 키캡처럼 키 자리에 꽉 차게 — 모양은 clip-path, 색은 등급
+      el.innerHTML = `<div class="art-gem ${SHAPES[shapeKey].cls} fill-${gem.grade}"></div>`;
+    }
+
+    el.onclick = () => trySocket(i, shapeKey, unlocked);
+
+    el.addEventListener('dragover', ev => {
+      if (!unlocked || !draggingGemId) return;
+      const g = gemById(draggingGemId);
+      if (g && g.shape === shapeKey) { ev.preventDefault(); el.classList.add('drag-over'); }
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', ev => {
+      ev.preventDefault(); el.classList.remove('drag-over');
+      if (!draggingGemId) return;
+      selectedGemId = draggingGemId;
+      trySocket(i, shapeKey, unlocked);
+      draggingGemId = null;
+    });
+
+    host.appendChild(el);
+  });
+}
+
+// 소켓 조작 단일 진입점 — 클릭·드롭·자동장착이 전부 이 가드를 통과한다.
+function trySocket(i, shapeKey, unlocked){
+  const kb = kbOf(equippedTier);
+  const assign = assignOf(kb.tier);
+  const sel = selectedGemId ? gemById(selectedGemId) : null;
+  const sh = SHAPES[shapeKey];
+
+  if (!unlocked) { setStatus(`레벨 ${socketReqLevel(i, kb.sockets.length)} 이상이어야 열립니다.`, 'err'); return false; }
+  if (assign[i] && !sel) { assign[i] = null; renderAll(); setStatus('젬을 해제했습니다.', 'ok'); return true; }
+  if (!sel) { setStatus('젬을 선택하거나 드래그해서 소켓에 놓으세요.', ''); return false; }
+  if (sel.shape !== shapeKey) {
+    setStatus(`${SHAPES[sel.shape].name} 젬은 ${sh.name} 소켓에 들어가지 않습니다.`, 'err'); return false;
+  }
+  assign[i] = sel.id; selectedGemId = null; renderAll();
+  setStatus(`${sh.name} 소켓에 장착했습니다.`, 'ok');
+  return true;
+}
+
+// ── 자동 장착 (owner 요구: "버튼 눌러서 소켓에 맞게 딸깍") ──
+function autoEquip(){
+  const kb = kbOf(equippedTier);
+  const assign = assignOf(kb.tier);
+  let placed = 0, skipped = 0;
+
+  kb.sockets.forEach((shapeKey, i) => {
+    if (!isSocketUnlocked(kb.tier, i)) { skipped++; return; }
+    if (assign[i]) return;                       // 이미 꽂힌 자리는 건드리지 않는다
+    // 모양이 맞고 아직 어디에도 안 꽂힌 젬 중 등급이 가장 높은 것
+    const cand = GEMS
+      .filter(g => g.shape === shapeKey && !isSocketed(g.id))
+      .sort((a,b) => GRADES.indexOf(b.grade) - GRADES.indexOf(a.grade))[0];
+    if (cand) { assign[i] = cand.id; placed++; }
+  });
+
+  selectedGemId = null;
+  renderAll();
+  if (placed) setStatus(`자동 장착 ${placed}개 — 모양이 맞는 젬 중 최고 등급을 넣었습니다.` +
+    (skipped ? ` (잠긴 소켓 ${skipped}개 제외)` : ''), 'ok');
+  else setStatus('장착할 수 있는 젬이 없습니다.', 'err');
+}
+
+function clearAll(){
+  const kb = kbOf(equippedTier);
+  socketAssign[kb.tier] = new Array(kb.sockets.length).fill(null);
+  selectedGemId = null; renderAll();
+  setStatus('전부 해제했습니다.', 'ok');
+}
+
+function renderEquipped(){
+  const kb = kbOf(equippedTier);
+  document.getElementById('equipped-name').textContent = `T${kb.tier} ${kb.name}`;
+  document.getElementById('equipped-meta').textContent =
+    `Lv.${levels[kb.tier]} / 8 · 소켓 ${kb.sockets.length} · 특화 ${SHAPES[kb.spec].name}`;
+  document.getElementById('sound-chip').textContent = '타격음 ' + kb.sound;
+
+  const row = document.getElementById('socket-row');
+  row.innerHTML = '';
+  const assign = assignOf(kb.tier);
+  const sel = selectedGemId ? gemById(selectedGemId) : null;
+
+  kb.sockets.forEach((shapeKey, i) => {
+    const sh = SHAPES[shapeKey];
+    const unlocked = isSocketUnlocked(kb.tier, i);
+    const gid = assign[i];
+    const gem = gid ? gemById(gid) : null;
+
+    const spec = isSpecSocket(kb, i);
+    let cls = 'socket' + (unlocked ? '' : ' locked') + (spec ? ' spec' : '');
+    if (sel && unlocked) cls += (sel.shape === shapeKey) ? ' can-accept' : ' reject';
+
+    const el = document.createElement('div');
+    el.className = cls;
+    el.innerHTML =
+      `<div class="socket-hole ${gem ? 'filled' : ''}">` +
+        (gem
+          ? `<div class="socket-gem ${sh.cls} fill-${gem.grade}"></div>`
+          : `<div class="socket-gem ${sh.cls} hole-empty"></div>`) +
+      `</div>` +
+      `<div class="socket-shape-name">${sh.name}${spec ? ' <span class="spec-tag">특화</span>' : ''}</div>` +
+      (unlocked
+        ? `<div class="socket-eff">${gem ? gem.eff : '<span style="color:#35485c">비어 있음</span>'}</div>`
+        : `<div class="socket-req">🔒 Lv.${socketReqLevel(i, kb.sockets.length)} 필요</div>`);
+
+    el.onclick = () => trySocket(i, shapeKey, unlocked);
+    row.appendChild(el);
+  });
+}
+
+function renderGems(){
+  const grid = document.getElementById('gem-grid');
+  grid.innerHTML = '';
+  GEMS.forEach(g => {
+    const sh = SHAPES[g.shape];
+    const socketed = isSocketed(g.id);
+    const card = document.createElement('div');
+    card.className = 'gem-card' + (socketed ? ' socketed' : '') + (selectedGemId === g.id ? ' selected' : '');
+    if (!socketed) {
+      card.draggable = true;
+      card.addEventListener('dragstart', ev => {
+        draggingGemId = g.id; selectedGemId = g.id;
+        card.classList.add('dragging');
+        ev.dataTransfer.effectAllowed = 'move';
+        ev.dataTransfer.setData('text/plain', g.id);
+        renderArt();   // 드래그 시작 즉시 accept/reject 하이라이트
+        setStatus(`${SHAPES[g.shape].name} 젬 — 같은 모양 소켓에 놓으세요.`, '');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging'); draggingGemId = null;
+        document.querySelectorAll('.art-socket.drag-over').forEach(e => e.classList.remove('drag-over'));
+      });
+    }
+    card.innerHTML =
+      `<div class="gem-icon ${sh.cls} fill-${g.grade}"></div>` +
+      `<div class="gem-info">` +
+        `<div class="gem-title" style="color:var(--g-${g.grade})">${GRADE_LABEL[g.grade]} · ${sh.name}</div>` +
+        `<div class="gem-eff">${g.eff}</div>` +
+      `</div>`;
+    if (!socketed) card.onclick = () => {
+      selectedGemId = (selectedGemId === g.id) ? null : g.id;
+      renderAll();
+      if (selectedGemId) setStatus(`${sh.name} 젬 선택 — 같은 모양 소켓에만 들어갑니다.`, '');
+    };
+    grid.appendChild(card);
+  });
+}
+
+function renderPool(){
+  const grid = document.getElementById('pool-grid');
+  grid.innerHTML = '';
+  Object.values(SHAPES).forEach(sh => {
+    const col = document.createElement('div');
+    col.className = 'pool-col' + (sh.key === 'star' ? ' star-pool' : '');
+    const items = POOL[sh.key].map((e,i) =>
+      `<div class="pool-item"><span class="pool-idx">${String(i+1).padStart(2,'0')}</span>` +
+      `<span class="gbadge g-${e.g}">${e.g}</span>${e.t.replace(/\{v\}/g,'N')}</div>`).join('');
+    // 목록이 곧 전량이다 — 개수 불일치는 설계 오류이므로 눈에 띄게 표시한다.
+    const more = POOL[sh.key].length === sh.pool ? '' :
+      `<div class="pool-item" style="color:var(--err)">⚠ 목록 ${POOL[sh.key].length}개 ≠ 선언 ${sh.pool}개</div>`;
+    col.innerHTML =
+      `<div class="pool-head">` +
+        `<div class="pool-icon ${sh.cls} fill-${sh.key==='star'?'legendary':'common'}"></div>` +
+        `<span class="pool-name" ${sh.key==='star'?'style="color:var(--gold)"':''}>${sh.name}</span>` +
+        `<span class="pool-count">${sh.pool}개</span>` +
+      `</div>` + items + more;
+    grid.appendChild(col);
+  });
+}
+
+function renderAll(){ renderKeyboards(); renderArt(); renderEquipped(); renderGems(); renderPool(); }
+renderAll();
+setStatus('젬을 선택한 뒤 소켓을 클릭해 보세요 — 모양이 맞아야 들어갑니다.', '');
+</script>
+</body>
+</html>

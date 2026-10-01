@@ -1,0 +1,2908 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Armament Menu — Click to Commit</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0b1218;
+  --panel:   #111b24;
+  --border:  #c9a227;
+  --border-gold: rgba(201,162,39,0.25); /* = var(--border) @ α — 알파 변형 */
+  --teal:    #57d1b8;
+  --gold:    #f5e859;
+  --text:    #e2e8f0;
+  --muted:   #8c99ad;
+  --muted2:  #2a3a4a;
+  --red:     #ff6b6b;
+  /* Grade palette — starting visual system (§3-1) */
+  --g-common:    #9ca3af;
+  --g-common-glow:   rgba(156,163,175,0.45);
+  --g-rare:      #3b82f6;
+  --g-rare-glow:     rgba(59,130,246,0.55);
+  --g-epic:      #a855f7;
+  --g-epic-glow:     rgba(168,85,247,0.55);
+  --g-legendary: #f5a623;
+  --g-legendary-glow: rgba(245,166,35,0.65);
+  --g-mythic:    #ffffff;
+  --g-mythic-glow:   rgba(255,255,255,0.85);
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  user-select: none;
+}
+
+/* ── HUD Bar (equipment-menu.html 패턴 그대로) ─────── */
+#hud-bar {
+  width: 100%; max-width: 980px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 14px;
+  background: rgba(13,22,36,0.95);
+  border: 1px solid rgba(87,209,184,0.15);
+  border-radius: 6px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.hud-chip { font-size: 11px; padding: 2px 9px; border-radius: 3px; display: flex; align-items: center; gap: 5px; }
+.hud-gold   { background:#1a1505; color:var(--gold); border:1px solid #3a2a10; }
+.hud-commit { background:#0a1a10; color:var(--teal); border:1px solid #1a3a28; }
+.hud-bcoin  { background:#0d1520; color:#7fb3ff; border:1px solid #16283e; }
+.hud-arch   { background:#1a0d20; color:#d99cfe; border:1px solid #34163e; }
+.hud-sep    { color:var(--muted2); }
+.hud-label  { font-size:10px; color:#4a5a6a; letter-spacing:.08em; }
+
+/* ── Screen Flash ───────────────────────────────────── */
+#screen-flash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  opacity: 0; transition: opacity 0.08s ease;
+}
+
+/* ── View Tabs ──────────────────────────────────────── */
+#view-tabs {
+  width: 100%; max-width: 980px;
+  display: flex; gap: 8px;
+  margin-bottom: 12px;
+}
+.view-tab {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 12px; letter-spacing: .04em;
+  padding: 9px 10px;
+  background: rgba(14,24,34,0.7);
+  border: 1px solid rgba(87,209,184,0.15);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.view-tab:hover { color: var(--text); border-color: rgba(87,209,184,0.35); }
+.view-tab.active {
+  color: var(--teal);
+  border-color: rgba(87,209,184,0.55);
+  background: rgba(87,209,184,0.08);
+  font-weight: bold;
+}
+
+/* ── Panel Wrap ─────────────────────────────────────── */
+#arm-wrap { width: 100%; max-width: 980px; position: relative; }
+#arm-panel {
+  background: var(--panel);
+  border: 1px solid var(--border-gold);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  transition: transform .03s;
+}
+#arm-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-gold);
+  background: rgba(11,18,24,0.6);
+}
+#arm-header .title-block { display: flex; align-items: center; gap: 10px; }
+#arm-header .title-icon { font-size: 20px; }
+#arm-header .title-text { font-size: 14px; font-weight: bold; letter-spacing: .06em; color: var(--text); }
+#arm-header .title-meta { font-size: 11px; color: var(--teal); margin-left: 6px; }
+#btn-close {
+  font-size: 11px; color: var(--muted); background: none;
+  border: 1px solid #1e2e3e; border-radius: 3px; padding: 3px 10px;
+  cursor: pointer; font-family: 'Courier New', monospace;
+  transition: color .15s, border-color .15s;
+}
+#btn-close:hover { color: var(--text); border-color: #4a6a80; }
+
+#arm-body { padding: 22px 24px; min-height: 380px; }
+.view-section { display: none; }
+.view-section.active { display: block; }
+
+#arm-footer {
+  border-top: 1px solid rgba(201,162,39,0.15);
+  padding: 10px 18px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(11,18,24,0.5);
+}
+#status-line { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+#status-line.ok  { color: var(--teal); }
+#status-line.err { color: var(--red); }
+#btn-demo-reset {
+  font-size: 11px; background: none; border: 1px solid #1e2e3e; color: var(--muted);
+  border-radius: 3px; padding: 5px 11px; cursor: pointer; font-family: 'Courier New', monospace;
+  transition: color .15s, border-color .15s;
+}
+#btn-demo-reset:hover { color: var(--text); border-color: #4a6a80; }
+
+/* ═══════════════════════════════════════════════════
+   WEAPON VIEW
+   ═══════════════════════════════════════════════════ */
+.section-label {
+  font-size: 9px; letter-spacing: .12em; color: var(--muted2);
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.demo-label { font-size: 10px; color: var(--muted); letter-spacing: .05em; }
+.shape { display:inline-block; }
+.shape-circle   { border-radius:50%; }
+.shape-square   { border-radius:2px; }
+.shape-triangle { clip-path:polygon(50% 0%, 100% 100%, 0% 100%); }
+.shape-pentagon { clip-path:polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+.shape-hexagon  { clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+.shape-star     { clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+
+.weapon-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 860px) { .weapon-layout { grid-template-columns: 1fr; } }
+.keyboard-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.kb-row {
+  display:flex; align-items:center; gap:8px; padding:9px 10px;
+  background:#0e1620; border:1px solid #1a2535; border-radius:5px; cursor:pointer;
+  transition:border-color .15s, background .15s, transform .1s;
+}
+.kb-row:hover:not(.locked){ transform:translateX(2px); border-color:rgba(87,209,184,.35); }
+.kb-row.equipped { background:rgba(87,209,184,.08); border-color:rgba(87,209,184,.55); }
+.kb-row.locked { opacity:.42; cursor:not-allowed; }
+.kb-tier { font-size:10px; color:var(--muted); width:24px; }
+.kb-name { font-size:12px; font-weight:bold; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kb-lv { font-size:10px; color:var(--gold); }
+.kb-spec { font-size:9px; color:var(--border); border:1px solid rgba(201,162,39,.35); border-radius:2px; padding:0 3px; }
+.kb-sockets { display:flex; gap:2px; }
+.kb-sockets .mini { width:10px; height:10px; background:var(--muted2); flex-shrink:0; }
+.kb-sockets .mini.star { background:var(--gold); }
+
+.weapon-card {
+  display: none;
+  max-width: none;
+  margin: 0 auto;
+  background: rgba(14,24,34,0.5);
+  border: 1px solid rgba(60,80,110,0.4);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+}
+.weapon-card.show { display: block; }
+.weapon-icon { font-size: 40px; margin-bottom: 8px; }
+.weapon-icon.locked { filter: grayscale(1) brightness(.6); }
+/* weapon-art-padding-quality-plan T1 — **owner 2026-09-07 14:26 확정 D1=(a)** 반영.
+   Unity 확정값(카드 1532 기준 좌우 48 · 아래 24)을 이 목업 카드 폭 592 로 환산하면
+   좌우 `48/1532×592 ≈ 18.5` · 아래 `24/1532×592 ≈ 9.3` 이다.
+   ⚠ 방향이 직관과 반대다 — 확정값은 목업보다 **여백이 좁다**:
+     · 목업 현행 : 카드 592 · 아트 542(= 592 − 보더 2 − 패딩 48) ⇒ 아트/카드 **91.6%**
+     · Unity 확정 : 1436 / 1532 ⇒ **93.7%**
+   ⇒ 아트를 `592 × 0.9373 = 554.9` 로 **넓혀야** 맞고, 그만큼(±6.45) `.weapon-card`
+     패딩 24 를 음수 마진으로 되돌린다(카드 가장자리 기준 한쪽 여백 = 24+1−6.45 ≈ **18.5** ✓).
+     텍스트 행은 패딩 24 를 그대로 쓰므로 카드 구조는 건드리지 않는다.
+   ⚠ 옛 `min(560px, 100%)` 캡은 **사문**이었다(콘텐츠 박스 542 < 560 — 재배분 플랜 R1 H1
+     Puppeteer 실측). 새 폭 554.9 도 560 미만이라 여전히 사문이므로 캡 자체를 걷었다. */
+.weapon-art {
+  position: relative;
+  width: calc(100% + 12.9px);
+  aspect-ratio: 512 / 208;
+  height: auto;
+  margin: 0 -6.45px 9.3px;
+}
+.weapon-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.weapon-art.locked img { filter: grayscale(1) brightness(.62); opacity: .68; }
+/* 젬 장착 탭은 드롭 정확도를 위해 무기 탭보다 아트를 크게 잡는다.
+   ⚠ 앵커 정정(weapon-art-padding-quality-plan T1) — 옛 주석의
+   *"ArmamentSocketsWeaponArtWidth 900f vs ArmamentWeaponArtWidth 480f"* 는 **두 축 모두 사문**이었다:
+   소켓 탭은 2026-09-01 에 **800f** 가 됐고(`UI.cs:2555`), 무기 탭은 2026-09-06 **D-2** 로 480 캡을
+   버리고 `artWidth = cardWidth − 여백×2` 가 됐다(현재 여백 48 ⇒ **1436**).
+   재배분 플랜 T4 가 "후속 항목으로 남긴다"고 적어 둔 그 건을 여기서 정리한다.
+   ⚠ 위 `.weapon-art` 가 음수 좌우 마진을 갖게 됐으므로 여기서 **0 으로 되돌린다** —
+     젬 탭은 이번 확정(무기 탭 여백)의 대상이 아니다. */
+.weapon-art.sockets-art {
+  width: min(800px, 100%);            /* 900→800 — 쿠키네모 ⑥(2026-09-01): 하단 공간 확보, 게임 ArmamentSocketsWeaponArtWidth 동기 */
+  margin-left: auto; margin-right: auto; margin-bottom: 16px;
+}
+.weapon-art-socket {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(245,232,89,.9);
+  background: rgba(2,6,12,.66);
+  box-shadow: 0 0 10px rgba(201,162,39,.22), inset 0 0 8px rgba(0,0,0,.8);
+}
+.weapon-art-socket.locked {
+  border-color: rgba(126,100,25,.78);
+  background: rgba(0,0,0,.82);
+  box-shadow: inset 0 0 8px rgba(0,0,0,.9);
+}
+.weapon-art-socket.equipped { border-color: currentColor; }
+.weapon-art-socket .socket-gem {
+  height: 66%;
+  width: auto;
+  aspect-ratio: 1/1;
+}
+.weapon-art-socket .socket-empty { height: 66%; width: auto; aspect-ratio: 1/1; background:#16202b; }
+/* gem-equip-on-weapon-dnd T2·T4 — 드래그 중 드롭 대상 어포던스. 유효/무효 모두 **점선**이고
+   차이는 두께다(G4 규약: 색이 아니라 형태 · 신규 색 0). 무효 소켓도 드롭을 받는다(G3=a) —
+   거부 사유는 equipGem 단일 술어가 낸다. */
+.weapon-art-socket.drop-ok  { border-style: dashed; border-width: 2px; border-color: var(--teal); }
+.weapon-art-socket.drop-bad { border-style: dashed; border-width: 1px; }
+.gem-drag-ghost {
+  position: fixed; width: 48px; height: 48px; margin: -24px 0 0 -24px;
+  pointer-events: none; z-index: 9999; opacity: .74;
+}
+.socket-empty { background:#16202b; }
+.weapon-name { font-size: 15px; font-weight: bold; letter-spacing: .05em; color: var(--text); margin-bottom: 4px; }
+.weapon-sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+
+.weapon-level-row { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 16px; }
+.level-badge { font-size: 13px; color: var(--gold); font-weight: bold; letter-spacing: .04em; }
+.level-bar { width: 100%; max-width: 320px; height: 8px; border-radius: 99px; background: #1a2434; overflow: hidden; border: 1px solid #24303e; }
+.level-bar-fill { height: 100%; background: linear-gradient(90deg, var(--teal), #52ffce); transition: width .4s ease; box-shadow: 0 0 8px rgba(87,209,184,.5); }
+
+.stat-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; padding: 8px 4px; border-top: 1px solid rgba(87,209,184,0.1);
+}
+.stat-row strong { color: var(--teal); }
+.stat-note { font-size: 9px; color: var(--muted2); margin: 4px 0 10px; line-height: 1.6; }
+.socket-unlock-note { font-size: 10px; color: #8aa0b4; margin-bottom: 12px; padding: 6px 8px; background: rgba(87,209,184,0.05); border-radius: 4px; }
+
+.weapon-cost-row { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.weapon-cost-row strong { color: var(--gold); }
+
+.cta-btn {
+  font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: .05em;
+  padding: 9px 24px; border-radius: 4px; cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+}
+.cta-btn.unlock {
+  background: linear-gradient(135deg, #1a2a10, #0f1a08);
+  border: 1px solid var(--border); color: var(--gold);
+  box-shadow: 0 0 12px rgba(201,162,39,0.15);
+}
+.cta-btn.unlock:hover { box-shadow: 0 0 20px rgba(201,162,39,0.3); }
+.cta-btn.levelup {
+  background: linear-gradient(135deg, #0a2420, #051512);
+  border: 1px solid var(--teal); color: var(--teal);
+  box-shadow: 0 0 12px rgba(87,209,184,0.15);
+}
+.cta-btn.levelup:hover:not(:disabled) { box-shadow: 0 0 20px rgba(87,209,184,0.3); }
+.cta-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════
+   SOCKETS + GEM INVENTORY VIEW
+   ═══════════════════════════════════════════════════ */
+.level-slider-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+  font-size: 11px; color: var(--muted); flex-wrap: wrap;
+}
+.level-slider-row label { color: var(--text); font-weight: bold; }
+.level-slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: var(--teal); }
+.level-slider-row .hint { font-size: 9px; color: var(--muted2); width: 100%; }
+
+/* gem-equip-on-weapon-dnd T1 — #socket-grid / .socket-card 계열은 온-아트 소켓으로
+   대체돼 마크업에서 사라졌다(Unity 쪽 DrawArmamentSocketCard 삭제와 같은 정리).
+   .socket-btn 은 상세 스트립이 계속 쓰므로 남긴다. */
+.socket-btn {
+  font-family: 'Courier New', monospace; font-size: 10px;
+  padding: 4px 10px; border-radius: 3px; cursor: pointer;
+  background: rgba(87,209,184,0.08); border: 1px solid rgba(87,209,184,0.35); color: var(--teal);
+}
+.socket-btn:hover { background: rgba(87,209,184,0.16); }
+.socket-btn.unequip { background: rgba(255,107,107,0.06); border-color: rgba(255,107,107,0.3); color: #ff9b9b; }
+.socket-btn.unequip:hover { background: rgba(255,107,107,0.14); }
+
+
+/* gem-equip-on-weapon-dnd T1·T4 — 소켓 카드 그리드(#socket-grid)를 대체한 상세 스트립.
+   Unity: MvpGameController.UI.cs DrawArmamentSocketDetail. 카드 그리드가 보여 주던
+   "소켓 4개 한눈에 비교"를 한 줄 요약으로 대신한다(플랜이 지목한 V2 손실 ①의 완화책). */
+/* gem-inventory-grid-lines-and-autofill-layout-fix T3 — Unity 쪽 스트립 고정 높이를
+   70f → 82f 로 올렸다(자동 채우기 버튼 하단 y+78 이 70 을 8px 넘겨 테두리에 걸쳤다).
+   목업은 흐름 레이아웃이라 자동으로 늘어나지만, 정본 높이를 눈으로 확인할 수 있게
+   min-height 로 못 박는다. Unity: MvpGameController.UI.cs DrawArmamentSocketsView. */
+#socket-detail-strip {
+  border: 1px solid rgba(87,209,184,0.28); border-radius: 4px;
+  background: rgba(14,22,32,0.72); padding: 8px 10px; margin-bottom: 16px;
+  box-sizing: border-box; min-height: 82px;
+}
+#socket-detail-strip .sd-caption { font-size: 9px; letter-spacing: .12em; color: var(--muted2); text-transform: uppercase; margin-bottom: 6px; }
+#socket-detail-strip .sd-summary { font-size: 11px; color: var(--text); margin-bottom: 4px; }
+#socket-detail-strip .sd-summary span { margin-right: 18px; }
+#socket-detail-strip .sd-spec { font-size: 10px; color: var(--muted); margin-bottom: 8px; min-height: 14px; }
+#socket-detail-strip .sd-actions { display: flex; gap: 8px; }
+#socket-detail-strip .sd-actions .socket-btn { flex: 1; margin: 0; }
+#socket-detail-strip .sd-actions .socket-btn:disabled { opacity: .35; cursor: default; }
+
+#gem-inventory-panel {
+  border-top: 1px solid rgba(201,162,39,0.15);
+  padding-top: 16px;
+}
+.inv-label { font-size: 9px; letter-spacing: .12em; color: var(--muted2); text-transform: uppercase; margin-bottom: 10px; }
+/* gem-screen-ia-redesign T1(G1=a) — 셀을 먼저 그리고 그 안에 젬을 얹는다(owner 지적 A·B).
+   개별 테두리(옛 gem-inventory-redesign V2)를 걷어내고 공유 격자선으로 바꿨다 — gap 0 +
+   컨테이너 상/좌 보더 + 타일 하/우 보더는 서로 겹쳐 하나의 선처럼 보인다.
+   Unity 실폭 1854 에서 minmax(104,136) 은 16열 × 106.5px 다(플랜 §7 Q6).
+   gem-inventory-grid-lines-and-autofill-layout-fix T1·T2 — Unity 쪽은 외곽선 4변을
+   DrawRectOutline 로, 셀 사이 세로선을 DrawFilledRect 로 항상 그린다(예전엔 음수 좌표
+   클리핑 + GUI.matrix 회전 때문에 상·좌·우 외곽선과 세로선이 전부 안 보였다). 목업도
+   마지막 행이 덜 찼을 때조차 우·하 외곽선이 닫히도록 inset 그림자로 4변을 완성한다 —
+   타일의 border-right/bottom 과 같은 픽셀에 겹치므로 꽉 찬 행에서 2px 로 굵어지지 않는다. */
+/* gem-draw-to-inventory-followup T5 — 뽑기 탭이 **같은 밴드 한 벌**을 쓴다(Unity:
+   DrawArmamentGemInventory 를 소켓 탭·뽑기 탭이 공유). 격자 규칙은 한 벌만 유지한다. */
+#gem-inventory-grid, #draw-gem-inventory-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 136px)); gap: 0;
+  border-top: 1px solid #1a2535; border-left: 1px solid #1a2535;
+  box-shadow: inset -1px -1px 0 #1a2535;
+}
+.inv-gem-tile {
+  position: relative;                                   /* NEW 배지 앵커 */
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  background: #0e1620; border-right: 1px solid #1a2535; border-bottom: 1px solid #1a2535;
+  transition: transform .12s, box-shadow .12s;
+}
+/* gem-draw-to-inventory-followup T5 — 세션 한정 NEW 배지(G3=a).
+   Unity: UI.cs DrawArmamentGemInventoryTile — 타일 우상단 28×16, 등급색 배경 + 흰 글자.
+   색은 기존 .bg-tag-<grade> 를 그대로 얹어 재사용한다(신규 색 0). */
+.inv-gem-tile-new {
+  position: absolute; top: 4px; right: 6px;
+  width: 28px; height: 16px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: bold; letter-spacing: .06em; color: #fff;
+  pointer-events: none;
+}
+/* G4 — pickable 어포던스는 색이 아니라 형태(점선 + 부양). 신규 색 0. */
+.inv-gem-tile.pickable { cursor: pointer; }
+.inv-gem-tile.pickable:hover { transform: translateY(-2px); }
+.inv-gem-tile-icon { width: calc(100% - 24px); height: calc(100% - 24px); } /* GemTileShapeInset = 12 × 2 */
+
+/* gem-screen-ia-redesign T2(G3=b) — 체크박스 1 + 드롭다운 2, 한 줄. 칩 나열(owner 지적 C) 대체. */
+.inv-filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.inv-filter-check { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--teal); cursor: pointer; }
+.inv-filter-check input:disabled { cursor: default; }
+.inv-filter-select {
+  font-family: 'Courier New', monospace; font-size: 10px;
+  padding: 5px 8px; border-radius: 3px; cursor: pointer;
+  background: #0e1620; border: 1px solid rgba(87,209,184,0.35); color: var(--teal);
+}
+
+.picker-hint { font-size: 10px; color: var(--gold); margin-top: 10px; min-height: 14px; }
+
+/* gem-screen-ia-redesign T3(G4=a) — 점유 소켓 클릭 시 뜨는 명세 팝오버.
+   DrawArmamentSpecPopover(Unity)와 같은 자리 — 스크롤·소켓보다 뒤(z-index)에 그린다. */
+.socket-spec-popover {
+  position: fixed; z-index: 50; width: 200px;
+  background: #111b24; border: 1.4px solid var(--teal); border-radius: 6px; padding: 10px 12px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.5);
+}
+.socket-spec-popover .ssp-title { font-size: 9px; letter-spacing: .12em; color: var(--muted2); text-transform: uppercase; margin-bottom: 4px; }
+.socket-spec-popover .ssp-spec { font-size: 11px; font-weight: bold; margin-bottom: 6px; }
+.socket-spec-popover .ssp-effect { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+.socket-spec-popover .socket-btn { width: 100%; margin: 0; }
+
+/* Grade text/border coloring (shared across sockets + inventory + draw result) */
+.grade-common    { color: var(--g-common); }
+.grade-rare      { color: var(--g-rare); }
+.grade-epic      { color: var(--g-epic); }
+.grade-legendary { color: var(--g-legendary); }
+.grade-mythic    { color: var(--g-mythic); }
+.border-common    { border-color: var(--g-common) !important; }
+.border-rare      { border-color: var(--g-rare) !important; }
+.border-epic      { border-color: var(--g-epic) !important; }
+.border-legendary { border-color: var(--g-legendary) !important; }
+.border-mythic    { border-color: transparent !important; }
+.bg-tag-common    { background: rgba(156,163,175,.14); border: 1px solid rgba(156,163,175,.4); }
+.bg-tag-rare      { background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.4); }
+.bg-tag-epic      { background: rgba(168,85,247,.14); border: 1px solid rgba(168,85,247,.4); }
+.bg-tag-legendary { background: rgba(245,166,35,.16); border: 1px solid rgba(245,166,35,.45); }
+.bg-tag-mythic    { background: linear-gradient(90deg,#ff5b5b,#ffb545,#f7f75a,#63e6a3,#5ac8ff,#b98cff); color:#0a0a12; font-weight:bold; border: 1px solid rgba(255,255,255,.5); }
+
+.gem-fill-common    { background: radial-gradient(circle at 35% 30%, #e5e7eb, var(--g-common) 70%); box-shadow: 0 0 8px rgba(156,163,175,.5); }
+.gem-fill-rare      { background: radial-gradient(circle at 35% 30%, #93c5fd, var(--g-rare) 70%); box-shadow: 0 0 10px rgba(59,130,246,.6); }
+.gem-fill-epic      { background: radial-gradient(circle at 35% 30%, #d8b4fe, var(--g-epic) 70%); box-shadow: 0 0 10px rgba(168,85,247,.6); }
+.gem-fill-legendary { background: radial-gradient(circle at 35% 30%, #ffe1a8, var(--g-legendary) 70%); box-shadow: 0 0 12px rgba(245,166,35,.7); }
+.gem-fill-mythic {
+  background: conic-gradient(from 0deg, #ff5b5b, #ffb545, #f7f75a, #63e6a3, #5ac8ff, #b98cff, #ff5b5b);
+  box-shadow: 0 0 16px rgba(255,255,255,.75);
+  animation: mythic-spin 2.2s linear infinite;
+}
+@keyframes mythic-spin { to { filter: hue-rotate(360deg); } }
+
+
+/* ═══════════════════════════════════════════════════
+   GEM DRAW (BOX OPENING) VIEW
+   ═══════════════════════════════════════════════════ */
+.draw-controls { margin-bottom: 18px; }
+.draw-controls-label { font-size: 9px; letter-spacing: .12em; color: var(--muted2); text-transform: uppercase; margin: 10px 0 8px; }
+.draw-controls-label.secondary { margin-top: 16px; }
+#grade-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.grade-pick-btn {
+  font-family: 'Courier New', monospace; font-size: 10px; font-weight: bold; letter-spacing: .04em;
+  padding: 7px 14px; border-radius: 4px; cursor: pointer;
+  background: #0e1620; transition: transform .12s;
+}
+.grade-pick-btn:hover { transform: translateY(-2px); }
+.cta-btn.draw-random {
+  margin-top: 4px;
+  background: linear-gradient(135deg, #1a0d20, #0f0815);
+  border: 1px solid #7a4dc9; color: #d99cfe;
+  box-shadow: 0 0 12px rgba(122,77,201,0.2);
+}
+.cta-btn.draw-random:hover { box-shadow: 0 0 20px rgba(122,77,201,0.4); }
+.autoplay-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); margin-left: 14px; }
+
+/* gem-draw-to-inventory-followup T2/T5 — CTA 는 스테이지와 인벤토리 밴드 **사이**의 자기 밴드에 산다.
+   Unity 산식: 위 여백 16 + CTA 높이 44 + 아래 여백 12 = 72px(UI.cs DrawArmamentDrawView ctaBand).
+   옛 구현은 간격이 18px 뿐이라 44px CTA 가 인벤토리 헤더를 통째로 덮었다 — 이 밴드가 그 겹침을
+   구조적으로 없앤다. 목업도 같은 수치를 쓴다. */
+.draw-cta-row {
+  display: flex; justify-content: center; align-items: center;
+  height: 44px; margin: 16px 0 12px;
+}
+.draw-cta-row .cta-btn { margin-top: 0; }
+#draw-gem-inventory-panel { border-top: 1px solid rgba(201,162,39,0.15); padding-top: 16px; }
+/* 헤더 3라벨 — 좌측 2줄(제목·비용) + 우측 1줄(보유 잔액). Unity 는 rect.xMax-300 우측 정렬. */
+.draw-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.draw-balance-label { font-size: 10px; color: var(--muted); text-align: right; white-space: nowrap; }
+
+#draw-stage {
+  position: relative;
+  min-height: 260px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 45%, rgba(87,209,184,0.05), rgba(6,10,16,0.6) 65%);
+  border: 1px solid rgba(60,80,110,0.35);
+  overflow: hidden;
+}
+#draw-particles { position: absolute; inset: 0; pointer-events: none; }
+
+.draw-box {
+  position: relative;
+  width: 96px; height: 72px;
+  border-radius: 10px;
+  background: linear-gradient(180deg,#7c4314,#3b1d08);
+  border: 3px solid #f5c542;
+  box-shadow: 0 14px 26px rgba(0,0,0,.5);
+  opacity: 0;
+}
+.draw-box .box-lid {
+  position: absolute; left: -3px; right: -3px; top: -3px; height: 34px;
+  background: linear-gradient(180deg,#9a5a1c,#5a2e0c);
+  border: 3px solid #f5c542; border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  transform-origin: top center;
+  transition: transform .4s cubic-bezier(.34,1.4,.4,1), opacity .4s ease;
+}
+.draw-box.stage-appear { animation: box-appear .5s ease-out forwards; }
+.draw-box.stage-charge, .draw-box.stage-open, .draw-box.stage-reveal { opacity: 1; }
+.draw-box.stage-charge {
+  animation: box-charge-shake .45s ease-in-out infinite, box-charge-glow 1s ease-in-out infinite;
+  box-shadow: 0 0 24px 6px var(--g-glow, rgba(255,255,255,.4));
+}
+.draw-box.stage-open .box-lid { transform: translateY(-42px) rotate(-18deg); opacity: .25; }
+.draw-box.stage-open { animation: box-open-pop .3s ease-out; }
+.draw-box.stage-reveal { opacity: 0; transition: opacity .3s ease; }
+
+@keyframes box-appear { 0%{opacity:0; transform:translateY(26px) scale(.82);} 100%{opacity:1; transform:translateY(0) scale(1);} }
+@keyframes box-charge-shake {
+  0%,100%{transform:translate(0,0) rotate(0deg);}
+  10%{transform:translate(-4px,2px) rotate(-1.4deg);}
+  25%{transform:translate(4px,-3px) rotate(1.6deg);}
+  40%{transform:translate(-5px,-1px) rotate(-1.8deg);}
+  55%{transform:translate(5px,3px) rotate(2deg);}
+  70%{transform:translate(-3px,2px) rotate(-1.1deg);}
+  85%{transform:translate(3px,-2px) rotate(1.1deg);}
+}
+@keyframes box-charge-glow { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.5);} }
+@keyframes box-open-pop { 0%{transform:scale(1);} 45%{transform:scale(1.15);} 100%{transform:scale(1);} }
+
+.draw-result {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  opacity: 0; pointer-events: none;
+}
+.draw-result.show { opacity: 1; pointer-events: auto; }
+.result-gem {
+  width: 64px; height: 64px;
+  transform: rotate(45deg) scale(0);
+  border-radius: 10px;
+}
+.result-gem.shape { transform: scale(0); }
+.result-gem.pop-common    { animation: gem-pop-common .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+.result-gem.pop-rare      { animation: gem-pop-rare .55s cubic-bezier(.34,1.56,.64,1) forwards; }
+.result-gem.pop-epic      { animation: gem-pop-epic .6s cubic-bezier(.34,1.56,.64,1) forwards; }
+.result-gem.pop-legendary { animation: gem-pop-legendary .65s cubic-bezier(.34,1.56,.64,1) forwards; }
+.result-gem.pop-mythic    { animation: gem-pop-mythic .75s cubic-bezier(.34,1.56,.64,1) forwards, mythic-spin 2.2s linear infinite .75s; }
+
+@keyframes gem-pop-common    { 0%{transform:rotate(45deg) scale(0);} 60%{transform:rotate(45deg) scale(1.1);} 100%{transform:rotate(45deg) scale(1);} }
+@keyframes gem-pop-rare      { 0%{transform:rotate(45deg) scale(0);} 55%{transform:rotate(45deg) scale(1.2);} 100%{transform:rotate(45deg) scale(1);} }
+@keyframes gem-pop-epic      { 0%{transform:rotate(45deg) scale(0);} 50%{transform:rotate(405deg) scale(1.3);} 100%{transform:rotate(45deg) scale(1);} }
+@keyframes gem-pop-legendary { 0%{transform:rotate(45deg) scale(0);} 45%{transform:rotate(495deg) scale(1.45);} 70%{transform:rotate(405deg) scale(0.92);} 100%{transform:rotate(45deg) scale(1);} }
+@keyframes gem-pop-mythic    { 0%{transform:rotate(45deg) scale(0);} 40%{transform:rotate(675deg) scale(1.7);} 65%{transform:rotate(585deg) scale(0.85);} 100%{transform:rotate(45deg) scale(1);} }
+
+.result-label { font-size: 9px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+.result-grade-tag { font-size: 13px; font-weight: bold; letter-spacing: .1em; padding: 3px 12px; border-radius: 3px; }
+.result-gem-name { font-size: 12px; color: var(--text); }
+.result-gem-effect { font-size: 10px; color: var(--muted); }
+
+/* Ring bursts (grade-scaled spectacle) */
+.draw-ring {
+  position: absolute; left: 50%; top: 50%; border-radius: 999px;
+  transform: translate(-50%,-50%);
+  border: 2px solid; opacity: 0;
+  animation: ring-burst .8s ease-out forwards;
+}
+@keyframes ring-burst { 0%{ width:20px; height:20px; opacity:.9; } 100%{ width:260px; height:260px; opacity:0; } }
+
+.draw-particle {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  left: 50%; top: 50%;
+  animation: particle-fly .8s ease-out forwards;
+}
+@keyframes particle-fly {
+  0%   { transform: translate(-50%,-50%) translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(-50%,-50%) translate(var(--dx), var(--dy)) scale(.3); opacity: 0; }
+}
+
+.draw-step-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+#btn-next-stage {
+  font-family: 'Courier New', monospace; font-size: 12px; padding: 8px 20px; border-radius: 4px; cursor: pointer;
+  background: linear-gradient(135deg, #0a2420, #051512); border: 1px solid var(--teal); color: var(--teal);
+}
+#btn-next-stage:disabled { opacity: .3; cursor: not-allowed; }
+#btn-reset-draw {
+  font-size: 11px; background: none; border: 1px solid #1e2e3e; color: var(--muted);
+  border-radius: 3px; padding: 7px 12px; cursor: pointer; font-family: 'Courier New', monospace;
+}
+#btn-reset-draw:hover { color: var(--text); border-color: #4a6a80; }
+#draw-stage-label { font-size: 10px; color: var(--muted2); }
+
+/* ═══════════════════════════════════════════════════
+   T0 비교 — T1 수정 전 Unity 구현 재현 (gacha-presentation-overhaul-plan T0)
+   착수 시점 IMGUI 값을 그대로 옮긴다: 상자 몸체 rgb(77,46,18) · 뚜껑 rgb(107,61,23) ·
+   글로우 rgb(217,166,64), 결과 원 알파 .92, 라벨 240×26 고정 rect(잘림은 T1로 수정됨 —
+   여기서는 owner가 본 기준선을 보존 재현). 등급별 차이는 색 하나뿐 — 위 제안 스테이지와의
+   격차가 이 패널의 논지다.
+   ═══════════════════════════════════════════════════ */
+#t0-compare { margin-top: 26px; padding-top: 16px; border-top: 1px dashed #24344a; }
+.t0-note { font-size: 10px; color: var(--muted); line-height: 1.7; margin: 6px 0 10px; }
+.t0-note b { color: var(--text); }
+#t0-grade-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+#t0-stage {
+  position: relative; min-height: 220px; border-radius: 8px; overflow: hidden;
+  background: var(--bg); border: 1px solid rgba(60,80,110,0.35);
+}
+#t0-box {
+  position: absolute; left: 50%; top: 42%; width: 99px; height: 68px;
+  transform: translate(-50%,-38%);
+  border-radius: 8px; background: rgb(77,46,18); border: 2px solid rgb(217,166,64);
+  box-shadow: 0 0 40px 20px rgba(217,166,64,.2);
+  opacity: 0;
+}
+#t0-lid {
+  position: absolute; left: -2px; right: -2px; top: -28px; height: 28px;
+  border-radius: 8px; background: rgb(107,61,23); border: 2px solid rgb(217,166,64);
+  transition: transform .3s linear; /* Unity 는 이징 없이 선형 이동 */
+}
+#t0-box.t0-jitter { animation: t0-jitter .12s linear infinite; }
+#t0-box.t0-open #t0-lid { transform: translateY(-37px); }
+@keyframes t0-jitter {
+  0%   { transform: translate(-50%,-38%) translate(0,0); }
+  25%  { transform: translate(-50%,-38%) translate(-6px,4px); }
+  50%  { transform: translate(-50%,-38%) translate(5px,-4px); }
+  75%  { transform: translate(-50%,-38%) translate(-4px,-3px); }
+  100% { transform: translate(-50%,-38%) translate(6px,3px); }
+}
+#t0-circle {
+  position: absolute; left: 50%; top: 42%; width: 180px; height: 180px;
+  border-radius: 50%; transform: translate(-50%,-50%); opacity: 0;
+}
+#t0-circle.t0-pop { animation: t0-circle-pop .25s linear forwards; } /* Min(1, t*4) — 오버슛 없는 급팽창 */
+@keyframes t0-circle-pop {
+  0%   { opacity: 1; transform: translate(-50%,-50%) scale(0); }
+  100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+#t0-clipbox {
+  position: absolute; left: 50%; top: calc(42% + 62px); margin-left: -120px;
+  width: 240px; height: 26px;               /* Unity 고정 rect 그대로 — 여기서 잘린다 */
+  overflow: hidden; white-space: nowrap;
+  border-right: 2px dashed rgba(255,80,80,.85);
+  opacity: 0;
+}
+#t0-clipbox.show { opacity: 1; }
+#t0-label { font-size: 24px; font-weight: bold; letter-spacing: .02em; }
+#t0-step {
+  position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
+  font-size: 10px; color: var(--muted2);
+}
+.t0-mythic-hue { animation: mythic-spin 4s linear infinite; }
+
+/* ═══════════════════════════════════════════════════
+   GEM FUSION VIEW (gemstone-fusion-plan Task 0)
+   레이아웃 언어: LoL 헥스테크 "재조합" — 좌측 소재 인벤토리 /
+   우측 삼각 디스크 3슬롯 + 중앙 결과 코어 / 하단 중앙 CTA.
+   ═══════════════════════════════════════════════════ */
+#fusion-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 860px) { #fusion-layout { grid-template-columns: 1fr; } }
+
+/* ── 좌측: 등급 그룹 + 소재 인벤토리 ───────────────── */
+#fusion-stock-col {
+  border-right: 1px solid rgba(201,162,39,0.12);
+  padding-right: 18px;
+  min-width: 0;
+}
+@media (max-width: 860px) { #fusion-stock-col { border-right: none; padding-right: 0; } }
+
+#fusion-grade-groups { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+/* UI 킷 v2 동기화(2026-08-29) — 구현이 `CanvasUi.Elevate(_fill, 8)` 로 융기면을 얹었다.
+   평면 색 띠가 "누를 수 있는 타일"로 안 읽히던 자리다(반경도 5 → 8 로 킷 칩 규약에 맞춤). */
+.fusion-grade-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0) 62%), #0e1620;
+  border: 1px solid #1a2535;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.fusion-grade-row:hover:not(.disabled) { transform: translateX(2px); border-color: rgba(87,209,184,0.35); }
+.fusion-grade-row.active { background: rgba(87,209,184,0.07); border-color: rgba(87,209,184,0.5); }
+.fusion-grade-row.disabled { opacity: .38; cursor: not-allowed; }
+.fusion-grade-row .fg-gem {
+  width: 14px; height: 14px; flex-shrink: 0; transform: rotate(45deg); border-radius: 2px;
+}
+.fusion-grade-row .fg-name { font-size: 11px; font-weight: bold; letter-spacing: .04em; flex: 1; }
+.fusion-grade-row .fg-count { font-size: 11px; color: var(--text); }
+.fusion-grade-row .fg-count.enough { color: var(--teal); }
+.fusion-grade-row .fg-note { font-size: 9px; color: var(--muted2); }
+
+#fusion-stock-label { display: flex; align-items: baseline; justify-content: space-between; }
+#fusion-stock-total { font-size: 9px; color: var(--muted); letter-spacing: .04em; }
+
+/* UI 킷 v2 동기화(2026-08-29) — 구현이 `CanvasUi.Recess(Fill(...), 10)` 로 **음각 웰**을 깔았다.
+   배경 면이 0장이라 후보 칩이 허공에 떠 있던 자리다. 음각 = 위가 어둡고 하단에 1px 하이라이트
+   (`Elevate` 의 상하 반전). 킷에 음각이 없어서 못 만들던 것을 v2 에서 열었다. */
+#fusion-stock-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 7px;
+  max-height: 190px; overflow-y: auto; padding: 8px 4px 8px 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.30), rgba(0,0,0,0) 55%), rgba(0,0,0,0.22);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.07);
+}
+#fusion-stock-grid::-webkit-scrollbar { width: 6px; }
+#fusion-stock-grid::-webkit-scrollbar-thumb { background: #1e2e3e; border-radius: 3px; }
+.stock-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 7px; border-radius: 5px; cursor: pointer;
+  background: #0e1620; border: 1px solid #1a2535;
+  transition: transform .1s, box-shadow .12s, opacity .15s;
+}
+.stock-chip:hover:not(.locked):not(.picked) { transform: translateY(-2px); }
+.stock-chip.picked { opacity: .32; cursor: default; border-style: dashed; }
+.stock-chip.locked { opacity: .3; cursor: not-allowed; }
+.stock-chip .sc-gem { width: 13px; height: 13px; flex-shrink: 0; transform: rotate(45deg); border-radius: 2px; }
+.stock-chip .sc-label { font-size: 8px; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stock-chip .sc-lock { font-size: 8px; color: var(--muted2); margin-left: auto; }
+
+/* ── 우측: 재조합 디스크 ───────────────────────────── */
+#fusion-stage-col { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+#fusion-disc {
+  position: relative;
+  width: 420px; height: 420px; /* owner 2026-09-01 ⑨: 340→420 상향 (GemFusionView MockDiscDiameter 동기) */
+  flex-shrink: 0;
+}
+@media (max-width: 420px) { #fusion-disc { width: 280px; height: 280px; } }
+
+/* 바깥 원형 프레임 */
+#fusion-disc-frame {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #16232f 0%, #0c141c 62%, #080e14 100%);
+  border: 2px solid rgba(201,162,39,0.32);
+  box-shadow: inset 0 0 40px rgba(0,0,0,.7), 0 0 22px rgba(87,209,184,0.06);
+}
+/* 회전 링 — charge 단계에서 가속 */
+#fusion-disc-ring {
+  position: absolute; inset: 26px; border-radius: 50%;
+  border: 1px dashed rgba(87,209,184,0.28);
+  animation: fusion-ring-spin 18s linear infinite;
+}
+#fusion-disc-ring2 {
+  position: absolute; inset: 52px; border-radius: 50%;
+  border: 1px solid rgba(201,162,39,0.16);
+  animation: fusion-ring-spin 26s linear infinite reverse;
+}
+@keyframes fusion-ring-spin { to { transform: rotate(360deg); } }
+#fusion-disc.charging #fusion-disc-ring  { animation-duration: 1.1s; border-color: rgba(87,209,184,0.6); }
+#fusion-disc.charging #fusion-disc-ring2 { animation-duration: 1.7s; border-color: rgba(201,162,39,0.45); }
+
+/* 슬롯 → 중앙 연결선 */
+.fusion-spoke {
+  position: absolute; left: 50%; top: 50%;
+  width: 2px; height: 108px;
+  background: linear-gradient(to top, rgba(87,209,184,0.02), rgba(87,209,184,0.30));
+  transform-origin: 50% 100%;
+  opacity: .5;
+  transition: opacity .25s, background .25s;
+}
+#fusion-disc.charging .fusion-spoke { opacity: 1; background: linear-gradient(to top, rgba(245,232,89,0.08), rgba(245,232,89,0.75)); }
+.fusion-spoke.s0 { transform: translate(-50%,-100%) rotate(0deg); }
+.fusion-spoke.s1 { transform: translate(-50%,-100%) rotate(120deg); }
+.fusion-spoke.s2 { transform: translate(-50%,-100%) rotate(240deg); }
+
+/* 소재 슬롯 3칸(상단 / 우하단 / 좌하단 — 정삼각) */
+.fusion-slot {
+  position: absolute;
+  width: 78px; height: 78px;
+  transform: translate(-50%,-50%) rotate(45deg);
+  border: 1px solid rgba(87,209,184,0.28);
+  border-radius: 8px;
+  background: rgba(9,15,21,0.9);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  /* left/top 도 트랜지션 대상이어야 흡수가 "빨려 들어가는" 이동으로 보인다(빠지면 순간이동). */
+  transition: border-color .18s, box-shadow .18s, opacity .34s,
+              transform .42s cubic-bezier(.5,.05,.75,.3),
+              left .42s cubic-bezier(.5,.05,.75,.3), top .42s cubic-bezier(.5,.05,.75,.3);
+}
+.fusion-slot.s0 { left: 50%; top: 16%; }
+.fusion-slot.s1 { left: 79%; top: 71%; }
+.fusion-slot.s2 { left: 21%; top: 71%; }
+.fusion-slot:hover { border-color: rgba(87,209,184,0.6); }
+.fusion-slot.filled { border-width: 2px; }
+.fusion-slot-inner {
+  transform: rotate(-45deg);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  pointer-events: none;
+}
+.fusion-slot .fs-gem { width: 26px; height: 26px; transform: rotate(45deg); border-radius: 4px; }
+.fusion-slot .fs-empty { font-size: 20px; color: #22303f; }
+.fusion-slot .fs-tag { font-size: 7px; letter-spacing: .12em; }
+/* 흡수 애니메이션: 슬롯이 중앙으로 빨려 들어간다 */
+#fusion-disc.absorbing .fusion-slot { transform: translate(-50%,-50%) rotate(45deg) scale(.18); opacity: 0; }
+#fusion-disc.absorbing .fusion-slot.s0 { left: 50%; top: 50%; }
+#fusion-disc.absorbing .fusion-slot.s1 { left: 50%; top: 50%; }
+#fusion-disc.absorbing .fusion-slot.s2 { left: 50%; top: 50%; }
+/* 결과 공개 구간: 빈 슬롯이 중앙에서 제자리로 "튀어나오는" 역재생이 보이지 않도록 숨긴 채 유지한다.
+   연출이 끝나는 시점에만 두 클래스를 함께 벗겨 빈 슬롯을 자연스럽게 되살린다. */
+#fusion-disc.revealing .fusion-slot { opacity: 0; pointer-events: none; }
+
+/* 중앙 코어 */
+#fusion-core {
+  position: absolute; left: 50%; top: 50%;
+  width: 118px; height: 118px; margin: -59px 0 0 -59px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #0d1620 0%, #060b10 70%);
+  border: 1px solid rgba(87,209,184,0.20);
+  box-shadow: inset 0 0 26px rgba(0,0,0,.85);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  transition: box-shadow .3s, border-color .3s, transform .3s;
+}
+#fusion-disc.charging #fusion-core {
+  animation: fusion-core-pulse .5s ease-in-out infinite alternate;
+  border-color: rgba(245,232,89,0.55);
+}
+@keyframes fusion-core-pulse {
+  from { box-shadow: inset 0 0 26px rgba(0,0,0,.85), 0 0 12px rgba(245,232,89,.25); transform: scale(1); }
+  to   { box-shadow: inset 0 0 20px rgba(0,0,0,.6),  0 0 40px rgba(245,232,89,.65); transform: scale(1.07); }
+}
+#fusion-core-hint { font-size: 9px; color: #3b4c5e; letter-spacing: .1em; }
+/* 젬은 45° 회전이라 대각 길이가 변 길이의 1.41배 — 아래 등급 라벨과 겹치지 않도록
+   래퍼 높이를 대각선 기준으로 확보한다(겹침 회귀 방지). */
+#fusion-core-gem {
+  width: 38px; height: 38px; transform: rotate(45deg); border-radius: 6px;
+  margin: 8px 0 14px;
+  display: none;
+}
+#fusion-core-gem.shape { transform: none; }
+#fusion-core.revealed #fusion-core-gem { display: block; animation: fusion-gem-pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes fusion-gem-pop {
+  0%   { transform: rotate(45deg) scale(.1); opacity: 0; }
+  60%  { transform: rotate(45deg) scale(1.28); opacity: 1; }
+  100% { transform: rotate(45deg) scale(1); opacity: 1; }
+}
+#fusion-core-grade { font-size: 9px; letter-spacing: .16em; font-weight: bold; display: none; }
+#fusion-core.revealed #fusion-core-grade { display: block; }
+
+/* 승급 광선(+1/+2에서만) */
+#fusion-rays {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  pointer-events: none; opacity: 0;
+}
+#fusion-rays.on { opacity: 1; animation: fusion-rays-spin 7s linear infinite; }
+@keyframes fusion-rays-spin { to { transform: rotate(360deg); } }
+.fusion-ray {
+  position: absolute; left: 0; top: 0;
+  width: 3px; height: 150px;
+  transform-origin: 50% 0;
+  border-radius: 2px;
+}
+#fusion-particles { position: absolute; inset: 0; pointer-events: none; }
+
+/* 결과 배너 */
+#fusion-result-banner {
+  margin-top: 14px; min-height: 46px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+#fusion-result-step { font-size: 12px; font-weight: bold; letter-spacing: .1em; }
+#fusion-result-step.step-0 { color: var(--muted); }
+#fusion-result-step.step-1 { color: var(--teal); text-shadow: 0 0 10px rgba(87,209,184,.6); }
+#fusion-result-step.step-2 {
+  background: linear-gradient(90deg,#ff5b5b,#ffb545,#f7f75a,#63e6a3,#5ac8ff,#b98cff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-size: 15px; letter-spacing: .18em;
+  animation: fusion-jackpot-throb .5s ease-in-out infinite alternate;
+}
+@keyframes fusion-jackpot-throb { from { transform: scale(1); } to { transform: scale(1.09); } }
+#fusion-result-name { font-size: 11px; }
+#fusion-result-effect { font-size: 9px; color: var(--muted); }
+
+/* 하단 CTA 바 */
+#fusion-action-bar {
+  margin-top: 16px; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+}
+#btn-fuse {
+  font-family: 'Courier New', monospace; font-size: 13px; font-weight: bold; letter-spacing: .12em;
+  padding: 11px 46px; border-radius: 4px; cursor: pointer;
+  background: linear-gradient(135deg, #2a1e06, #14100a);
+  border: 1px solid var(--border); color: var(--gold);
+  box-shadow: 0 0 14px rgba(201,162,39,0.18);
+  transition: box-shadow .15s, background .15s;
+}
+#btn-fuse:hover:not(:disabled) { box-shadow: 0 0 26px rgba(201,162,39,0.45); background: linear-gradient(135deg, #3a2a08, #1a140c); }
+#btn-fuse:disabled { opacity: .3; cursor: not-allowed; box-shadow: none; }
+#btn-fusion-auto, #btn-fusion-clear {
+  font-size: 10px; background: none; border: 1px solid #1e2e3e; color: var(--muted);
+  border-radius: 3px; padding: 8px 12px; cursor: pointer; font-family: 'Courier New', monospace;
+  transition: color .15s, border-color .15s;
+}
+#btn-fusion-auto:hover, #btn-fusion-clear:hover { color: var(--text); border-color: #4a6a80; }
+
+/* 확률 표 — 쿠키네모 ⑧ + owner ㄴ 확정(2026-09-01): 좌열 상시 표 → 우상단 「확률표」 버튼-팝업.
+   게임(GemFusionView.BuildOddsPopup)이 정본 구현이고, 이 목업은 표 내용 명세만 유지한다(기본 숨김 + 토글 데모). */
+#fusion-odds {
+  margin-top: 14px; width: 100%;
+  border-top: 1px solid rgba(201,162,39,0.12); padding-top: 12px;
+  display: none; /* 팝업 이전 — 아래 토글 데모로만 표시 */
+}
+#fusion-odds.open { display: block; }
+#fusion-odds-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+#fusion-odds-table th {
+  font-size: 8px; letter-spacing: .1em; color: var(--muted2); text-transform: uppercase;
+  text-align: right; padding: 4px 6px; font-weight: normal;
+}
+#fusion-odds-table th:first-child { text-align: left; }
+#fusion-odds-table td { padding: 4px 6px; text-align: right; color: var(--muted); border-top: 1px solid rgba(87,209,184,0.06); }
+#fusion-odds-table td:first-child { text-align: left; font-weight: bold; }
+#fusion-odds-table tr.active td { color: var(--text); background: rgba(87,209,184,0.05); }
+#fusion-odds-table td.jackpot { color: var(--gold); }
+.fusion-note { font-size: 9px; color: var(--muted2); line-height: 1.7; margin-top: 8px; }
+
+/* 데모 컨트롤 */
+#fusion-demo-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.fusion-force-btn {
+  font-family: 'Courier New', monospace; font-size: 10px;
+  padding: 5px 10px; border-radius: 3px; cursor: pointer;
+  background: rgba(14,24,34,0.7); border: 1px solid #1e2e3e; color: var(--muted);
+  transition: all .15s;
+}
+.fusion-force-btn:hover { color: var(--text); border-color: #4a6a80; }
+.fusion-force-btn.active { color: var(--gold); border-color: var(--border); background: rgba(201,162,39,0.08); }
+</style>
+</head>
+<body>
+
+<!-- HUD -->
+<div id="hud-bar">
+  <span class="hud-label">CLICK TO COMMIT — ARMAMENT</span>
+  <div class="hud-sep">|</div>
+  <div class="hud-chip hud-gold">🪙 Gold <strong>2,480</strong></div>
+  <div class="hud-chip hud-commit">📄 Commit <strong>124</strong></div>
+  <div class="hud-chip hud-bcoin">🔷 BCoin <strong>18</strong></div>
+  <div class="hud-chip hud-arch">🧩 ArchToken <strong id="hud-arch-val">60</strong></div>
+</div>
+
+<!-- Screen flash overlay (legendary/mythic reveal) -->
+<div id="screen-flash"></div>
+
+<!-- View tabs -->
+<div id="view-tabs">
+  <button class="view-tab active" data-view="weapon" onclick="switchView('weapon')">① 무기 패널</button>
+  <button class="view-tab" data-view="sockets" onclick="switchView('sockets')">② 소켓 · 젬 인벤토리</button>
+  <button class="view-tab" data-view="draw" onclick="switchView('draw')">③ 젬 뽑기 연출</button>
+  <button class="view-tab" data-view="fusion" onclick="switchView('fusion')">④ 젬 합성</button>
+</div>
+
+<div id="arm-wrap">
+<div id="arm-panel">
+
+  <!-- Header -->
+  <div id="arm-header">
+    <div class="title-block">
+      <span class="title-icon">⚔</span>
+      <span class="title-text">장착 무기</span>
+      <span class="title-meta" id="hdr-view-name">무기 패널</span>
+    </div>
+    <button id="btn-close" onclick="setStatus('패널을 닫았습니다.', 'ok')">닫기</button>
+  </div>
+
+  <!-- Body -->
+  <div id="arm-body">
+
+    <!-- ① WEAPON VIEW -->
+    <section id="view-weapon" class="view-section active">
+      <div class="section-label">무기 10종 — 키보드 전환 + 온-아트 모양 소켓</div>
+      <div class="weapon-layout">
+        <div>
+          <div class="section-label">보유 키보드 (클릭 = 장착 전환)</div>
+          <div id="kb-list" class="keyboard-list"></div>
+          <div class="socket-unlock-note">무기 교체 또는 해금 시 이전 무기의 젬은 전부 해제되어 인벤토리로 돌아갑니다.</div>
+        </div>
+        <div>
+          <div id="weapon-card-locked" class="weapon-card">
+            <div class="weapon-art locked" aria-label="locked armament weapon art">
+              <img id="weapon-art-img-locked" alt="">
+              <div id="weapon-art-sockets-locked"></div>
+            </div>
+            <div class="weapon-name" id="weapon-name-locked">—</div>
+            <div class="weapon-sub" id="weapon-sub-locked">미해금 상태 · 자원을 소모해 해금하면 레벨업(최대 8) 가능</div>
+            <div class="weapon-cost-row" id="weapon-unlock-cost">해금 비용 &nbsp; 🪙 Gold <strong>180</strong> &nbsp;·&nbsp; 📄 Commit <strong>70</strong></div>
+            <button class="cta-btn unlock" id="btn-unlock" onclick="doUnlock()">해금하기</button>
+          </div>
+
+          <div id="weapon-card-unlocked" class="weapon-card">
+            <div class="weapon-art" aria-label="armament weapon art with sockets">
+              <img id="weapon-art-img" alt="">
+              <div id="weapon-art-sockets"></div>
+            </div>
+            <div class="weapon-name" id="weapon-name-unlocked">—</div>
+            <div class="weapon-level-row">
+              <span class="level-badge">Lv. <span id="weapon-lvl-cur">5</span> / 8</span>
+              <div class="level-bar"><div class="level-bar-fill" id="weapon-lvl-fill"></div></div>
+            </div>
+            <div class="stat-row"><span>데미지 기여 (GlobalDamageMultiplier)</span><strong id="weapon-dmg-val">+20%</strong></div>
+            <div class="stat-note" id="weapon-sound-note">타격음 —</div>
+            <div class="socket-unlock-note" id="weapon-socket-note"></div>
+            <div class="weapon-cost-row" id="weapon-lvlup-cost">레벨업 비용 &nbsp; 🪙 Gold <strong>380</strong> &nbsp;·&nbsp; 📄 Commit <strong>170</strong> &nbsp;·&nbsp; 🔷 BCoin <strong>70</strong></div>
+            <button class="cta-btn levelup" id="btn-levelup" onclick="doLevelUp()">레벨업</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② SOCKETS + GEM INVENTORY VIEW -->
+    <section id="view-sockets" class="view-section">
+      <div class="section-label" id="socket-view-label">소켓 — 선택 무기의 가변 소켓 + 모양 매칭</div>
+      <div class="level-slider-row">
+        <label>데모 레벨: <span id="socket-lvl-label">5</span></label>
+        <input type="range" min="1" max="8" value="5" id="level-slider" oninput="onLevelSlider(this.value)">
+        <div class="hint">현재 장착 무기의 레벨을 조작합니다. 소켓 개수별 해금 밴드가 다르며, 젬 모양과 소켓 모양이 같아야 장착됩니다.</div>
+      </div>
+
+      <!-- gem-equip-on-weapon-dnd T1 — 소켓 카드 168px 그리드를 걷어내고 무기 아트 위에서
+           직접 장착한다. 무기 탭과 **같은 렌더러**를 재사용한다(G1=a) — 여기서 그림을 새로
+           만들면 두 탭의 소켓 위치가 갈라진다. Unity: DrawArmamentWeaponArt(maxArtWidth) 재사용. -->
+      <div class="weapon-art sockets-art" id="sockets-weapon-art" aria-label="gem equip weapon art with sockets">
+        <img id="sockets-weapon-art-img" alt="">
+        <div id="sockets-weapon-art-sockets"></div>
+      </div>
+      <div id="socket-detail-strip"></div>
+      <div id="socket-spec-popover" class="socket-spec-popover" hidden></div>
+
+      <!-- gem-screen-ia-redesign T4 — owner Play QA 2026-08-20 지적 4건(A~D) 반영 완료.
+           T0 비교 목업은 별도 파일 html/gem-screen-ia-redesign-mockup.html 로 옮겼다(하드 제약 6,
+           정본은 T0 단계에서 무접촉이었다가 여기서 최종형으로 갱신됨). G1=(a) 격자+공유선 ·
+           G2=(b) 보유+여유1행 · G3=(b) 드롭다운2+체크박스1 · G4=(a) 팝오버+역방향 드래그 ·
+           G5=(a)+빈 소켓만. -->
+      <div id="gem-inventory-panel">
+        <div class="inv-label" id="inv-count-label">보유 젬 인벤토리</div>
+        <!-- G3=(b) — 장착 가능만은 체크박스 유지, 등급·효과군은 드롭다운 -->
+        <div class="inv-filter-bar">
+          <label class="inv-filter-check">
+            <input type="checkbox" id="inv-filter-equippable" onchange="toggleInvEquippableOnly()"> 장착 가능만
+          </label>
+          <select class="inv-filter-select" id="inv-filter-grade-select" onchange="setInvGradeFilter(this.value || null)">
+            <option value="">등급: 전체</option>
+          </select>
+          <select class="inv-filter-select" id="inv-filter-shape-select" onchange="setInvShapeFilter(this.value || null)">
+            <option value="">효과군: 전체</option>
+          </select>
+        </div>
+        <div id="gem-inventory-grid"></div>
+        <div id="picker-hint" class="picker-hint"></div>
+      </div>
+    </section>
+
+    <!-- ③ GEM DRAW (BOX OPENING) VIEW -->
+    <section id="view-draw" class="view-section">
+      <!-- gem-draw-to-inventory-followup T5 — 구현 실측 구조로 동기화(2026-08-25).
+           옛 목업은 `gacha-presentation-overhaul` 시절의 상자 개봉 스테이지 단독이라 공유 인벤토리
+           밴드·NEW 배지·CTA 배치가 통째로 빠져 있었다(T0/T5 미이행). 지금은 Unity
+           `DrawArmamentDrawView`(MvpGameController.UI.cs) 의 세로 순서를 그대로 따른다:
+           **헤더 3라벨 ▸ 개봉 스테이지 ▸ CTA 밴드(72px) ▸ 공유 젬 인벤토리 밴드(NEW 배지 포함)**.
+           그 아래 「목업 전용 도구」(등급 강제 지정 · 단계 스텝 · T0 비교)는 게임에 없는 것들이라
+           게임 구조 밖으로 내렸다. -->
+
+      <!-- 헤더 3라벨 — Unity 는 좌측 2줄(제목·비용) + 우측 1줄(보유 잔액)이다. -->
+      <div class="draw-header-row">
+        <div>
+          <div class="section-label" style="margin:0;">젬 뽑기 — 단일 상자 → 단일 젬</div>
+          <div class="draw-controls-label" style="margin:6px 0 0;">뽑기 비용  ArchToken <span id="draw-cost">20</span></div>
+        </div>
+        <div class="draw-balance-label">보유 ArchToken <span id="draw-balance">60</span></div>
+      </div>
+
+      <div id="draw-stage">
+        <div id="draw-particles"></div>
+        <div id="draw-box" class="draw-box"><div class="box-lid"></div></div>
+        <div id="draw-result" class="draw-result">
+          <div class="result-label">GEM ACQUIRED</div>
+          <div class="result-gem" id="result-gem-el"></div>
+          <div class="result-grade-tag" id="result-grade-tag"></div>
+          <div class="result-gem-name" id="result-gem-name"></div>
+          <div class="result-gem-effect" id="result-gem-effect"></div>
+        </div>
+      </div>
+
+      <!-- T2 — CTA 밴드. 스테이지 하단에서 16px 떨어지고, 아래로 12px 를 더 비운 뒤에야
+           인벤토리 밴드가 시작한다 ⇒ CTA y-range 와 인벤토리 헤더 y-range 교집합 0. -->
+      <div class="draw-cta-row">
+        <button class="cta-btn draw-random" onclick="rollRandom()">🎲 젬 뽑기</button>
+      </div>
+
+      <!-- T5 — 공유 젬 인벤토리 밴드. 소켓 탭 #gem-inventory-panel 과 **같은 한 벌**이다
+           (Unity: 두 탭이 DrawArmamentGemInventory 를 그대로 재사용). 다른 점은 두 가지뿐:
+           ① 헤더 괄호 문구가 소켓 안내가 아니다(T4 — 뽑기 탭엔 소켓도 "장착" 버튼도 없다)
+           ② 타일 클릭 장착 경로가 없다(장착은 소켓 탭에서). 필터 상태는 두 탭이 공유한다. -->
+      <div id="draw-gem-inventory-panel">
+        <div class="inv-label" id="draw-inv-count-label">보유 젬 인벤토리</div>
+        <div class="inv-filter-bar">
+          <label class="inv-filter-check">
+            <input type="checkbox" id="inv-filter-equippable-draw" onchange="toggleInvEquippableOnly()"> 장착 가능만
+          </label>
+          <select class="inv-filter-select" id="inv-filter-grade-select-draw" onchange="setInvGradeFilter(this.value || null)">
+            <option value="">등급: 전체</option>
+          </select>
+          <select class="inv-filter-select" id="inv-filter-shape-select-draw" onchange="setInvShapeFilter(this.value || null)">
+            <option value="">효과군: 전체</option>
+          </select>
+        </div>
+        <div id="draw-gem-inventory-grid"></div>
+      </div>
+
+      <!-- ── 여기서부터 목업 전용 도구 — 게임(Unity)에는 없다 ────────────────────────── -->
+      <div class="draw-controls" style="margin-top:28px; border-top:1px solid rgba(60,80,110,0.35); padding-top:14px;">
+        <div class="draw-controls-label">목업 전용 도구 — 등급 강제 지정 (5등급 전부를 코드 없이 확인. 위 CTA 는 실제 확률 가중치를 탄다: Common 55% · Rare 28% · Epic 12% · Legendary 4.5% · Mythic 0.5%)</div>
+        <div id="grade-btn-row"></div>
+        <label class="autoplay-toggle"><input type="checkbox" id="autoplay-check" checked> 자동 재생(연출 자동 진행)</label>
+      </div>
+
+      <div class="draw-step-row">
+        <button id="btn-next-stage" onclick="nextStage()" disabled>다음 단계 ▶</button>
+        <button id="btn-reset-draw" onclick="resetDraw()">↺ 초기화</button>
+        <span id="draw-stage-label">단계: 대기 중 — 아래에서 등급을 선택하세요</span>
+      </div>
+
+      <!-- T0 비교 (gacha-presentation-overhaul-plan): 아래 재현이 "T1 수정 전 기준선"(owner가 본 착수 시점),
+           위 스테이지가 "제안" 기준선. owner 승인용 비교 패널 — 기존 연출 코드와 상태를 공유하지 않는다(회귀 0). -->
+      <div id="t0-compare">
+        <div class="section-label">T0 비교 — T1 수정 전 Unity 구현 재현 (위 스테이지 = 제안 기준선)</div>
+        <div class="t0-note">
+          구현(UI.cs <b>DrawGemBoxRevealStage</b>)은 등급과 무관하게 <b>같은 프로시저럴 상자 · 같은 원 · 같은 곡선</b>이었고,
+          결과 라벨의 <b>240×26px 고정 rect</b> 잘림(빨간 점선 = rect 우측 경계)이 있었다 — 이 패널은
+          <b>owner가 본 착수 시점 기준선(T1 수정 전)</b>을 보존 재현한다.
+          <b>2026-08-16 T2·T3 구현 완료</b>: 잘림은 T1(stageRect 기준 중앙 배치), 나머지 격차는 owner 게이트
+          <b>G1=(c) 프로시저럴 개선 · G3=목업대로</b> 결정으로 위 제안 스테이지와 동일하게 메웠다 —
+          4단계(appear/charge/open/reveal · Unity <code>GemBoxRevealAppearDuration 0.30f</code>) · 상자 그라디언트/테두리 ·
+          등급별 pop 곡선 · 링 버스트 · 파티클 · 플래시 · 흔들림 + 결과가 원이 아니라 <b>실제 젬 모양</b>.
+          <b>구현이 목업과 의도적으로 다른 3가지</b> — ① 플래시는 전체화면이 아니라 스테이지 범위 한정,
+          ② 링/파티클 최대 반경을 스테이지 안으로 클램프(IMGUI 에 <code>overflow:hidden</code> 등가물 없음),
+          ③ pop 회전 생략(IMGUI 스프라이트 회전 금지 관례). 자세한 대조표는
+          <code>docs/areas/armament.md</code> "뽑기 결과 등급 차등".
+        </div>
+        <div id="t0-grade-row"></div>
+        <div id="t0-stage">
+          <div id="t0-box"><div id="t0-lid"></div></div>
+          <div id="t0-circle"></div>
+          <div id="t0-clipbox"><span id="t0-label"></span></div>
+          <div id="t0-step">대기 중 — 등급을 선택하면 T1 수정 전 구현 그대로 재생됩니다</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ GEM FUSION VIEW (gemstone-fusion-plan Task 0) -->
+    <section id="view-fusion" class="view-section">
+      <div class="section-label">젬 합성 — 같은 등급 3개 → 확률 승급 (동급 / +1 / +2)</div>
+
+      <div id="fusion-demo-row">
+        <span class="demo-label">데모 결과 강제:</span>
+        <button class="fusion-force-btn" data-force="roll" onclick="setFusionForce('roll')">🎲 실확률</button>
+        <button class="fusion-force-btn" data-force="0" onclick="setFusionForce('0')">동급(실패)</button>
+        <button class="fusion-force-btn" data-force="1" onclick="setFusionForce('1')">+1 승급</button>
+        <button class="fusion-force-btn" data-force="2" onclick="setFusionForce('2')">+2 대성공</button>
+      </div>
+
+      <div id="fusion-layout">
+
+        <!-- 좌측: 등급 그룹 + 소재 인벤토리 -->
+        <div id="fusion-stock-col">
+          <div class="section-label">재료 등급 (미장착 보유 수)</div>
+          <div id="fusion-grade-groups"></div>
+
+          <div class="section-label" id="fusion-stock-label">
+            <span>재료</span><span id="fusion-stock-total"></span>
+          </div>
+          <div id="fusion-stock-grid"></div>
+
+          <button type="button" class="socket-btn" style="width:96px; margin:8px 0 0 auto; display:block;"
+            onclick="document.getElementById('fusion-odds').classList.toggle('open')">확률표</button>
+          <div id="fusion-odds">
+            <div class="section-label">승급 확률</div>
+            <table id="fusion-odds-table">
+              <thead>
+                <tr><th>재료</th><th>동급</th><th>+1</th><th>+2</th></tr>
+              </thead>
+              <tbody id="fusion-odds-body"></tbody>
+            </table>
+            <div class="fusion-note">
+              <span id="fusion-star-bonus-note">별 젬 합성 보정 +0% (상한 2.0%)</span><br>
+              소재 3개 → 결과 1개. 결과 등급이 확정되면 효과는 <strong>등급 테이블에서 확정 파생</strong>된다(추가 랜덤 없음).<br>
+              소켓에 <strong>장착 중인 젬은 재료로 쓸 수 없다</strong>(해제 후 사용). 신화 등급은 상한이라 합성 불가.
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측: 재조합 디스크 -->
+        <div id="fusion-stage-col">
+          <div id="fusion-disc">
+            <div id="fusion-disc-frame"></div>
+            <div id="fusion-disc-ring"></div>
+            <div id="fusion-disc-ring2"></div>
+
+            <div class="fusion-spoke s0"></div>
+            <div class="fusion-spoke s1"></div>
+            <div class="fusion-spoke s2"></div>
+
+            <div id="fusion-rays"></div>
+
+            <div class="fusion-slot s0" data-slot="0" onclick="clearFusionSlot(0)"><div class="fusion-slot-inner"><div class="fs-empty">◇</div></div></div>
+            <div class="fusion-slot s1" data-slot="1" onclick="clearFusionSlot(1)"><div class="fusion-slot-inner"><div class="fs-empty">◇</div></div></div>
+            <div class="fusion-slot s2" data-slot="2" onclick="clearFusionSlot(2)"><div class="fusion-slot-inner"><div class="fs-empty">◇</div></div></div>
+
+            <div id="fusion-core">
+              <div id="fusion-core-hint">재료 0 / 3</div>
+              <div id="fusion-core-gem"></div>
+              <div id="fusion-core-grade"></div>
+            </div>
+
+            <div id="fusion-particles"></div>
+          </div>
+
+          <div id="fusion-result-banner">
+            <div id="fusion-result-step"></div>
+            <div id="fusion-result-name"></div>
+            <div id="fusion-result-effect"></div>
+          </div>
+
+          <div id="fusion-action-bar">
+            <button id="btn-fusion-auto" onclick="autoFillFusion()">⤓ 자동 채우기</button>
+            <button id="btn-fuse" onclick="doFuse()" disabled>재조합</button>
+            <button id="btn-fusion-clear" onclick="clearFusionSlots()">↺ 비우기</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <div id="arm-footer">
+    <span id="status-line"></span>
+    <button id="btn-demo-reset" onclick="fullDemoReset()">↺ 데모 전체 초기화</button>
+  </div>
+
+</div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// CONSTANTS (플랜 §2-B / Task 3·4·5 명명 상수 반영 — 목업용 값)
+// ═══════════════════════════════════════════════════
+
+const ARMAMENT_MAX_LEVEL = 8;
+// @canon-src Assets/_Game/Runtime/MvpGameController.Armament.cs#ArmamentGlobalDamagePerLevel scale=100 as=ARMAMENT_DAMAGE_PCT_BY_LEVEL
+const ARMAMENT_DAMAGE_PCT_BY_LEVEL = [2, 5, 9, 14, 20, 27, 35, 45];
+// index = level-1. GlobalDamageMultiplier 가산(%), 누적 합이 아니라 해당 레벨의 총 기여값.
+// @canon-src Assets/_Game/Runtime/MvpGameController.Armament.cs#ArmamentUnlockCost as=UNLOCK_COST_PER_TIER
+const UNLOCK_COST_PER_TIER = { gold: 180, commit: 70 };
+// 실제 비용 = 티어 × 이 값 (Armament.cs:33-34).
+function unlockCostOf(tier) {
+  return { gold: UNLOCK_COST_PER_TIER.gold * tier, commit: UNLOCK_COST_PER_TIER.commit * tier };
+}
+// @canon-src Assets/_Game/Runtime/MvpGameController.Armament.cs#ArmamentLevelUpCost as=LEVELUP_COST_BY_LEVEL
+const LEVELUP_COST_BY_LEVEL = [
+  { gold: 150, commit: 60,  bCoin: 0,   archToken: 0  }, // Lv1 -> Lv2
+  { gold: 220, commit: 90,  bCoin: 0,   archToken: 0  }, // Lv2 -> Lv3
+  { gold: 300, commit: 130, bCoin: 40,  archToken: 0  }, // Lv3 -> Lv4
+  { gold: 380, commit: 170, bCoin: 70,  archToken: 0  }, // Lv4 -> Lv5
+  { gold: 460, commit: 210, bCoin: 110, archToken: 5  }, // Lv5 -> Lv6
+  { gold: 540, commit: 250, bCoin: 150, archToken: 10 }, // Lv6 -> Lv7
+  { gold: 620, commit: 300, bCoin: 200, archToken: 18 }, // Lv7 -> Lv8
+];
+
+const ART_DIR = 'Assets/Resources/Sprites/Armament/';
+// @canon-src Assets/_Game/Runtime/MvpGameController.GemGacha.cs#GemDrawCost as=GEM_DRAW_COST
+const GEM_DRAW_COST = 20;
+const SHAPES = {
+  circle:   { key:'circle',   name:'원',    cls:'shape-circle' },
+  square:   { key:'square',   name:'네모',  cls:'shape-square' },
+  triangle: { key:'triangle', name:'세모',  cls:'shape-triangle' },
+  pentagon: { key:'pentagon', name:'오각',  cls:'shape-pentagon' },
+  hexagon:  { key:'hexagon',  name:'육각',  cls:'shape-hexagon' },
+  star:     { key:'star',     name:'별',    cls:'shape-star' },
+};
+const SHAPE_KEYS = Object.keys(SHAPES);
+// @canon-src Assets/_Game/Runtime/MvpGameController.GemGacha.cs#GemShapeWeights as=SHAPE_WEIGHTS
+const SHAPE_WEIGHTS = { circle: 200, square: 200, triangle: 180, pentagon: 180, hexagon: 180, star: 60 };
+// @canon-src Assets/_Game/Runtime/MvpGameController.GemGacha.cs#GemShapeWeightTotal as=SHAPE_WEIGHT_TOTAL
+const SHAPE_WEIGHT_TOTAL = 1000;
+const KEYBOARDS = [
+  { tier:1,  art:'kb_membrane', name:'멤브레인',     spec:'circle',   sockets:['circle','circle'],                               sound:'둔탁·낮음   vol .60 / pitch .88' },
+  { tier:2,  art:'kb_retro',    name:'옛날 키보드',  spec:'square',   sockets:['square','square'],                               sound:'딱딱·울림   vol .72 / pitch .92' },
+  { tier:3,  art:'kb_red',      name:'적축',         spec:'triangle', sockets:['triangle','triangle','circle'],                   sound:'부드러운    vol .62 / pitch .98' },
+  { tier:4,  art:'kb_brown',    name:'갈축',         spec:'pentagon', sockets:['pentagon','pentagon','circle'],                   sound:'중간 구분감 vol .70 / pitch 1.02' },
+  { tier:5,  art:'kb_blue',     name:'청축',         spec:'hexagon',  sockets:['hexagon','hexagon','circle','triangle'],          sound:'딸깍 선명   vol .82 / pitch 1.14' },
+  { tier:6,  art:'kb_silent',   name:'무소음',       spec:'square',   sockets:['square','square','circle','pentagon'],            sound:'아주 작게   vol .34 / pitch 1.00' },
+  { tier:7,  art:'kb_spider',   name:'독거미',       spec:'pentagon', sockets:['pentagon','pentagon','circle','hexagon'],         sound:'날카로움    vol .78 / pitch 1.20' },
+  { tier:8,  art:'kb_optical',  name:'레이저(광축)', spec:'triangle', sockets:['triangle','triangle','circle','square','star'],   sound:'전자음      vol .80 / pitch 1.25' },
+  { tier:9,  art:'kb_custom',   name:'커스텀 빌드',  spec:'hexagon',  sockets:['hexagon','hexagon','circle','pentagon','star'],   sound:'묵직 저음   vol .88 / pitch .84' },
+  { tier:10, art:'kb_hacker',   name:'해커 키보드',  spec:'circle',   sockets:['circle','circle','triangle','hexagon','star'],    sound:'특수·과장   vol .95 / pitch 1.30' },
+];
+const SOCKET_UNLOCK = { 2:[2,5], 3:[2,4,6], 4:[2,4,6,8], 5:[2,3,5,7,8] };
+const SOCKET_ANCHORS = {
+  kb_membrane: [
+    {shape:'circle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+  ],
+  kb_retro: [
+    {shape:'square', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'square', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+  ],
+  kb_red: [
+    {shape:'triangle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_brown: [
+    {shape:'pentagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_blue: [
+    {shape:'hexagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_silent: [
+    {shape:'square', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'square', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_spider: [
+    {shape:'pentagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_optical: [
+    {shape:'triangle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'square', spot:'rshift', u:0.8753, v:0.6433, kw:0.1564, kh:0.1327, r:0.0162},
+    {shape:'star', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_custom: [
+    {shape:'hexagon', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'pentagon', spot:'rshift', u:0.8753, v:0.6433, kw:0.1564, kh:0.1327, r:0.0162},
+    {shape:'star', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+  kb_hacker: [
+    {shape:'circle', spot:'esc', u:0.0543, v:0.2106, kw:0.0539, kh:0.1327, r:0.0162},
+    {shape:'circle', spot:'caps', u:0.0763, v:0.499, kw:0.0979, kh:0.1327, r:0.0162},
+    {shape:'triangle', spot:'enter', u:0.8909, v:0.499, kw:0.1271, kh:0.1327, r:0.0162},
+    {shape:'hexagon', spot:'rshift', u:0.8753, v:0.6433, kw:0.1564, kh:0.1327, r:0.0162},
+    {shape:'star', spot:'space', u:0.4278, v:0.7875, kw:0.3615, kh:0.1327, r:0.0162},
+  ],
+};
+
+const GRADES = [
+  { key:'common',    label:'COMMON',    ko:'커먼',     weight:550, pct:'55%',  color:'var(--g-common)',    glow:'var(--g-common-glow)' },
+  { key:'rare',       label:'RARE',      ko:'레어',     weight:280, pct:'28%',  color:'var(--g-rare)',      glow:'var(--g-rare-glow)' },
+  { key:'epic',       label:'EPIC',      ko:'에픽',     weight:120, pct:'12%',  color:'var(--g-epic)',      glow:'var(--g-epic-glow)' },
+  { key:'legendary',  label:'LEGENDARY', ko:'레전더리', weight:45,  pct:'4.5%', color:'var(--g-legendary)', glow:'var(--g-legendary-glow)' },
+  { key:'mythic',     label:'MYTHIC',    ko:'신화',     weight:5,   pct:'0.5%', color:'var(--g-mythic)',    glow:'var(--g-mythic-glow)' },
+];
+const GRADE_WEIGHT_TOTAL = 1000; // 550+280+120+45+5
+
+// 등급별 효과 = 실제 구현(MvpGameController.Armament.cs: GemBaseGlobalDamageAddByGrade /
+// GemSpecialTypeByGrade / GemSpecialValueByGrade)의 확정 파생값과 1:1. 이름만 인스턴스별로 다르다.
+const GRADE_EFFECT_TEXT = {
+  common:    'GlobalDamage +1%',
+  rare:      'GlobalDamage +2.5% · CritChance +2%p',
+  epic:      'GoldBonus +15%',
+  legendary: 'SpawnCount +2',
+  mythic:    'CritChance +12%p',
+};
+const GEM_NAME_POOL = {
+  common:    ['조각난 실리콘 결정','표준 로직 결정','폐기 로그 결정','정적 배열 결정','널 포인터 결정','스택 프레임 결정','힙 조각 결정','부동소수 결정'],
+  rare:      ['병렬처리 결정','버스 대역폭 결정','인덱스 트리 결정','벡터화 결정','뮤텍스 결정'],
+  epic:      ['캐시 적중 결정','분기 예측 결정','파이프라인 결정'],
+  legendary: ['양자 게이트 결정','커널 스레드 결정'],
+  mythic:    ['특이점 결정'],
+};
+
+// 데모 인벤토리 — owner 지적("하위 젬이 너무 남아돈다")을 그대로 재현한 재고 분포.
+const GEM_LIBRARY = [
+  { id:'g1',  grade:'common',    shape:'circle',   name:'조각난 실리콘 결정', effect: GRADE_EFFECT_TEXT.common },
+  { id:'g2',  grade:'common',    shape:'square',   name:'표준 로직 결정',     effect: GRADE_EFFECT_TEXT.common },
+  { id:'g3',  grade:'rare',      shape:'circle',   name:'병렬처리 결정',       effect: GRADE_EFFECT_TEXT.rare },
+  { id:'g4',  grade:'epic',      shape:'hexagon',  name:'캐시 적중 결정',      effect: GRADE_EFFECT_TEXT.epic },
+  { id:'g5',  grade:'legendary', shape:'star',     name:'양자 게이트 결정',    effect: GRADE_EFFECT_TEXT.legendary },
+  { id:'g6',  grade:'mythic',    shape:'star',     name:'특이점 결정',         effect: GRADE_EFFECT_TEXT.mythic },
+  { id:'g7',  grade:'rare',      shape:'triangle', name:'버스 대역폭 결정',    effect: GRADE_EFFECT_TEXT.rare },
+  { id:'g8',  grade:'common',    shape:'circle',   name:'폐기 로그 결정',      effect: GRADE_EFFECT_TEXT.common },
+  { id:'g9',  grade:'common',    shape:'square',   name:'정적 배열 결정',      effect: GRADE_EFFECT_TEXT.common },
+  { id:'g10', grade:'common',    shape:'circle',   name:'널 포인터 결정',      effect: GRADE_EFFECT_TEXT.common },
+  { id:'g11', grade:'common',    shape:'square',   name:'스택 프레임 결정',    effect: GRADE_EFFECT_TEXT.common },
+  { id:'g12', grade:'common',    shape:'circle',   name:'힙 조각 결정',        effect: GRADE_EFFECT_TEXT.common },
+  { id:'g13', grade:'common',    shape:'square',   name:'부동소수 결정',       effect: GRADE_EFFECT_TEXT.common },
+  { id:'g14', grade:'rare',      shape:'pentagon', name:'인덱스 트리 결정',    effect: GRADE_EFFECT_TEXT.rare },
+  { id:'g15', grade:'rare',      shape:'triangle', name:'벡터화 결정',         effect: GRADE_EFFECT_TEXT.rare },
+  { id:'g16', grade:'rare',      shape:'pentagon', name:'뮤텍스 결정',         effect: GRADE_EFFECT_TEXT.rare },
+  { id:'g17', grade:'epic',      shape:'hexagon',  name:'분기 예측 결정',      effect: GRADE_EFFECT_TEXT.epic },
+  { id:'g18', grade:'epic',      shape:'star',     name:'파이프라인 결정',     effect: GRADE_EFFECT_TEXT.epic },
+];
+const GEM_LIBRARY_INITIAL = GEM_LIBRARY.map(g => ({ ...g }));
+
+// gem-draw-to-inventory-followup T3/T5 — 세션 한정 NEW 표식(G3=a).
+// 정본: MvpGameController.GemGacha.cs `_gemDrawSessionNewGemIds`.
+// ⚠ **정리 경로가 있는 집합이다.** 옛 구현은 `.Add` 만 있고 `.Remove`/`.Clear` 가 없어 세션 내내
+//    순증가했다(합성으로 태운 젬 · 초기화로 사라진 젬의 id 가 영영 남았다). 살아 있는 인벤토리와의
+//    교집합만 남긴다 — 살아 있는 표식은 하나도 안 지우므로 "세션 한정" 계약은 그대로다.
+const drawSessionNewGemIds = new Set();
+function pruneDrawSessionNewGemIds() {
+  if (drawSessionNewGemIds.size === 0) return;
+  const alive = new Set(GEM_LIBRARY.map(g => g.id));
+  drawSessionNewGemIds.forEach(id => { if (!alive.has(id)) drawSessionNewGemIds.delete(id); });
+}
+
+// ── 합성 확률(gemstone-fusion-plan §2-A) — per-mille 정수, 각 행 합계 정확히 1000 ──
+// index: [동급, +1, +2]. Mythic 은 상한이라 합성 자체가 금지된다.
+const FUSION_UPGRADE_WEIGHTS = {
+  common:    [450, 450, 100],
+  rare:      [550, 380,  70],
+  epic:      [700, 270,  30],
+  legendary: [880, 120,   0],
+};
+const FUSION_WEIGHT_TOTAL = 1000;
+const FUSION_MATERIAL_COUNT = 3;
+// 정본: Assets/_Game/Runtime/MvpGameController.Armament.cs:923 (StarFusionGradeBonusAdd = 0.015f)
+const STAR_FUSION_BONUS_PER_GEM = 0.015;
+// @canon-src Assets/_Game/Core/Domain/Economy/GemFusionPreservation.cs#FusionAlwaysLossBonusCap as=STAR_FUSION_BONUS_CAP
+const STAR_FUSION_BONUS_CAP = 0.02;
+// 연출 단계 길이(ms) — 실제 구현 상수(GemFusion*Duration)의 목업 대응값
+const FUSION_ABSORB_MS = 520;
+const FUSION_CHARGE_MS = 900;
+const FUSION_FLASH_MS  = 260;
+const FUSION_SHOW_MS   = 1400;
+// 승급 단계별 연출 강도(플랜 D8) — 0=동급(조용) / 1=밝게 / 2=화면 대성공
+// (사행성 회피: 카지노 용어 "잭팟" 대신 "대성공" — run-pipeline-layout-plan §2-C 규약과 일관)
+const FUSION_FLASH_ALPHA_BY_STEP = [0, 0.22, 0.48];
+const FUSION_SHAKE_MAG_BY_STEP   = [0, 3, 9];
+const FUSION_RAY_COUNT_BY_STEP   = [0, 8, 16];
+
+function gradeDef(key) { return GRADES.find(g => g.key === key); }
+
+// ═══════════════════════════════════════════════════
+// STATE (in-memory demo state only — 실제 세이브/구현과 무관)
+// ═══════════════════════════════════════════════════
+
+let currentView = 'weapon';
+let unlockedTiers = [1];
+let equippedTier = 1;
+let levels = { 1: 5, 2: 1, 3: 1, 4: 1, 5: 1 };
+let socketAssign = { 1: ['g3', null] };
+let pickerTargetSocket = null;
+let archToken = 60;
+
+// gem-inventory-redesign T0/G3 — ② 인벤토리 표시 전용 필터 3축(세션 한정, 저장 안 함).
+// null = 전체. Unity 쪽 대응 필드는 _armamentGemFilterEquippableOnly/Grade/Shape 이며
+// 거기서도 -1 센티널의 표시 전용 필드다(세이브 스키마 무접촉).
+const invFilter = { equippableOnly: false, grade: null, shape: null };
+// 효과군 == 젬 모양(1:1 disjoint). 라벨은 docs/areas/armament.md:40-41 의 어휘 그대로 — 신규 작명 0.
+const EFFECT_GROUP_LABEL = {
+  circle: '화력', square: '경제', triangle: '판정',
+  pentagon: '필드', hexagon: '오토무기', star: '특수',
+};
+
+// Draw sequence state
+const DRAW_STAGES = ['appear', 'charge', 'open', 'reveal'];
+let drawStage = 'idle';
+let pendingGrade = null;
+let pendingShape = null;
+let drawTimer = null;
+
+// Fusion state
+let fusionSlots = [null, null, null];   // 소재 gem id ×3
+let fusionForce = 'roll';               // 'roll' | '0' | '1' | '2' (데모 강제)
+let fusionBusy = false;                 // 연출 재생 중 = 입력 잠금(뽑기 연출과 상호배타)
+let fusionSeq = 0;                      // 합성으로 생성된 젬 id 카운터
+let drawSeq = 0;                        // 뽑기로 생성된 젬 id 카운터
+
+const VIEW_NAMES = { weapon: '무기 패널', sockets: '소켓 · 젬 인벤토리', draw: '젬 뽑기 연출', fusion: '젬 합성' };
+
+// ═══════════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════════
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.querySelectorAll('.view-section').forEach(s => s.classList.toggle('active', s.id === 'view-' + view));
+  document.getElementById('hdr-view-name').textContent = VIEW_NAMES[view];
+}
+
+function kbOf(tier) { return KEYBOARDS.find(k => k.tier === tier); }
+function isTierUnlocked(tier) { return unlockedTiers.includes(tier); }
+function priorTierUnlocked(tier) { return tier <= 1 || isTierUnlocked(tier - 1); }
+function levelOf(tier) { return levels[tier] || 0; }
+function assignOf(tier) {
+  const kb = kbOf(tier);
+  if (!socketAssign[tier]) socketAssign[tier] = new Array(kb.sockets.length).fill(null);
+  return socketAssign[tier];
+}
+function socketReqLevel(i, total) {
+  const t = SOCKET_UNLOCK[total];
+  return t ? t[i] : ARMAMENT_MAX_LEVEL;
+}
+function isSocketUnlocked(tier, i) {
+  return isTierUnlocked(tier) && levelOf(tier) >= socketReqLevel(i, kbOf(tier).sockets.length);
+}
+function isSpecSocket(kb, i) { return kb.sockets[i] === kb.spec && kb.sockets.indexOf(kb.spec) <= i && i < 2; }
+function equippedAssign() { return assignOf(equippedTier); }
+function isSocketed(id) {
+  return equippedAssign().includes(id);
+}
+function equippedGemIds() {
+  return equippedAssign().filter(Boolean);
+}
+function clearSocketsForTier(tier) {
+  const kb = kbOf(tier);
+  if (!kb) return 0;
+  const released = (socketAssign[tier] || []).filter(Boolean).length;
+  socketAssign[tier] = new Array(kb.sockets.length).fill(null);
+  return released;
+}
+function clearSocketsExcept(tier) {
+  KEYBOARDS.forEach(kb => {
+    if (kb.tier !== tier) clearSocketsForTier(kb.tier);
+  });
+}
+function updateArmamentHud() {
+  document.getElementById('hud-arch-val').textContent = archToken;
+  const drawCost = document.getElementById('draw-cost');
+  if (drawCost) drawCost.textContent = GEM_DRAW_COST;
+  // gem-draw-to-inventory-followup T5 — Unity 헤더 우측의 "보유 ArchToken"(표시 전용) 대응.
+  const drawBalance = document.getElementById('draw-balance');
+  if (drawBalance) drawBalance.textContent = archToken;
+}
+function currencyCostHtml(label, cost) {
+  const parts = [
+    `🪙 Gold <strong>${cost.gold}</strong>`,
+    `📄 Commit <strong>${cost.commit}</strong>`,
+  ];
+  if (cost.bCoin > 0) parts.push(`🔷 BCoin <strong>${cost.bCoin}</strong>`);
+  if (cost.archToken > 0) parts.push(`🧩 ArchToken <strong>${cost.archToken}</strong>`);
+  return `${label} &nbsp; ${parts.join(' &nbsp;·&nbsp; ')}`;
+}
+function currencyCostText(cost) {
+  const parts = [`Gold -${cost.gold}`, `Commit -${cost.commit}`];
+  if (cost.bCoin > 0) parts.push(`BCoin -${cost.bCoin}`);
+  if (cost.archToken > 0) parts.push(`ArchToken -${cost.archToken}`);
+  return parts.join(', ');
+}
+function equippedStarFusionBonus() {
+  const starCount = equippedGemIds()
+    .map(id => findGem(id))
+    .filter(g => g && g.shape === 'star').length;
+  return Math.min(STAR_FUSION_BONUS_CAP, starCount * STAR_FUSION_BONUS_PER_GEM);
+}
+function shapeIcon(shape, grade, cls) {
+  return `<span class="${cls || ''} shape ${SHAPES[shape].cls} gem-fill-${grade}"></span>`;
+}
+function emptyShapeIcon(shape, cls) {
+  return `<span class="${cls || ''} shape ${SHAPES[shape].cls} socket-empty"></span>`;
+}
+
+// ═══════════════════════════════════════════════════
+// ① WEAPON VIEW
+// ═══════════════════════════════════════════════════
+
+function renderKeyboards() {
+  const box = document.getElementById('kb-list');
+  box.innerHTML = '';
+  KEYBOARDS.forEach(kb => {
+    const unlocked = isTierUnlocked(kb.tier);
+    const row = document.createElement('div');
+    row.className = 'kb-row' + (kb.tier === equippedTier ? ' equipped' : '') + (unlocked ? '' : ' locked');
+    const minis = kb.sockets.map(sh => `<span class="mini shape ${SHAPES[sh].cls}${sh === 'star' ? ' star' : ''}"></span>`).join('');
+    row.innerHTML = `<span class="kb-tier">T${kb.tier}</span>`
+      + `<span class="kb-name">${unlocked ? kb.name : '🔒 ' + kb.name}</span>`
+      + (unlocked ? `<span class="kb-lv">Lv.${levelOf(kb.tier)}</span>` : '')
+      + `<span class="kb-spec" title="특화 모양 — 배치/식별 용도">${SHAPES[kb.spec].name}</span>`
+      + `<span class="kb-sockets">${minis}</span>`;
+    row.onclick = () => {
+      const previousTier = equippedTier;
+      if (unlocked && previousTier !== kb.tier) clearSocketsForTier(previousTier);
+      equippedTier = kb.tier;
+      pickerTargetSocket = null;
+      renderAll();
+      if (unlocked) {
+        setStatus(`${kb.name} 장착 (이전 무기의 젬은 해제되어 인벤토리로 돌아갑니다) · 타격음이 바뀝니다.`, 'ok');
+      } else {
+        setStatus(`T${kb.tier} ${kb.name} 선택됨 · 해금 조건을 확인하세요.`);
+      }
+    };
+    box.appendChild(row);
+  });
+}
+
+function doUnlock() {
+  if (isTierUnlocked(equippedTier)) return;
+  if (!priorTierUnlocked(equippedTier)) {
+    setStatus('이전 티어 무기를 먼저 해금해야 합니다.', 'err');
+    return;
+  }
+  const cost = unlockCostOf(equippedTier);
+  clearSocketsExcept(equippedTier);
+  setStatus(`해금 완료: ${currencyCostText(cost)} (이전 무기의 젬은 해제되어 인벤토리로 돌아갑니다)`, 'ok');
+  unlockedTiers.push(equippedTier);
+  levels[equippedTier] = 1;
+  assignOf(equippedTier);
+  renderAll();
+}
+
+function doLevelUp() {
+  const lvl = levelOf(equippedTier);
+  if (!isTierUnlocked(equippedTier) || lvl >= ARMAMENT_MAX_LEVEL) return;
+  const cost = LEVELUP_COST_BY_LEVEL[lvl - 1];
+  setStatus(`레벨업 완료: ${currencyCostText(cost)} → Lv.${lvl + 1}`, 'ok');
+  levels[equippedTier] = lvl + 1;
+  renderAll();
+}
+
+function renderWeaponView() {
+  renderKeyboards();
+  const kb = kbOf(equippedTier);
+  const unlocked = isTierUnlocked(equippedTier);
+  document.getElementById('weapon-card-locked').classList.toggle('show', !unlocked);
+  document.getElementById('weapon-card-unlocked').classList.toggle('show', unlocked);
+  document.getElementById('weapon-name-locked').textContent = `T${kb.tier} ${kb.name}`;
+  document.getElementById('weapon-sub-locked').textContent =
+    `미해금 상태 · 소켓 ${kb.sockets.length}개 · 특화 ${SHAPES[kb.spec].name}`;
+  const unlockCost = unlockCostOf(equippedTier);
+  document.getElementById('weapon-unlock-cost').innerHTML = currencyCostHtml('해금 비용', unlockCost);
+  const unlockBtn = document.getElementById('btn-unlock');
+  const ladderReady = priorTierUnlocked(equippedTier);
+  unlockBtn.disabled = !ladderReady;
+  unlockBtn.textContent = ladderReady ? '해금하기' : '이전 티어 필요';
+  if (!unlocked && !ladderReady) {
+    document.getElementById('weapon-sub-locked').textContent =
+      `미해금 상태 · 이전 티어 무기를 먼저 해금해야 합니다.`;
+  }
+
+  if (unlocked) {
+    const lvl = Math.max(1, levelOf(equippedTier));
+    document.getElementById('weapon-name-unlocked').textContent = `T${kb.tier} ${kb.name}`;
+    document.getElementById('weapon-lvl-cur').textContent = lvl;
+    document.getElementById('weapon-lvl-fill').style.width = (lvl / ARMAMENT_MAX_LEVEL * 100) + '%';
+    document.getElementById('weapon-dmg-val').textContent = '+' + ARMAMENT_DAMAGE_PCT_BY_LEVEL[lvl - 1] + '%';
+    document.getElementById('weapon-sound-note').textContent = '타격음 ' + kb.sound;
+
+    const unlockedSockets = kb.sockets.filter((_, i) => isSocketUnlocked(equippedTier, i)).length;
+    document.getElementById('weapon-socket-note').textContent =
+      `소켓 ${unlockedSockets}/${kb.sockets.length} 해금됨 · 특화 ${SHAPES[kb.spec].name}`;
+
+    const btn = document.getElementById('btn-levelup');
+    const costRow = document.getElementById('weapon-lvlup-cost');
+    if (lvl >= ARMAMENT_MAX_LEVEL) {
+      btn.disabled = true;
+      btn.textContent = '최대 레벨';
+      costRow.innerHTML = '최대 레벨(8) 도달';
+    } else {
+      btn.disabled = false;
+      btn.textContent = '레벨업';
+      const cost = LEVELUP_COST_BY_LEVEL[lvl - 1];
+      costRow.innerHTML = currencyCostHtml('레벨업 비용', cost);
+    }
+  }
+  renderWeaponArtSockets();
+}
+
+// ═══════════════════════════════════════════════════
+// ② SOCKETS + GEM INVENTORY VIEW
+// ═══════════════════════════════════════════════════
+
+// gem-equip-on-weapon-dnd T2 — IMGUI 든 DOM 이든 드래그는 직접 상태 기계다.
+// 임계값 4px 미만은 **클릭으로 통과**시킨다(G2=a: 기존 클릭 장착 경로를 없애지 않는다).
+const GEM_DRAG_THRESHOLD = 4;
+// gem-screen-ia-redesign T3(G4=a) — sourceSocket: null=인벤토리 기원(기존 경로) · 숫자=소켓
+// 기원(역방향 드래그). 새 상태 기계가 아니라 기존 드래그 객체에 태그 하나를 얹은 것뿐이다.
+const gemDrag = { gemId: null, active: false, ox: 0, oy: 0, ghost: null, scrollLock: null, sourceSocket: null };
+
+function onLevelSlider(v) {
+  levels[equippedTier] = parseInt(v, 10);
+  renderAll();
+}
+
+function findGem(id) { return GEM_LIBRARY.find(g => g.id === id); }
+
+function renderWeaponArtSockets() {
+  const kb = kbOf(equippedTier);
+  const unlocked = isTierUnlocked(equippedTier);
+  // 무기 탭
+  paintWeaponArtSockets(
+    document.getElementById(unlocked ? 'weapon-art-img' : 'weapon-art-img-locked'),
+    document.getElementById(unlocked ? 'weapon-art-sockets' : 'weapon-art-sockets-locked'));
+  // 젬 장착 탭 — gem-equip-on-weapon-dnd T1(G1=a). **같은 함수**를 부른다.
+  paintWeaponArtSockets(
+    document.getElementById('sockets-weapon-art-img'),
+    document.getElementById('sockets-weapon-art-sockets'));
+  document.getElementById('sockets-weapon-art').classList.toggle('locked', !unlocked);
+}
+
+function paintWeaponArtSockets(img, host) {
+  const kb = kbOf(equippedTier);
+  if (!img || !host) return;
+  img.src = ART_DIR + kb.art + '.png';
+  img.alt = kb.name;
+  host.innerHTML = '';
+  const assign = assignOf(equippedTier);
+  (SOCKET_ANCHORS[kb.art] || []).forEach((a, i) => {
+    const gem = assign[i] ? findGem(assign[i]) : null;
+    const open = isSocketUnlocked(equippedTier, i);
+    const el = document.createElement('span');
+    el.className = 'weapon-art-socket' + (open ? '' : ' locked') + (open && gem ? ' equipped grade-' + gem.grade : '');
+    el.style.left = (a.u * 100) + '%';
+    el.style.top = (a.v * 100) + '%';
+    el.style.width = (a.kw * 100) + '%';
+    el.style.height = (a.kh * 100) + '%';
+    el.title = `${SHAPES[a.shape].name} 소켓 (${a.spot})`;
+    el.dataset.socketIndex = String(i);
+    // T2 — 드래그 중 어포던스. 판정은 클릭·드래그가 공유하는 gemEquipBlock 하나뿐이다.
+    if (gemDrag.active && gemDrag.gemId) {
+      el.classList.add(gemEquipBlock(i, gemDrag.gemId) === null ? 'drop-ok' : 'drop-bad');
+    }
+    el.innerHTML = open && gem
+      ? shapeIcon(a.shape, gem.grade, 'socket-gem')
+      : emptyShapeIcon(a.shape, 'socket-empty');
+    // gem-screen-ia-redesign T3(G4=a) — 점유 소켓은 클릭=팝오버, 끌기=역방향 드래그. 인벤토리
+    // 타일과 같은 원리(mousedown 으로 드래그 후보만 기록, 임계값 아래서 뗀 게 click 이다).
+    if (open && gem) {
+      el.onmousedown = ev => { if (ev.button === 0) beginGemDragCandidate(gem.id, ev, i); };
+      el.onclick = () => {
+        switchView('sockets');
+        openSpecPopover(i, el);
+      };
+    } else {
+      el.onclick = () => {
+        switchView('sockets');
+        if (!open) {
+          setStatus(`레벨 ${socketReqLevel(i, kb.sockets.length)} 이상이어야 열립니다.`, 'err');
+        } else {
+          beginEquip(i);
+        }
+      };
+    }
+    host.appendChild(el);
+  });
+}
+
+// gem-screen-ia-redesign T3(G4=a) — 점유 소켓 클릭 시 여는 명세 팝오버.
+// _armamentSpecPopoverSocket(Unity)과 같은 이유로 pickerTargetSocket 을 재사용하지 않는다 —
+// 재사용하면 팝오버를 여는 순간 "장착 가능만" 강조가 같이 켜진다.
+let specPopoverSocket = null;
+
+function openSpecPopover(socketIndex, anchorEl) {
+  specPopoverSocket = socketIndex;
+  const gem = findGem(assignOf(equippedTier)[socketIndex]);
+  const pop = document.getElementById('socket-spec-popover');
+  if (!gem || !pop) { closeSpecPopover(); return; }
+
+  pop.innerHTML = `<div class="ssp-title">SOCKET ${socketIndex + 1}</div>
+    <div class="ssp-spec grade-${gem.grade}">${gradeDef(gem.grade).label} · ${SHAPES[gem.shape].name}</div>
+    <div class="ssp-effect">${gem.effect || '추가 효과 없음'}</div>
+    <button class="socket-btn unequip" id="ssp-unequip-btn">해제</button>`;
+  pop.hidden = false;
+
+  const anchorRect = anchorEl.getBoundingClientRect();
+  pop.style.left = Math.min(anchorRect.left, window.innerWidth - 216) + 'px';
+  pop.style.top = (anchorRect.bottom + 6) + 'px';
+
+  document.getElementById('ssp-unequip-btn').onclick = () => {
+    unequipGem(socketIndex);
+    closeSpecPopover();
+  };
+}
+
+function closeSpecPopover() {
+  specPopoverSocket = null;
+  const pop = document.getElementById('socket-spec-popover');
+  if (pop) { pop.hidden = true; pop.innerHTML = ''; }
+}
+
+document.addEventListener('mousedown', ev => {
+  if (specPopoverSocket === null) return;
+  const pop = document.getElementById('socket-spec-popover');
+  if (pop && !pop.contains(ev.target) && !ev.target.closest('.weapon-art-socket')) {
+    closeSpecPopover();
+  }
+});
+
+function beginEquip(socketIndex) {
+  pickerTargetSocket = socketIndex;
+  renderSocketsView();
+  document.getElementById('picker-hint').textContent =
+    `소켓 ${socketIndex + 1}에 장착할 젬을 아래 인벤토리에서 선택하세요. (다시 누르면 취소)`;
+}
+
+function cancelEquip() {
+  pickerTargetSocket = null;
+  renderSocketsView();
+  document.getElementById('picker-hint').textContent = '';
+}
+
+// gem-equip-on-weapon-dnd 하드 제약 1 — 장착 가부는 **이 함수 하나**만 답한다.
+// 클릭 장착 · 드래그 드롭 · 드롭 대상 강조가 전부 여기를 본다(Unity: GetGemEquipBlock).
+// 판정이 갈라지면 "강조는 되는데 장착은 안 되는" 사고가 재발한다.
+// null = 장착 가능, 문자열 = 거부 사유.
+function gemEquipBlock(socketIndex, gemId) {
+  const kb = kbOf(equippedTier);
+  if (!isTierUnlocked(equippedTier)) return '무기가 해금되지 않았습니다.';
+  if (socketIndex < 0 || socketIndex >= kb.sockets.length) return '대상 소켓이 없습니다.';
+  if (!isSocketUnlocked(equippedTier, socketIndex)) {
+    return `레벨 ${socketReqLevel(socketIndex, kb.sockets.length)} 이상이어야 열립니다.`;
+  }
+  const gem = findGem(gemId);
+  if (!gem) return '젬을 찾을 수 없습니다.';
+  if (isSocketed(gem.id)) return '이미 다른 소켓에 장착된 젬입니다.';
+  const shape = kb.sockets[socketIndex];
+  if (gem.shape !== shape) {
+    return `${SHAPES[gem.shape].name} 젬은 ${SHAPES[shape].name} 소켓에 들어가지 않습니다.`;
+  }
+  return null;
+}
+
+function equipGem(socketIndex, gemId) {
+  const block = gemEquipBlock(socketIndex, gemId);
+  if (block !== null) {
+    setStatus(block, 'err');
+    return;
+  }
+  const gem = findGem(gemId);
+  assignOf(equippedTier)[socketIndex] = gemId;
+  pickerTargetSocket = null;
+  setStatus(`소켓 ${socketIndex + 1}에 "${gem.name}" 장착 완료.`, 'ok');
+  renderAll();
+}
+
+function unequipGem(socketIndex) {
+  const assign = assignOf(equippedTier);
+  const gem = findGem(assign[socketIndex]);
+  assign[socketIndex] = null;
+  setStatus(`소켓 ${socketIndex + 1}에서 "${gem ? gem.name : ''}" 해제 → 인벤토리로 복귀.`, 'ok');
+  renderAll();
+}
+
+// gem-screen-ia-redesign T3(G5=a+빈 소켓만) — 모양 맞는 것 중 최고 등급, 빈 소켓만.
+// 이미 장착된 소켓은 절대 건드리지 않는다(assign[i] 가 있으면 스킵) — Unity:
+// AutoFillArmamentSockets(MvpGameController.UI.cs)와 같은 규칙.
+function autoEquip() {
+  const kb = kbOf(equippedTier);
+  const assign = assignOf(equippedTier);
+  let placed = 0;
+  kb.sockets.forEach((shape, i) => {
+    if (!isSocketUnlocked(equippedTier, i) || assign[i]) return;
+    const cand = GEM_LIBRARY
+      .filter(g => g.shape === shape && !isSocketed(g.id))
+      .sort((a, b) => gradeIndex(b.grade) - gradeIndex(a.grade))[0];
+    if (cand) { assign[i] = cand.id; placed++; }
+  });
+  pickerTargetSocket = null;
+  renderAll();
+  setStatus(placed ? `자동 채우기 — 빈 소켓 ${placed}개를 채웠습니다.` : '자동으로 채울 수 있는 빈 소켓이 없습니다.', placed ? 'ok' : 'err');
+}
+
+function renderSocketsView() {
+  const kb = kbOf(equippedTier);
+  const lvl = Math.max(1, levelOf(equippedTier));
+  document.getElementById('socket-view-label').textContent =
+    `T${kb.tier} ${kb.name} — 소켓 ${kb.sockets.length}개 · 특화 ${SHAPES[kb.spec].name}`;
+  document.getElementById('socket-lvl-label').textContent = lvl;
+  document.getElementById('level-slider').value = lvl;
+
+  renderSocketDetailStrip();
+
+  renderGemInventory();
+
+  if (pickerTargetSocket === null) {
+    document.getElementById('picker-hint').textContent = '';
+  }
+}
+
+// gem-equip-on-weapon-dnd T1 — 카드 그리드를 대신하는 상세 스트립.
+// Unity: MvpGameController.UI.cs DrawArmamentSocketDetail 과 같은 3단 구성
+// (안내 문구 / 소켓 상태 한 줄 요약 / 소켓별 장착·해제 버튼).
+function renderSocketDetailStrip() {
+  const strip = document.getElementById('socket-detail-strip');
+  if (!strip) return;
+  const kb = kbOf(equippedTier);
+  const assign = assignOf(equippedTier);
+  const count = kb.sockets.length;
+  strip.innerHTML = '';
+
+  if (count === 0) {
+    strip.textContent = '장착 중인 무기가 없어 소켓을 표시할 수 없습니다.';
+    return;
+  }
+
+  const caption = document.createElement('div');
+  caption.className = 'sd-caption';
+  caption.textContent = pickerTargetSocket === null
+    ? '빈 소켓을 클릭하면 장착할 젬을 고르고, 장착된 소켓은 클릭하면 명세·해제가 뜹니다.'
+    : `SOCKET ${pickerTargetSocket + 1} — 아래 젬을 클릭하거나 드래그해 장착하세요.`;
+  strip.appendChild(caption);
+
+  // 해금 밴드는 상단 라벨이 계속 들고 있고(정보 손실 0), 여기서는 현재 상태만 요약한다.
+  const summary = document.createElement('div');
+  summary.className = 'sd-summary';
+  for (let i = 0; i < count; i++) {
+    const gem = assign[i] ? findGem(assign[i]) : null;
+    const state = !isSocketUnlocked(equippedTier, i) ? '잠김' : gem ? gradeDef(gem.grade).label : '빈 슬롯';
+    const span = document.createElement('span');
+    span.className = gem ? 'grade-' + gem.grade : '';
+    span.textContent = `S${i + 1}: ${state}`;
+    summary.appendChild(span);
+  }
+  strip.appendChild(summary);
+
+  // gem-screen-ia-redesign T3(G4=a) — 소켓별 장착/해제 버튼 행 제거. 점유 소켓의 명세는
+  // 이제 socket-spec-popover 가 담당하므로 이 스트립의 sd-spec 줄도 같이 걷어냈다.
+  // 남는 건 자동 채우기 버튼 하나뿐(G5).
+  const actions = document.createElement('div');
+  actions.className = 'sd-actions';
+  const autoFillBtn = document.createElement('button');
+  autoFillBtn.className = 'socket-btn';
+  autoFillBtn.textContent = '⚡ 자동 채우기';
+  autoFillBtn.onclick = autoEquip;
+  actions.appendChild(autoFillBtn);
+  strip.appendChild(actions);
+}
+
+// ── T2 드래그 앤 드롭 ─────────────────────────────────────────────────────
+// 취소 3경로(ESC · 빈 곳 드롭 · 창 밖)와 G4=(a) 스크롤 잠금까지 게임과 같은 규칙이다.
+function beginGemDragCandidate(gemId, ev, sourceSocket) {
+  gemDrag.gemId = gemId;
+  gemDrag.active = false;
+  gemDrag.ox = ev.clientX;
+  gemDrag.oy = ev.clientY;
+  gemDrag.sourceSocket = sourceSocket === undefined ? null : sourceSocket;
+}
+
+function activateGemDrag() {
+  gemDrag.active = true;
+  // G4 = (a) 잠금. 드래그 중 목록이 밀리면 고스트와 드롭 대상 좌표가 어긋난다.
+  gemDrag.scrollLock = { x: window.scrollX, y: window.scrollY };
+  document.body.style.overflow = 'hidden';
+  const ghost = document.createElement('div');
+  ghost.className = 'gem-drag-ghost';
+  const gem = findGem(gemDrag.gemId);
+  if (gem) ghost.innerHTML = shapeIcon(gem.shape, gem.grade, 'inv-gem-tile-icon');
+  document.body.appendChild(ghost);
+  gemDrag.ghost = ghost;
+  repaintForGemDrag();
+}
+
+function moveGemDrag(ev) {
+  if (!gemDrag.gemId) return;
+  if (!gemDrag.active) {
+    const dx = ev.clientX - gemDrag.ox, dy = ev.clientY - gemDrag.oy;
+    if (dx * dx + dy * dy < GEM_DRAG_THRESHOLD * GEM_DRAG_THRESHOLD) return;  // 아직 클릭이다
+    activateGemDrag();
+  }
+  if (gemDrag.ghost) {
+    gemDrag.ghost.style.left = ev.clientX + 'px';
+    gemDrag.ghost.style.top = ev.clientY + 'px';
+  }
+}
+
+function clearGemDrag() {
+  const wasActive = gemDrag.active;
+  if (gemDrag.ghost) gemDrag.ghost.remove();
+  if (wasActive) document.body.style.overflow = '';
+  gemDrag.gemId = null; gemDrag.active = false; gemDrag.ghost = null; gemDrag.scrollLock = null;
+  gemDrag.sourceSocket = null;
+  if (wasActive) repaintForGemDrag();
+}
+
+// 드롭 대상 어포던스는 온-아트 소켓에 붙으므로 아트도 함께 다시 그려야 한다
+// (renderSocketsView 만 부르면 인벤토리·스트립만 갱신되고 소켓 강조가 안 뜬다).
+function repaintForGemDrag() {
+  renderWeaponArtSockets();
+  renderSocketsView();
+}
+
+function dropGemDrag(ev) {
+  if (!gemDrag.gemId) return;
+  if (!gemDrag.active) { clearGemDrag(); return; }   // 임계값 미만 = 클릭 경로가 이미 처리했다
+  const gemId = gemDrag.gemId;
+  const sourceSocket = gemDrag.sourceSocket;
+  const target = document.elementFromPoint(ev.clientX, ev.clientY);
+  const socketEl = target && target.closest ? target.closest('.weapon-art-socket') : null;
+  const invEl = target && target.closest ? target.closest('#gem-inventory-panel') : null;
+  clearGemDrag();
+  // 잠긴/모양이 다른 소켓도 드롭을 받는다(G3=a) — 왜 안 되는지는 equipGem 이 말해 준다.
+  if (socketEl && socketEl.dataset.socketIndex !== undefined) {
+    equipGem(parseInt(socketEl.dataset.socketIndex, 10), gemId);
+    return;
+  }
+  // gem-screen-ia-redesign T3(G4=a) — 소켓에서 시작한 드래그를 인벤토리 위에서 놓으면 해제한다.
+  if (sourceSocket !== null && sourceSocket !== undefined && invEl) {
+    unequipGem(sourceSocket);
+  }
+}
+
+document.addEventListener('mousemove', moveGemDrag);
+document.addEventListener('mouseup', dropGemDrag);
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') clearGemDrag(); });
+window.addEventListener('blur', clearGemDrag);          // 창 밖으로 나간 경우
+
+// ── ② 젬 인벤토리 V2 (gem-inventory-redesign G2·G3·G4) ────────────────────────
+// 타일은 도형 하나뿐이고(G2 텍스트 0), 적합 젬만 점선+부양으로 강조하며(G4),
+// 필터 3축은 표시 계층에서만 걸린다(G3) — 원본 GEM_LIBRARY 순서·인덱스 무접촉.
+
+// 표시 전용 술어. socketShape === null(피커 닫힘)이면 "장착 가능만"은 적용하지 않는다 —
+// 적용하면 목록이 통째로 비어 필터를 끌 수조차 없게 된다(Unity 쪽도 동일 규약).
+function passesInvFilter(gem, socketShape) {
+  if (invFilter.equippableOnly && socketShape !== null && gem.shape !== socketShape) return false;
+  if (invFilter.grade !== null && gem.grade !== invFilter.grade) return false;
+  if (invFilter.shape !== null && gem.shape !== invFilter.shape) return false;
+  return true;
+}
+
+function toggleInvEquippableOnly() {
+  invFilter.equippableOnly = !invFilter.equippableOnly;
+  renderGemInventory();
+}
+
+function setInvGradeFilter(key) {
+  invFilter.grade = key;
+  renderGemInventory();
+}
+
+function setInvShapeFilter(key) {
+  invFilter.shape = key;
+  renderGemInventory();
+}
+
+// gem-screen-ia-redesign T2(G3=b) — 칩 나열 대신 네이티브 <select> 2개 + 체크박스 1개.
+// IMGUI 는 콤보박스가 없어 커스텀 드롭다운을 새로 지었지만(팝업+바깥클릭닫기), 이 목업은
+// HTML 이 이미 가진 <select> 를 그대로 쓴다 — 같은 의미(등급/효과군 드롭다운)를 표현하는
+// 더 가벼운 수단일 뿐, 실제 게임 위젯이 아니다.
+// gem-draw-to-inventory-followup T5 — 소켓 탭과 뽑기 탭이 **같은 필터 상태 한 벌**을 본다
+// (Unity 는 아예 같은 함수 DrawArmamentGemFilterBar 를 두 탭에서 부른다). 목업은 DOM 이 두 벌이라
+// suffix 로 두 벌을 같은 상태로 동기화한다 — 어느 쪽을 만져도 invFilter 하나만 바뀐다.
+function renderInvFilterBar(socketShape) {
+  ['', '-draw'].forEach(sfx => renderInvFilterBarInto(sfx, socketShape));
+}
+
+function renderInvFilterBarInto(sfx, socketShape) {
+  const toggle = document.getElementById('inv-filter-equippable' + sfx);
+  if (!toggle) return;
+  toggle.checked = invFilter.equippableOnly;
+  // 뽑기 탭에는 피커가 없다 — "장착 가능만"은 항상 비활성이다(Unity 와 같은 술어: socketShape null).
+  toggle.disabled = socketShape === null;
+
+  const gradeSelect = document.getElementById('inv-filter-grade-select' + sfx);
+  if (gradeSelect.options.length === 1) {
+    GRADES.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.key;
+      opt.textContent = g.ko;
+      gradeSelect.appendChild(opt);
+    });
+  }
+  gradeSelect.value = invFilter.grade === null ? '' : invFilter.grade;
+
+  const shapeSelect = document.getElementById('inv-filter-shape-select' + sfx);
+  if (shapeSelect.options.length === 1) {
+    SHAPE_KEYS.forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = EFFECT_GROUP_LABEL[k];
+      shapeSelect.appendChild(opt);
+    });
+  }
+  shapeSelect.value = invFilter.shape === null ? '' : invFilter.shape;
+}
+
+function renderGemInventory() {
+  const kb = kbOf(equippedTier);
+  // pickable 판정을 fits 하나로 통일한다 — "피커가 열렸는가"가 아니라 "이 젬이 그 소켓에 들어가는가".
+  const socketShape = pickerTargetSocket === null ? null : kb.sockets[pickerTargetSocket];
+
+  const unequipped = GEM_LIBRARY.filter(g => !isSocketed(g.id));
+  const shownGems = unequipped.filter(g => passesInvFilter(g, socketShape));
+  const filtered = shownGems.length !== unequipped.length;
+
+  // 전체 수를 지우지 않는다(gem-list-overflow T1 계약) — 필터가 걸리면 두 수를 함께 보인다.
+  // gem-draw-to-inventory-followup T4 — 괄호 안내는 **호출 문맥별**로 갈린다. 뽑기 탭에는 소켓도
+  // "장착" 버튼도 없어서 소켓 문구가 없는 UI 를 가리키는 오안내가 된다(Unity: socketEquipHint).
+  const countLabel = `보유 젬 인벤토리 — 미장착 ${unequipped.length}개`;
+  const socketsLabel = filtered
+    ? `보유 젬 인벤토리 — 미장착 ${unequipped.length}개 중 ${shownGems.length}개 표시`
+    : `${countLabel} (소켓의 "장착" 버튼 → 아래에서 선택)`;
+  const drawLabel = filtered
+    ? `보유 젬 인벤토리 — 미장착 ${unequipped.length}개 중 ${shownGems.length}개 표시`
+    : `${countLabel} (뽑은 젬이 여기 쌓입니다 · 장착은 소켓 탭에서)`;
+  document.getElementById('inv-count-label').textContent = socketsLabel;
+  const drawCountEl = document.getElementById('draw-inv-count-label');
+  if (drawCountEl) drawCountEl.textContent = drawLabel;
+
+  // 필터 바는 0건 조기 반환보다 먼저 그린다 — 아니면 되돌릴 수 없는 상태가 된다.
+  renderInvFilterBar(socketShape);
+
+  // T5 — 소켓 탭 밴드 + 뽑기 탭 밴드. 같은 shownGems/필터를 쓰고, 뽑기 탭만 장착 경로가 없다.
+  renderGemInventoryGrid('gem-inventory-grid', shownGems, filtered, socketShape, true);
+  renderGemInventoryGrid('draw-gem-inventory-grid', shownGems, filtered, socketShape, false);
+}
+
+function renderGemInventoryGrid(gridId, shownGems, filtered, socketShape, equipPath) {
+  const invGrid = document.getElementById(gridId);
+  if (!invGrid) return;
+  invGrid.innerHTML = '';
+  if (shownGems.length === 0) {
+    invGrid.innerHTML = filtered
+      ? '<div style="font-size:10px; color:#2a3a4a;">필터 조건에 맞는 젬이 없습니다. (필터를 해제해 보세요)</div>'
+      : '<div style="font-size:10px; color:#2a3a4a;">모든 보유 젬이 장착 중입니다.</div>';
+    return;
+  }
+
+  shownGems.forEach(g => {
+    const el = document.createElement('div');
+    // 강조도 클릭·드래그와 **같은 술어**를 본다(하드 제약 1).
+    const fits = equipPath && pickerTargetSocket !== null && gemEquipBlock(pickerTargetSocket, g.id) === null;
+    el.className = 'inv-gem-tile' + (fits ? ' pickable' : '');
+    // G2 — 타일에는 텍스트가 없다. 상세는 호버가 담당(Unity: DrawArmamentGemHoverDetail).
+    // ⚡ gem-draw-to-inventory-followup T1 — 그 호버 상세는 이제 **뽑기 탭에서도 뜬다**
+    //    (옛 구현은 뽑기 탭이 짝 호출을 빠뜨려 영영 안 떴다). 그래서 title 도 두 밴드 공통이다.
+    el.title = `${gradeDef(g.grade).label} · ${SHAPES[g.shape].name} · ${g.name} — ${g.effect}`;
+    el.innerHTML = shapeIcon(g.shape, g.grade, 'inv-gem-tile-icon');
+    // T5 — 세션 한정 NEW 배지(G3=a). 이번 세션에 뽑은 젬에만 붙고, 그 젬이 사라지면(합성 재료 등)
+    // 표식도 같이 사라진다(Unity T3: PruneSessionNewGemIds — 살아 있는 표식은 하나도 안 지운다).
+    if (drawSessionNewGemIds.has(g.id)) {
+      const badge = document.createElement('div');
+      badge.className = 'inv-gem-tile-new bg-tag-' + g.grade;
+      badge.textContent = 'NEW';
+      el.appendChild(badge);
+    }
+    if (equipPath) {
+      // 클릭 계약 보존 — 부적합 젬도 눌리고, 거부 메시지는 equipGem 이 낸다.
+      if (socketShape !== null) el.onclick = () => equipGem(pickerTargetSocket, g.id);
+      // T2 — 드래그는 클릭에 **덧붙는** 경로다(G2=a). 4px 임계값 전까지는 위 onclick 이 그대로 산다.
+      el.onmousedown = ev => { if (ev.button === 0) beginGemDragCandidate(g.id, ev); };
+    }
+    invGrid.appendChild(el);
+  });
+}
+
+// T0 비교 패널 — 현재(V1) 220px 카드 + teal 실선 재현. 1회만 그리고 이후 갱신하지 않는다.
+function renderGemInventoryV1Compare() {
+  const grid = document.getElementById('gem-inventory-v1-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  GEM_LIBRARY_INITIAL.slice(0, 8).forEach((g, i) => {
+    const el = document.createElement('div');
+    // 짝수 인덱스만 "피커 열림 + 적합" 상태로 재현해 V1 의 teal 실선 2px 를 보인다.
+    el.className = 'inv-gem-card' + (i % 2 === 0 ? ' v1-pickable' : '');
+    el.innerHTML = `
+      ${shapeIcon(g.shape, g.grade, 'inv-gem-icon')}
+      <div class="inv-gem-info">
+        <div class="n grade-${g.grade}">${g.name} · ${SHAPES[g.shape].name}</div>
+        <div class="e">${g.effect}</div>
+      </div>`;
+    grid.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// ③ GEM DRAW (BOX OPENING) VIEW
+// ═══════════════════════════════════════════════════
+
+function buildGradeButtons() {
+  const row = document.getElementById('grade-btn-row');
+  row.innerHTML = '';
+  GRADES.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'grade-pick-btn' + (g.key === 'mythic' ? ' bg-tag-mythic' : '');
+    if (g.key !== 'mythic') {
+      btn.style.color = g.color;
+      btn.style.border = `1px solid ${g.color}`;
+      btn.style.background = 'rgba(255,255,255,0.02)';
+    }
+    btn.textContent = `${g.label} (${g.pct})`;
+    btn.onclick = () => startDraw(g.key);
+    row.appendChild(btn);
+  });
+}
+
+function rollWeightedGrade() {
+  let roll = Math.floor(Math.random() * GRADE_WEIGHT_TOTAL);
+  for (const g of GRADES) {
+    if (roll < g.weight) return g.key;
+    roll -= g.weight;
+  }
+  return 'common';
+}
+function rollRandomShape() {
+  const roll = Math.floor(Math.random() * SHAPE_WEIGHT_TOTAL);
+  let cumulative = 0;
+  for (const key of SHAPE_KEYS) {
+    cumulative += SHAPE_WEIGHTS[key];
+    if (roll < cumulative) return key;
+  }
+  return SHAPE_KEYS[SHAPE_KEYS.length - 1];
+}
+
+function rollRandom() {
+  if (archToken < GEM_DRAW_COST) {
+    setStatus('ArchToken이 부족합니다.', 'err');
+    return;
+  }
+  archToken -= GEM_DRAW_COST;
+  updateArmamentHud();
+  startDraw(rollWeightedGrade());
+}
+
+function startDraw(gradeKey) {
+  clearTimeout(drawTimer);
+  pendingGrade = gradeKey;
+  pendingShape = rollRandomShape();
+  drawStage = 'idle';
+  document.getElementById('draw-result').classList.remove('show');
+  document.getElementById('draw-particles').innerHTML = '';
+  const box = document.getElementById('draw-box');
+  box.className = 'draw-box';
+  box.style.removeProperty('--g-glow');
+  renderDrawStageLabel();
+  nextStage();
+}
+
+function nextStage() {
+  if (!pendingGrade) return;
+  const idx = DRAW_STAGES.indexOf(drawStage);
+  drawStage = DRAW_STAGES[idx + 1] || DRAW_STAGES[0];
+  applyDrawStage();
+}
+
+function applyDrawStage() {
+  const box = document.getElementById('draw-box');
+  const gd = gradeDef(pendingGrade);
+  box.className = 'draw-box stage-' + drawStage;
+  if (drawStage === 'reveal') {
+    box.style.setProperty('--g-glow', gd.glow);
+  } else {
+    box.style.removeProperty('--g-glow');
+  }
+
+  if (drawStage === 'reveal') {
+    revealGem();
+  } else {
+    document.getElementById('draw-result').classList.remove('show');
+  }
+  renderDrawStageLabel();
+
+  const nextIdx = DRAW_STAGES.indexOf(drawStage) + 1;
+  document.getElementById('btn-next-stage').disabled = (drawStage === 'reveal');
+
+  if (document.getElementById('autoplay-check').checked && drawStage !== 'reveal') {
+    clearTimeout(drawTimer);
+    drawTimer = setTimeout(nextStage, drawStage === 'charge' ? 1100 : 650);
+  }
+}
+
+function revealGem() {
+  const gd = gradeDef(pendingGrade);
+  const shape = pendingShape || rollRandomShape();
+  const namePool = GEM_NAME_POOL[pendingGrade] || ['미확인 결정'];
+  const used = new Set(GEM_LIBRARY.map(g => g.name));
+  const freeName = namePool.find(n => !used.has(n));
+  drawSeq++;
+  const gem = {
+    id: 'gd' + drawSeq,
+    grade: pendingGrade,
+    shape,
+    name: freeName || `${namePool[drawSeq % namePool.length]} #D${drawSeq}`,
+    effect: GRADE_EFFECT_TEXT[pendingGrade],
+  };
+  GEM_LIBRARY.push(gem);
+  // T3/T5 — 뽑기로 들어온 젬만 NEW 다. 넣기 직전에 죽은 id 를 걷는다(Unity: PruneSessionNewGemIds).
+  pruneDrawSessionNewGemIds();
+  drawSessionNewGemIds.add(gem.id);
+  // T5 — 옛 목업은 뽑은 젬이 어디로 가는지 보여주지 않았다. 이제 아래 공유 인벤토리 밴드에 쌓인다.
+  renderGemInventory();
+
+  const gemEl = document.getElementById('result-gem-el');
+  gemEl.className = `result-gem shape ${SHAPES[shape].cls} gem-fill-${pendingGrade} pop-${pendingGrade}`;
+
+  const tag = document.getElementById('result-grade-tag');
+  tag.className = 'result-grade-tag bg-tag-' + pendingGrade + (pendingGrade === 'mythic' ? '' : ' grade-' + pendingGrade);
+  // mockup-parity-sweep G3(owner 2026-09-05) — 등급 라벨 영문+한글 중복 제거. 구현이 한글 단독으로
+  // 통일됐고(`GetGemGradeLabel`), 정본도 같은 어휘를 쓰도록 맞춘다(코드·docs → 목업, T7 방향).
+  tag.textContent = `${gd.ko} · ${SHAPES[shape].name}`;
+
+  document.getElementById('result-gem-name').textContent = gem.name;
+  document.getElementById('result-gem-effect').textContent = gem.effect;
+  document.getElementById('draw-result').classList.add('show');
+
+  spawnRingBurst(pendingGrade);
+  spawnParticleBurst(pendingGrade);
+
+  // 등급 스펙터클 강도: Common(무연출) → Mythic(전체화면 플래시 + 강한 흔들림)
+  if (pendingGrade === 'legendary') {
+    triggerFlash('rgba(245,166,35,0.28)', 500);
+    triggerShake(4, 260);
+  } else if (pendingGrade === 'mythic') {
+    triggerFlash('rgba(255,255,255,0.55)', 650);
+    setTimeout(() => triggerFlash('linear-gradient(90deg,#ff5b5b,#ffb545,#f7f75a,#63e6a3,#5ac8ff,#b98cff)', 400), 120);
+    triggerShake(7, 480);
+  } else if (pendingGrade === 'epic') {
+    triggerFlash('rgba(168,85,247,0.16)', 350);
+  }
+
+  setStatus(`젬 획득: ${gd.label} · ${SHAPES[shape].name} — ${gem.name}`, 'ok');
+}
+
+function spawnRingBurst(gradeKey) {
+  const gd = gradeDef(gradeKey);
+  const rankOf = { common:1, rare:2, epic:3, legendary:3, mythic:4 };
+  const count = rankOf[gradeKey];
+  const container = document.getElementById('draw-particles');
+  for (let i = 0; i < count; i++) {
+    const ring = document.createElement('div');
+    ring.className = 'draw-ring';
+    ring.style.borderColor = gradeKey === 'mythic'
+      ? ['#ff5b5b', '#ffb545', '#5ac8ff', '#b98cff'][i % 4]
+      : gd.color.startsWith('var') ? getComputedStyle(document.documentElement).getPropertyValue(gd.color.slice(4, -1)) : gd.color;
+    ring.style.animationDelay = (i * 0.12) + 's';
+    container.appendChild(ring);
+    setTimeout(() => ring.remove(), 1000 + i * 120);
+  }
+}
+
+// containerId 는 선택 인자 — 기본값은 뽑기 뷰(기존 호출부 회귀 0), 합성 뷰가 자기 컨테이너를 넘긴다.
+function spawnParticleBurst(gradeKey, containerId, countOverride) {
+  const countMap = { common: 6, rare: 12, epic: 18, legendary: 26, mythic: 40 };
+  const count = countOverride || countMap[gradeKey] || 6;
+  const colorList = gradeKey === 'mythic'
+    ? ['#ff5b5b', '#ffb545', '#f7f75a', '#63e6a3', '#5ac8ff', '#b98cff']
+    : [getComputedStyle(document.documentElement).getPropertyValue('--g-' + gradeKey).trim()];
+  const container = document.getElementById(containerId || 'draw-particles');
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 / count) * i + Math.random() * 0.3;
+    const dist = 60 + Math.random() * 90;
+    const p = document.createElement('div');
+    p.className = 'draw-particle';
+    p.style.background = colorList[i % colorList.length];
+    p.style.setProperty('--dx', (Math.cos(a) * dist) + 'px');
+    p.style.setProperty('--dy', (Math.sin(a) * dist) + 'px');
+    p.style.animationDelay = (Math.random() * 0.1) + 's';
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// T0 비교 — T1 수정 전 Unity 구현 재현 (gacha-presentation-overhaul-plan T0)
+// 위 startDraw/applyDrawStage 와 상태를 공유하지 않는 독립 재생기다(기존 연출 회귀 0).
+// 타이밍은 위 목업 페이싱(충전 1100ms · 개봉 650ms)에 맞춰 공정 비교가 되게 한다.
+// ═══════════════════════════════════════════════════
+
+let t0Timers = [];
+function t0Clear() { t0Timers.forEach(clearTimeout); t0Timers = []; }
+
+function buildT0GradeButtons() {
+  const row = document.getElementById('t0-grade-row');
+  GRADES.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'grade-pick-btn' + (g.key === 'mythic' ? ' bg-tag-mythic' : '');
+    if (g.key !== 'mythic') {
+      btn.style.color = g.color;
+      btn.style.border = `1px solid ${g.color}`;
+      btn.style.background = 'rgba(255,255,255,0.02)';
+    }
+    btn.textContent = g.label;
+    btn.onclick = () => t0Play(g.key);
+    row.appendChild(btn);
+  });
+}
+
+// Unity GetGemGradeColor 대응 — mythic 은 회전 hue(HSV s=0.55)를 CSS 필터(mythic-spin)로 근사한다.
+function t0GradeCss(key) {
+  return key === 'mythic' ? 'hsl(0, 55%, 78%)'
+    : getComputedStyle(document.documentElement).getPropertyValue('--g-' + key).trim();
+}
+
+function t0Play(gradeKey) {
+  t0Clear();
+  const box = document.getElementById('t0-box');
+  const circle = document.getElementById('t0-circle');
+  const clip = document.getElementById('t0-clipbox');
+  const label = document.getElementById('t0-label');
+  const step = document.getElementById('t0-step');
+  const color = t0GradeCss(gradeKey);
+  const gd = gradeDef(gradeKey);
+  const mythic = gradeKey === 'mythic';
+
+  box.style.opacity = 1;
+  box.classList.remove('t0-open');
+  box.classList.add('t0-jitter');
+  circle.classList.remove('t0-pop', 't0-mythic-hue');
+  circle.style.opacity = 0;
+  clip.classList.remove('show');
+  label.classList.toggle('t0-mythic-hue', mythic);
+  step.textContent = '① 충전 중...';
+
+  t0Timers.push(setTimeout(() => {
+    box.classList.remove('t0-jitter');
+    box.classList.add('t0-open');
+    step.textContent = '② 개봉!';
+  }, 1100));
+
+  t0Timers.push(setTimeout(() => {
+    box.style.opacity = 0;                 // Unity 는 결과 단계에서 상자를 그리지 않는다
+    box.classList.remove('t0-open');
+    circle.style.background = color;
+    circle.style.removeProperty('opacity');
+    void circle.offsetWidth;               // 애니메이션 재생 리셋
+    circle.classList.add('t0-pop');
+    if (mythic) { circle.classList.add('t0-mythic-hue'); }
+    label.textContent = gd.ko;   // G3(2026-09-05) — 영문+한글 중복 제거, 한글 단독
+    label.style.color = color;
+    clip.classList.add('show');
+    step.textContent = '③ 결과 공개 — 등급이 달라도 상자·원·곡선은 전부 같다';
+  }, 1750));
+}
+
+buildT0GradeButtons();
+
+// ═══════════════════════════════════════════════════
+// ④ GEM FUSION VIEW (gemstone-fusion-plan Task 0)
+// LoL 헥스테크 재조합 레이아웃 — 좌 재료 인벤토리 / 우 삼각 디스크 3슬롯 + 중앙 코어 / 하단 CTA.
+// ═══════════════════════════════════════════════════
+
+function gradeIndex(key) { return GRADES.findIndex(g => g.key === key); }
+function gradeByIndex(i) { return GRADES[Math.min(Math.max(i, 0), GRADES.length - 1)]; }
+
+// 흡수 연출 동안에는 소재가 이미 인벤토리에서 빠진 뒤이므로(원자 순서: 제거 → 생성 → 연출),
+// 슬롯 렌더는 이 스냅샷을 폴백으로 참조한다. 실제 구현도 동일 — 연출은 확정된 결과의 시각화일 뿐이다.
+let fusionAbsorbGems = [];
+function lookupGem(id) {
+  if (!id) { return null; }
+  return findGem(id) || fusionAbsorbGems.find(g => g.id === id) || null;
+}
+
+// 소켓에 장착된 젬은 재료로 쓸 수 없다(플랜 D5 — dangling 소켓 참조 방지).
+function isFusableGem(gem) { return !isSocketed(gem.id); }
+function fusableByGrade(gradeKey) { return GEM_LIBRARY.filter(g => g.grade === gradeKey && isFusableGem(g)); }
+
+function fusionMaterialGrade() {
+  const first = fusionSlots.find(Boolean);
+  const gem = lookupGem(first);
+  return gem ? gem.grade : null;
+}
+function fusionFilledCount() { return fusionSlots.filter(Boolean).length; }
+
+function setFusionForce(mode) {
+  fusionForce = mode;
+  document.querySelectorAll('.fusion-force-btn').forEach(b => b.classList.toggle('active', b.dataset.force === mode));
+  setStatus(mode === 'roll' ? '결과를 실제 확률로 롤합니다.' : `데모: 결과를 ${mode === '0' ? '동급(실패)' : '+' + mode + ' 승급'}으로 강제합니다.`, 'ok');
+}
+
+function pickFusionMaterial(gemId) {
+  if (fusionBusy) { return; }
+  const gem = findGem(gemId);
+  if (!gem || !isFusableGem(gem)) { setStatus('소켓에 장착된 젬은 재료로 쓸 수 없습니다. 먼저 해제하세요.', 'err'); return; }
+  if (gem.grade === 'mythic') { setStatus('신화 등급은 상한이라 합성할 수 없습니다.', 'err'); return; }
+  if (fusionSlots.includes(gemId)) { return; }
+
+  const matGrade = fusionMaterialGrade();
+  if (matGrade && matGrade !== gem.grade) {
+    setStatus('재료 3개는 모두 같은 등급이어야 합니다.', 'err');
+    return;
+  }
+  const empty = fusionSlots.indexOf(null);
+  if (empty < 0) { setStatus('재료 슬롯이 가득 찼습니다.', 'err'); return; }
+
+  fusionSlots[empty] = gemId;
+  resetFusionResultBanner();
+  renderFusionView();
+}
+
+function clearFusionSlot(i) {
+  if (fusionBusy || !fusionSlots[i]) { return; }
+  fusionSlots[i] = null;
+  resetFusionResultBanner();
+  renderFusionView();
+}
+
+function clearFusionSlots() {
+  if (fusionBusy) { return; }
+  fusionSlots = [null, null, null];
+  resetFusionResultBanner();
+  renderFusionView();
+  setStatus('재료 슬롯을 비웠습니다.', 'ok');
+}
+
+// 자동 채우기(플랜 D4): 이미 고른 등급 → 그 등급 / 아니면 3개 이상 남은 가장 낮은 등급을 오래된 순으로.
+function autoFillFusion() {
+  if (fusionBusy) { return; }
+  let target = fusionMaterialGrade();
+  if (!target) {
+    const found = GRADES.find(g => g.key !== 'mythic' && fusableByGrade(g.key).length >= FUSION_MATERIAL_COUNT);
+    if (!found) { setStatus('3개 이상 남은 등급이 없습니다.', 'err'); return; }
+    target = found.key;
+  }
+  const pool = fusableByGrade(target).filter(g => !fusionSlots.includes(g.id));
+  for (let i = 0; i < fusionSlots.length && pool.length; i++) {
+    if (!fusionSlots[i]) { fusionSlots[i] = pool.shift().id; }
+  }
+  resetFusionResultBanner();
+  renderFusionView();
+  const gd = gradeDef(target);
+  setStatus(fusionFilledCount() === FUSION_MATERIAL_COUNT
+    ? `${gd.ko} 재료 3개를 채웠습니다.`
+    : `${gd.ko} 재료가 ${fusionFilledCount()}개뿐입니다(3개 필요).`,
+    fusionFilledCount() === FUSION_MATERIAL_COUNT ? 'ok' : 'err');
+}
+
+// 누적 가중치 롤 + 별 젬 보정 — 실제 구현 RollFusionResultGrade 구조를 따른다(per-mille).
+function rollFusionStep(gradeKey) {
+  const w = FUSION_UPGRADE_WEIGHTS[gradeKey];
+  const roll = Math.floor(Math.random() * FUSION_WEIGHT_TOTAL);
+  const bonus = equippedStarFusionBonus();
+  const boostedRoll = bonus > 0
+    ? Math.min(FUSION_WEIGHT_TOTAL - 1, roll + Math.round(bonus * FUSION_WEIGHT_TOTAL))
+    : roll;
+  let cum = 0;
+  for (let i = 0; i < w.length; i++) {
+    cum += w[i];
+    if (boostedRoll < cum) { return i; }
+  }
+  return 0;
+}
+
+function doFuse() {
+  if (fusionBusy) { return; }
+  if (fusionFilledCount() !== FUSION_MATERIAL_COUNT) { setStatus('재료 3개를 채워야 합니다.', 'err'); return; }
+
+  const matGrade = fusionMaterialGrade();
+  if (!FUSION_UPGRADE_WEIGHTS[matGrade]) { setStatus('이 등급은 합성할 수 없습니다.', 'err'); return; }
+  if (fusionSlots.some(id => isSocketed(id))) { setStatus('장착 중인 젬이 재료에 포함되어 있습니다.', 'err'); return; }
+
+  const step = fusionForce === 'roll' ? rollFusionStep(matGrade) : parseInt(fusionForce, 10);
+  const resultGrade = gradeByIndex(gradeIndex(matGrade) + step).key;
+  const materials = fusionSlots.slice();
+  const materialGems = materials.map(id => findGem(id)).filter(Boolean);
+
+  // 실제 구현과 동일한 원자 순서: 소재 제거 → 결과 추가 → (Save) → 연출.
+  // 연출은 이미 확정된 결과의 시각화일 뿐이므로 중간에 이탈해도 인벤토리는 정합하다.
+  fusionAbsorbGems = materials.map(id => findGem(id)).filter(Boolean).map(g => ({ ...g }));
+  materials.forEach(id => {
+    const idx = GEM_LIBRARY.findIndex(g => g.id === id);
+    if (idx >= 0) { GEM_LIBRARY.splice(idx, 1); }
+  });
+  // 이름은 목업 표기용(실제 GemInstance 에는 이름 필드가 없고 등급 라벨만 쓴다).
+  // 인벤토리에 안 쓰인 이름을 먼저 고르고, 다 쓰였으면 번호를 붙여 중복 표기를 피한다.
+  const namePool = GEM_NAME_POOL[resultGrade] || ['합성 결정'];
+  const used = new Set(GEM_LIBRARY.map(g => g.name));
+  const freeName = namePool.find(n => !used.has(n));
+  fusionSeq++;
+  const newGem = {
+    id: 'gf' + fusionSeq,
+    grade: resultGrade,
+    shape: rollFusionResultShape(materialGems),
+    // 접미사는 '#n' — '+n' 은 승급 단계 표기(+1/+2)와 혼동된다.
+    name: freeName || `${namePool[fusionSeq % namePool.length]} #${fusionSeq}`,
+    effect: GRADE_EFFECT_TEXT[resultGrade],
+  };
+  GEM_LIBRARY.push(newGem);
+  // gem-draw-to-inventory-followup T3 — 젬이 실제로 소멸하는 유일한 경로다. 태워진 소재가
+  // 이번 세션에 뽑은 젬이었다면 그 NEW 표식도 여기서 사라진다(결과 젬은 NEW 가 아니다).
+  pruneDrawSessionNewGemIds();
+
+  playFusionSequence(matGrade, newGem, step);
+}
+
+function rollFusionResultShape(materials) {
+  const counts = {};
+  let best = materials[0] ? materials[0].shape : 'circle';
+  materials.forEach(g => {
+    counts[g.shape] = (counts[g.shape] || 0) + 1;
+    if (counts[g.shape] > (counts[best] || 0)) best = g.shape;
+  });
+  return best;
+}
+
+function playFusionSequence(matGrade, resultGem, step) {
+  fusionBusy = true;
+  const disc = document.getElementById('fusion-disc');
+  const core = document.getElementById('fusion-core');
+  const particles = document.getElementById('fusion-particles');
+  particles.innerHTML = '';
+  document.getElementById('fusion-rays').classList.remove('on');
+  core.classList.remove('revealed');
+  resetFusionResultBanner();
+  renderFusionView();
+
+  // ① 흡수 — 슬롯 3개가 중앙 코어로 빨려 들어간다
+  setStatus('재조합 중… 재료를 코어로 흡수합니다.', 'ok');
+  disc.classList.add('absorbing');
+  document.getElementById('fusion-core-hint').textContent = '흡수 중…';
+
+  setTimeout(() => {
+    // ② 차지 — 링 가속 + 코어 맥동
+    disc.classList.add('charging');
+    document.getElementById('fusion-core-hint').textContent = '재조합…';
+    spawnParticleBurst(matGrade, 'fusion-particles', 10);
+
+    setTimeout(() => {
+      // ③ 판정 플래시 — 승급 단계에 따라 강도 차등(동급은 조용히)
+      disc.classList.remove('charging');
+      const gd = gradeDef(resultGem.grade);
+      const alpha = FUSION_FLASH_ALPHA_BY_STEP[step];
+      if (alpha > 0) {
+        const flashColor = resultGem.grade === 'mythic'
+          ? `rgba(255,255,255,${alpha})`
+          : hexToRgba(getComputedStyle(document.documentElement).getPropertyValue('--g-' + resultGem.grade).trim(), alpha);
+        triggerFlash(flashColor, FUSION_FLASH_MS * 3);
+      }
+      if (FUSION_SHAKE_MAG_BY_STEP[step] > 0) { triggerShake(FUSION_SHAKE_MAG_BY_STEP[step], 420); }
+
+      setTimeout(() => {
+        // ④ 공개 — 코어에 결과 젬 등장.
+        // 슬롯을 비운 뒤 즉시 재렌더해야 absorbing 클래스 해제와 함께 옛 소재가 되살아나지 않는다.
+        fusionSlots = [null, null, null];
+        fusionAbsorbGems = [];
+        renderFusionView();
+        disc.classList.add('revealing');
+        core.classList.add('revealed');
+        document.getElementById('fusion-core-hint').textContent = '';
+        const gemEl = document.getElementById('fusion-core-gem');
+        gemEl.className = '';
+        gemEl.classList.add('shape', SHAPES[resultGem.shape].cls, 'gem-fill-' + resultGem.grade);
+        const gradeEl = document.getElementById('fusion-core-grade');
+        gradeEl.textContent = `${gd.label} · ${SHAPES[resultGem.shape].name}`;
+        gradeEl.className = 'grade-' + resultGem.grade;
+
+        if (step > 0) { spawnFusionRays(resultGem.grade, step); }
+        spawnParticleBurst(resultGem.grade, 'fusion-particles');
+        spawnFusionResultBanner(resultGem, step);
+
+        setTimeout(() => {
+          fusionBusy = false;
+          disc.classList.remove('absorbing', 'revealing');
+          renderFusionView();
+          renderSocketsView();
+        }, FUSION_SHOW_MS);
+      }, FUSION_FLASH_MS);
+    }, FUSION_CHARGE_MS);
+  }, FUSION_ABSORB_MS);
+}
+
+function spawnFusionRays(gradeKey, step) {
+  const wrap = document.getElementById('fusion-rays');
+  wrap.innerHTML = '';
+  const count = FUSION_RAY_COUNT_BY_STEP[step];
+  const mythicColors = ['#ff5b5b', '#ffb545', '#f7f75a', '#63e6a3', '#5ac8ff', '#b98cff'];
+  const base = getComputedStyle(document.documentElement).getPropertyValue('--g-' + gradeKey).trim();
+  for (let i = 0; i < count; i++) {
+    const ray = document.createElement('div');
+    ray.className = 'fusion-ray';
+    const color = (gradeKey === 'mythic' || step === 2) ? mythicColors[i % mythicColors.length] : base;
+    ray.style.background = `linear-gradient(to bottom, ${hexToRgba(color, 0.85)}, ${hexToRgba(color, 0)})`;
+    ray.style.transform = `rotate(${(360 / count) * i}deg)`;
+    ray.style.height = (110 + (i % 3) * 26) + 'px';
+    wrap.appendChild(ray);
+  }
+  wrap.classList.add('on');
+}
+
+function spawnFusionResultBanner(gem, step) {
+  const stepEl = document.getElementById('fusion-result-step');
+  stepEl.className = 'step-' + step;
+  stepEl.textContent = step === 0 ? '· 등급 유지 ·' : step === 1 ? '▲ 등급 상승!' : '★ 2단계 상승 — 대성공! ★';
+  const nameEl = document.getElementById('fusion-result-name');
+  nameEl.className = 'grade-' + gem.grade;
+  nameEl.textContent = `${gradeDef(gem.grade).label} · ${SHAPES[gem.shape].name} · ${gem.name}`;
+  document.getElementById('fusion-result-effect').textContent = gem.effect;
+  setStatus(
+    step === 0 ? `재조합 완료 — ${gradeDef(gem.grade).ko} 등급 유지.`
+      : step === 1 ? `재조합 성공! ${gradeDef(gem.grade).ko} 등급으로 상승했습니다.`
+      : `대박! 2단계 상승 — ${gradeDef(gem.grade).ko} 획득!`,
+    step === 0 ? '' : 'ok');
+}
+
+function resetFusionResultBanner() {
+  const stepEl = document.getElementById('fusion-result-step');
+  stepEl.textContent = ''; stepEl.className = '';
+  document.getElementById('fusion-result-name').textContent = '';
+  document.getElementById('fusion-result-effect').textContent = '';
+  const core = document.getElementById('fusion-core');
+  core.classList.remove('revealed');
+  document.getElementById('fusion-rays').classList.remove('on');
+}
+
+function hexToRgba(hex, alpha) {
+  const h = (hex || '').replace('#', '').trim();
+  if (h.length !== 6) { return `rgba(255,255,255,${alpha})`; }
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderFusionView() {
+  const matGrade = fusionMaterialGrade();
+
+  // ── 등급 그룹(미장착 보유 수) ──
+  const groups = document.getElementById('fusion-grade-groups');
+  groups.innerHTML = '';
+  GRADES.forEach(g => {
+    const count = fusableByGrade(g.key).length;
+    const isMythic = g.key === 'mythic';
+    const disabled = isMythic || count < FUSION_MATERIAL_COUNT;
+    const row = document.createElement('div');
+    row.className = 'fusion-grade-row'
+      + (matGrade === g.key ? ' active' : '')
+      + (disabled ? ' disabled' : '');
+    row.innerHTML = `
+      <div class="fg-gem shape shape-circle gem-fill-${g.key}"></div>
+      <span class="fg-name grade-${g.key}">${g.label}</span>
+      ${isMythic ? '<span class="fg-note">상한 · 합성 불가</span>'
+                 : `<span class="fg-count${count >= FUSION_MATERIAL_COUNT ? ' enough' : ''}">×${count}</span>`}
+    `;
+    if (!disabled) {
+      row.onclick = () => {
+        if (fusionBusy) { return; }
+        if (matGrade && matGrade !== g.key) { clearFusionSlots(); }
+        fusionSlots = [null, null, null];
+        autoFillFusionOfGrade(g.key);
+      };
+    }
+    groups.appendChild(row);
+  });
+
+  // ── 재료 칩 목록 ──
+  const grid = document.getElementById('fusion-stock-grid');
+  grid.innerHTML = '';
+  const visible = GEM_LIBRARY.filter(g => !matGrade || g.grade === matGrade);
+  visible.forEach(g => {
+    const locked = !isFusableGem(g) || g.grade === 'mythic';
+    const picked = fusionSlots.includes(g.id);
+    const chip = document.createElement('div');
+    chip.className = 'stock-chip' + (locked ? ' locked' : '') + (picked ? ' picked' : '');
+    chip.title = `${g.name} — ${g.effect}`;
+    chip.innerHTML = `
+      <div class="sc-gem shape ${SHAPES[g.shape].cls} gem-fill-${g.grade}"></div>
+      <span class="sc-label grade-${g.grade}">${g.name} · ${SHAPES[g.shape].name}</span>
+      ${locked ? '<span class="sc-lock">🔒</span>' : ''}
+    `;
+    if (!locked && !picked) { chip.onclick = () => pickFusionMaterial(g.id); }
+    grid.appendChild(chip);
+  });
+  document.getElementById('fusion-stock-total').textContent =
+    `보유 ${GEM_LIBRARY.length} · 장착 ${equippedGemIds().length}`
+    + (matGrade ? ` · ${gradeDef(matGrade).label} 필터` : '');
+
+  // ── 디스크 슬롯 ──
+  for (let i = 0; i < 3; i++) {
+    const slotEl = document.querySelector(`.fusion-slot.s${i}`);
+    const gem = lookupGem(fusionSlots[i]);
+    slotEl.className = `fusion-slot s${i}` + (gem ? ' filled border-' + gem.grade : '');
+    slotEl.innerHTML = gem
+      ? `<div class="fusion-slot-inner"><div class="fs-gem shape ${SHAPES[gem.shape].cls} gem-fill-${gem.grade}"></div><span class="fs-tag grade-${gem.grade}">${gradeDef(gem.grade).label} · ${SHAPES[gem.shape].name}</span></div>`
+      : `<div class="fusion-slot-inner"><div class="fs-empty">◇</div></div>`;
+  }
+
+  // ── 코어 힌트 / CTA ──
+  const filled = fusionFilledCount();
+  const core = document.getElementById('fusion-core');
+  if (!core.classList.contains('revealed')) {
+    document.getElementById('fusion-core-hint').textContent = `재료 ${filled} / ${FUSION_MATERIAL_COUNT}`;
+  }
+  const btn = document.getElementById('btn-fuse');
+  btn.disabled = fusionBusy || filled !== FUSION_MATERIAL_COUNT;
+  btn.textContent = fusionBusy ? '재조합 중…' : '재조합';
+  const bonus = equippedStarFusionBonus();
+  const bonusNote = document.getElementById('fusion-star-bonus-note');
+  if (bonusNote) {
+    bonusNote.textContent = `별 젬 합성 보정 +${(bonus * 100).toFixed(1)}% (상한 ${(STAR_FUSION_BONUS_CAP * 100).toFixed(1)}%)`;
+  }
+
+  // ── 확률 표(선택 등급 하이라이트) ──
+  const body = document.getElementById('fusion-odds-body');
+  body.innerHTML = '';
+  GRADES.forEach(g => {
+    const w = FUSION_UPGRADE_WEIGHTS[g.key];
+    const tr = document.createElement('tr');
+    if (matGrade === g.key) { tr.className = 'active'; }
+    if (!w) {
+      tr.innerHTML = `<td class="grade-${g.key}">${g.label}</td><td colspan="3">합성 불가(상한)</td>`;
+    } else {
+      const pct = v => (v / 10).toFixed(v % 10 === 0 ? 0 : 1) + '%';
+      tr.innerHTML = `<td class="grade-${g.key}">${g.label}</td>`
+        + `<td>${pct(w[0])}</td><td>${pct(w[1])}</td>`
+        + `<td class="${w[2] > 0 ? 'jackpot' : ''}">${w[2] > 0 ? pct(w[2]) : '—'}</td>`;
+    }
+    body.appendChild(tr);
+  });
+}
+
+function autoFillFusionOfGrade(gradeKey) {
+  const pool = fusableByGrade(gradeKey);
+  for (let i = 0; i < FUSION_MATERIAL_COUNT && i < pool.length; i++) { fusionSlots[i] = pool[i].id; }
+  resetFusionResultBanner();
+  renderFusionView();
+  setStatus(`${gradeDef(gradeKey).ko} 재료 ${fusionFilledCount()}개를 슬롯에 올렸습니다.`, 'ok');
+}
+
+function triggerFlash(color, durationMs) {
+  const el = document.getElementById('screen-flash');
+  el.style.background = color;
+  el.style.opacity = 1;
+  setTimeout(() => { el.style.opacity = 0; }, durationMs * 0.25);
+}
+
+function triggerShake(mag, dur) {
+  const panel = document.getElementById('arm-panel');
+  const start = performance.now();
+  function step(now) {
+    const t = (now - start) / dur;
+    if (t >= 1) { panel.style.transform = ''; return; }
+    const s = 1 - t;
+    const dx = Math.sin(t * 60) * mag * s;
+    const dy = Math.cos(t * 45) * mag * s * 0.6;
+    panel.style.transform = `translate(${dx}px,${dy}px)`;
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function resetDraw() {
+  clearTimeout(drawTimer);
+  pendingGrade = null;
+  pendingShape = null;
+  drawStage = 'idle';
+  const box = document.getElementById('draw-box');
+  box.className = 'draw-box';
+  document.getElementById('draw-result').classList.remove('show');
+  document.getElementById('draw-particles').innerHTML = '';
+  document.getElementById('btn-next-stage').disabled = true;
+  renderDrawStageLabel();
+}
+
+function renderDrawStageLabel() {
+  const stageKo = { idle:'대기 중', appear:'① 상자 등장', charge:'② 충전(진동·발광)', open:'③ 개봉', reveal:'④ 결과 공개' };
+  const el = document.getElementById('draw-stage-label');
+  if (!pendingGrade) {
+    el.textContent = '단계: 대기 중 — 아래 목업 전용 도구에서 등급을 선택하세요';
+  } else {
+    el.textContent = `단계: ${stageKo[drawStage]} (지정 등급: ${gradeDef(pendingGrade).label})`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// STATUS / RESET
+// ═══════════════════════════════════════════════════
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status-line');
+  el.textContent = msg;
+  el.className = cls ? cls : '';
+}
+
+function fullDemoReset() {
+  unlockedTiers = [1];
+  equippedTier = 1;
+  levels = { 1: 5, 2: 1, 3: 1, 4: 1, 5: 1 };
+  socketAssign = { 1: ['g3', null] };
+  pickerTargetSocket = null;
+  archToken = 60;
+  resetDraw();
+  // 합성으로 태워진/생성된 젬까지 되돌린다(인벤토리는 합성이 실제로 증감시키는 유일한 데모 상태).
+  GEM_LIBRARY.length = 0;
+  GEM_LIBRARY_INITIAL.forEach(g => GEM_LIBRARY.push({ ...g }));
+  // T3 — 뽑기로 생긴 젬이 통째로 사라졌으니 세션 NEW 표식도 같이 걷힌다(교집합 = 공집합).
+  pruneDrawSessionNewGemIds();
+  fusionSlots = [null, null, null];
+  fusionBusy = false;
+  fusionSeq = 0;
+  drawSeq = 0;
+  resetFusionResultBanner();
+  document.getElementById('fusion-disc').classList.remove('absorbing', 'charging');
+  document.getElementById('fusion-particles').innerHTML = '';
+  setStatus('데모 상태를 초기화했습니다.', 'ok');
+  renderAll();
+}
+
+function renderAll() {
+  updateArmamentHud();
+  renderWeaponView();
+  renderSocketsView();
+  renderFusionView();
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+
+buildGradeButtons();
+setFusionForce('roll');
+updateArmamentHud();
+renderGemInventoryV1Compare();   // T0 비교 패널 — 정적, 1회만
+renderAll();
+</script>
+</body>
+</html>

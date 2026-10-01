@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>젬 뽑기 인벤토리 — 하단 밴드 vs 우측 드로어 비교본 (G1~G5)</title>
+<!--
+  gem-draw-side-drawer-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : gem-draw-inventory-side-drawer-plan **T1 산출물**. owner 가 G1~G5 를 눈으로
+          판정하기 위한 **정적 비교본**이다. 실조작·애니메이션 없음(체크박스만 동작).
+  소유  : docs/plans/03-qa-pending/phase-1/gem-draw-inventory-side-drawer-plan.md T1
+  승인서: docs/reviews/2026-08-30-gem-draw-inventory-side-drawer-plan.md (R3 APPROVE)
+  정본  : html/armament-menu.html 은 **무수정**. #view-draw(:1030) 는 읽기만 했고
+          여기는 사본이 아니라 "현재 vs V2" 비교 전용 별도 파일이다. 게임 코드(.cs) 무수정.
+  팔레트: armament-menu.html :9-30 토큰 그대로 복사(raw 색 신설 0).
+  좌표계: 전부 **본문 rect 로컬**(화면 좌표 = 로컬 + (24, 88)).
+          본문 rect 는 GetLabBodyRect() 상수식이라 항상 (24, 88, 1872, 968) — 해상도 불변.
+
+  ⚠ 이 비교본이 지키는 제약
+     1) T0(필터 바 TMP 요구폭 실측)은 Unity 에디터 부재로 **미이행 · 잔여**다.
+        폭 관련 수치는 전부 "R1 추정 W≈437 (TMP 실측 대기)" 라벨을 달고 있다.
+     2) 수치는 코드 실측(GemDrawView.cs / MvpGameController.GemGacha.cs / UI.cs) 또는
+        승인서 R3 실측에서만 가져왔다. 이 문서가 자체 파생한 값은 「파생」으로 표시했다.
+-->
+<style>
+:root{
+  /* ── armament-menu.html :9-30 토큰 (그대로 — 신규 색 0) ── */
+  --bg:#0b1218; --panel:#111b24; --border:#c9a227; --border-gold:rgba(201,162,39,0.25);
+  --teal:#57d1b8; --gold:#f5e859; --text:#e2e8f0; --muted:#8c99ad; --muted2:#2a3a4a;
+  --red:#ff6b6b;
+  --g-common:#9ca3af; --g-rare:#3b82f6; --g-epic:#a855f7;
+  --g-legendary:#f5a623; --g-mythic:#ffffff;
+  /* 목업 패널 파생(armament-menu #draw-stage :460-468 · #t0-stage :583-586 와 동일 문자열) */
+  --hairline:rgba(60,80,110,0.35);
+  --stage-wash:rgba(87,209,184,0.05);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:26px 22px 70px; background:var(--bg); color:var(--text);
+  font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; font-size:14px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1560px; margin:0 auto;}
+h1{font-size:21px; margin:0 0 6px; letter-spacing:.01em;}
+h2{font-size:14px; margin:0 0 4px; letter-spacing:.06em; color:var(--teal);}
+h2 .g{color:var(--gold);}
+h3{font-size:11px; letter-spacing:.1em; margin:0 0 10px; text-transform:uppercase; color:var(--muted);}
+.sub{color:var(--muted); font-size:12px; margin:0 0 6px;}
+code{font-family:'Courier New',Courier,monospace; font-size:12px; color:var(--gold); background:rgba(201,162,39,.07); padding:0 3px; border-radius:2px;}
+b{color:#fff;}
+.block{margin:0 0 36px; padding-top:4px;}
+.block > .sub{margin-bottom:16px;}
+hr.sep{border:0; border-top:1px solid var(--muted2); margin:30px 0 26px;}
+
+/* 경고/근거 배너 */
+.banner{
+  border-left:3px solid var(--red); background:rgba(255,107,107,.07);
+  padding:11px 15px; margin:0 0 22px; border-radius:0 5px 5px 0; font-size:12.5px; color:var(--text);
+}
+.banner.info{border-left-color:var(--teal); background:rgba(87,209,184,.06);}
+.banner.gold{border-left-color:var(--border); background:rgba(201,162,39,.06);}
+.banner .t{display:block; font-weight:700; margin-bottom:4px; letter-spacing:.03em;}
+.banner.info .t{color:var(--teal);} .banner .t{color:var(--red);} .banner.gold .t{color:var(--gold);}
+
+/* 카드/그리드 */
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+.quad{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+@media (max-width:980px){ .pair,.quad{grid-template-columns:1fr;} }
+.col{border:1px solid var(--hairline); border-radius:8px; background:var(--panel); padding:13px 13px 15px;}
+.col.now{border-color:var(--muted2);}
+.col.v2{border-color:rgba(87,209,184,.45);}
+.col.v2 h3{color:var(--teal);}
+.col.warn{border-color:rgba(255,107,107,.45);}
+.col.warn h3{color:var(--red);}
+.col.ok{border-color:rgba(201,162,39,.45);}
+.col.ok h3{color:var(--gold);}
+.figwrap{background:var(--bg); border:1px solid var(--hairline); border-radius:6px; padding:6px; overflow-x:auto;}
+svg{display:block; width:100%; height:auto;}
+
+/* SVG 공용 클래스 */
+.s-body{fill:var(--bg); stroke:var(--hairline); stroke-width:3;}
+.s-stage{fill:var(--stage-wash); stroke:var(--hairline); stroke-width:3;}
+.s-stage-ghost{fill:none; stroke:var(--muted2); stroke-width:3; stroke-dasharray:14 10;}
+.s-box{fill:rgba(245,197,66,.06); stroke:#f5c542; stroke-width:4;}
+.s-box-ghost{fill:none; stroke:var(--muted); stroke-width:3; stroke-dasharray:12 9;}
+.s-cta{fill:rgba(87,209,184,.12); stroke:var(--teal); stroke-width:3;}
+.s-band{fill:var(--panel); stroke:var(--border-gold); stroke-width:3;}
+.s-drawer{fill:var(--panel); stroke:var(--teal); stroke-width:4;}
+.s-chip{fill:rgba(87,209,184,.10); stroke:rgba(87,209,184,.45); stroke-width:2;}
+.s-tile{fill:rgba(201,162,39,.06); stroke:var(--border-gold); stroke-width:2;}
+.s-hit{fill:rgba(255,107,107,.20); stroke:var(--red); stroke-width:3; stroke-dasharray:12 8;}
+.s-guide{stroke:var(--muted2); stroke-width:2; stroke-dasharray:10 8; fill:none;}
+.s-dim{stroke:var(--muted); stroke-width:2; fill:none;}
+.s-ray{stroke:var(--gold); stroke-width:4; fill:none;}
+.s-raycap{stroke:var(--red); stroke-width:4; fill:none;}
+.s-edge{stroke:var(--teal); stroke-width:3; stroke-dasharray:12 8; fill:none;}
+text{font-family:'Courier New',Courier,monospace; fill:var(--muted);}
+.t-l{font-size:28px;} .t-s{font-size:23px;} .t-xs{font-size:20px;}
+/* .dia = 본문 rect(1872×968) 좌표계 도해 — 축소 표시되므로 글자를 키운다.
+   §5 시퀀스 SVG 는 viewBox 가 작아 등배로 나오므로 이 클래스를 붙이지 않는다. */
+.dia .t-l{font-size:36px;} .dia .t-s{font-size:30px;} .dia .t-xs{font-size:26px;}
+.figwrap.seq{max-width:1260px;}
+.t-hi{fill:var(--text);} .t-teal{fill:var(--teal);} .t-gold{fill:var(--gold);}
+.t-red{fill:var(--red);} .t-mut{fill:var(--muted);} .t-white{fill:#fff;}
+.t-mid{text-anchor:middle;} .t-end{text-anchor:end;}
+
+/* 표 */
+table{width:100%; border-collapse:collapse; font-size:12.5px; margin:12px 0 0;}
+th,td{border:1px solid var(--muted2); padding:6px 9px; text-align:left; vertical-align:top;}
+th{background:rgba(87,209,184,.06); color:var(--teal); font-weight:600; font-size:11.5px; letter-spacing:.04em;}
+td code{font-size:11.5px;}
+tr.hl td{background:rgba(201,162,39,.08);}
+tr.bad td{background:rgba(255,107,107,.07);}
+.note{font-size:12px; color:var(--muted); line-height:1.75; margin:11px 0 0;}
+.note b{color:var(--text);}
+.tag{
+  display:inline-block; font-family:'Courier New',monospace; font-size:10.5px; letter-spacing:.04em;
+  padding:1px 6px; border-radius:3px; border:1px solid var(--muted2); color:var(--muted); margin-left:6px;
+  vertical-align:1px; white-space:nowrap;
+}
+.tag.est{border-color:rgba(255,107,107,.5); color:var(--red);}
+.tag.rec{border-color:rgba(87,209,184,.5); color:var(--teal);}
+.tag.src{border-color:var(--border-gold); color:var(--border);}
+
+/* 결정 박스 */
+#decide{border:2px solid var(--border); border-radius:10px; background:rgba(201,162,39,.04); padding:18px 20px 20px;}
+#decide h2{color:var(--gold); margin-bottom:10px;}
+.dgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px 22px; margin-top:6px;}
+@media (max-width:980px){ .dgrid{grid-template-columns:1fr;} }
+.dgroup{border:1px solid var(--muted2); border-radius:7px; padding:11px 13px 12px; background:var(--bg);}
+.dgroup .dh{font-size:12px; color:var(--teal); letter-spacing:.05em; margin-bottom:7px; font-weight:600;}
+.dgroup .dh small{color:var(--muted); font-weight:400; letter-spacing:0;}
+.opt{display:block; font-size:12.5px; padding:3px 0 3px 2px; color:var(--text); cursor:pointer;}
+.opt input{accent-color:var(--teal); margin-right:7px; transform:translateY(1px);}
+.opt.sub{margin-left:24px; font-size:12px; color:var(--muted);}
+.opt .why{color:var(--muted); font-size:11.5px;}
+.opt .rec{color:var(--teal);}
+.opt .risk{color:var(--red);}
+.numin{
+  font-family:'Courier New',monospace; font-size:12px; width:92px; margin-left:6px;
+  background:var(--bg); color:var(--gold); border:1px solid var(--muted2); border-radius:3px; padding:2px 6px;
+}
+.foot{font-size:11.5px; color:var(--muted); line-height:1.8; border-top:1px solid var(--muted2); margin-top:24px; padding-top:14px;}
+.foot b{color:var(--text);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>젬 뽑기 인벤토리 — 하단 밴드 <span style="color:var(--muted)">vs</span> <span style="color:var(--teal)">우측 드로어</span> 비교본</h1>
+  <p class="sub">
+    <code>gem-draw-inventory-side-drawer-plan</code> <b>T1 산출물</b> · 게이트1 R3 APPROVE(2026-08-30) 기준 ·
+    결정 항목 <b>G1~G5</b> 를 owner 가 눈으로 고르기 위한 정적 비교본 (실조작 없음)
+  </p>
+  <p class="sub" style="margin-bottom:20px;">
+    모든 좌표는 <b>본문 rect 로컬</b>이다 — 본문은 <code>GetLabBodyRect()</code> 상수식이라
+    화면 해상도와 무관하게 항상 <code>(24, 88, 1872, 968)</code>. 저해상도는 전체 등비 축소일 뿐이라
+    rect 관계가 바뀌지 않는다(승인서 F-5).
+  </p>
+
+  <div class="banner">
+    <span class="t">⚠ T0 미이행 — 잔여</span>
+    필터 바 TMP 요구폭 실측(플랜 T0)은 <b>Unity 에디터가 꺼져 있어 이번에 하지 못했다</b>.
+    이 문서의 폭 수치는 전부 <b>R1 리뷰어 추정 W≈437(1행) / ≈407(2행)</b> 기준이고,
+    해당 자리마다 <span class="tag est">R1 추정 W≈437 · TMP 실측 대기</span> 라벨을 달았다.
+    <b>G2 를 최소안(452)으로 확정하려면 T0 실측이 선행돼야 한다</b> — 실측이 437 을 넘기는 순간
+    452 는 플랜 하드 제약 1(내폭 ≥ 실측 W + 패딩)을 위반해 결정이 무효가 된다(R2-3).
+    반면 <b>562 안은 추정 대비 여유 +125px</b> 라 실측 결과에 거의 흔들리지 않는다.
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       1. 현재 레이아웃
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="block">
+    <h2>1. 현재 — 하단 밴드 250px · 스테이지 500 클램프</h2>
+    <p class="sub">
+      <code>GemDrawView.cs</code> 실측(<code>:111</code> <code>:124</code> <code>:244-248</code>
+      <code>:273-277</code> <code>:281-284</code> <code>:342</code> <code>:378-380</code>)
+      <span class="tag src">코드 실측</span>
+    </p>
+
+    <div class="figwrap">
+      <svg class="dia" viewBox="-10 -10 2110 990" role="img" aria-label="현재 레이아웃 도해">
+        <!-- 본문 -->
+        <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+        <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+        <text class="t-s t-mut" x="16" y="40">헤더 3라벨 (제목·비용 / 보유 잔액)</text>
+
+        <!-- 스테이지 -->
+        <rect class="s-stage" x="0" y="152" width="1872" height="500" rx="6"/>
+        <text class="t-l t-teal" x="18" y="192">스테이지  y 152–652 · h 500</text>
+        <text class="t-s t-mut" x="18" y="226">stageBand 692 → 1차 클램프 StageMaxHeight 500 (:283)</text>
+
+        <!-- 중심선 -->
+        <line class="s-guide" x1="936" y1="152" x2="936" y2="652"/>
+
+        <!-- 상자 -->
+        <rect class="s-box" x="756" y="222" width="360" height="360" rx="16"/>
+        <text class="t-l t-gold t-mid" x="936" y="392">상자 360</text>
+        <text class="t-s t-mut t-mid" x="936" y="424">min(430, 500×0.72, 1872×0.40)</text>
+        <text class="t-s t-mut t-mid" x="936" y="452">= 높이 지배</text>
+
+        <!-- 인벤토리 밴드 (CTA 보다 먼저 그린다 — 도해상 CTA 를 위에 보이게) -->
+        <rect class="s-band" x="0" y="670" width="1872" height="250" rx="6"/>
+        <text class="t-l t-gold" x="18" y="710">공유 인벤토리 밴드 250</text>
+        <text class="t-s t-mut" x="18" y="744">y 670–920 · min(250, max(190, 968×0.34))</text>
+        <!-- 밴드 내부 모사: 필터 2행 + 타일 -->
+        <g>
+          <rect class="s-chip" x="18" y="760" width="150" height="26" rx="4"/>
+          <rect class="s-chip" x="176" y="760" width="86" height="26" rx="4"/>
+          <rect class="s-chip" x="270" y="760" width="72" height="26" rx="4"/>
+          <rect class="s-chip" x="350" y="760" width="72" height="26" rx="4"/>
+          <rect class="s-chip" x="430" y="760" width="72" height="26" rx="4"/>
+          <rect class="s-chip" x="18" y="794" width="96" height="26" rx="4"/>
+          <rect class="s-chip" x="122" y="794" width="72" height="26" rx="4"/>
+          <rect class="s-chip" x="202" y="794" width="72" height="26" rx="4"/>
+          <rect class="s-chip" x="282" y="794" width="72" height="26" rx="4"/>
+          <text class="t-xs t-mut" x="520" y="780">필터 칩 14개 · 2행 (SocketsView.cs:1588-1606)</text>
+        </g>
+        <g>
+          <rect class="s-tile" x="18" y="834" width="118" height="72" rx="4"/>
+          <rect class="s-tile" x="146" y="834" width="118" height="72" rx="4"/>
+          <rect class="s-tile" x="274" y="834" width="118" height="72" rx="4"/>
+          <rect class="s-tile" x="402" y="834" width="118" height="72" rx="4"/>
+          <rect class="s-tile" x="530" y="834" width="118" height="72" rx="4"/>
+          <rect class="s-tile" x="658" y="834" width="118" height="72" rx="4"/>
+          <text class="t-xs t-mut" x="796" y="878">… 가로로 계속 (contentWidth 1854 → 다열)</text>
+        </g>
+
+        <!-- CTA (밴드 위에 얹힌다 — :249 주석이 의도라고 명시) -->
+        <rect class="s-cta" x="806" y="668" width="260" height="44" rx="6"/>
+        <text class="t-xs t-teal t-mid" x="936" y="698">CTA 260×44</text>
+        <text class="t-s t-mut t-mid" x="936" y="638">CTA  y 668–712 · x 806–1066</text>
+
+        <!-- 현행 겹침 -->
+        <rect class="s-hit" x="806" y="670" width="260" height="42"/>
+        <line class="s-dim" x1="1086" y1="691" x2="1160" y2="691"/>
+        <text class="t-s t-red" x="1172" y="684">현행 CTA ∩ 밴드 = 260×42</text>
+        <text class="t-xs t-mut" x="1172" y="716">코드 주석이 의도라고 명시(:249)</text>
+        <text class="t-xs t-mut" x="1172" y="746">— 기저 상태</text>
+
+        <!-- 우측 치수 -->
+        <line class="s-dim" x1="1930" y1="152" x2="1930" y2="652"/>
+        <line class="s-dim" x1="1918" y1="152" x2="1942" y2="152"/>
+        <line class="s-dim" x1="1918" y1="652" x2="1942" y2="652"/>
+        <text class="t-s t-teal" x="1954" y="410">500</text>
+        <line class="s-dim" x1="1930" y1="670" x2="1930" y2="920"/>
+        <line class="s-dim" x1="1918" y1="670" x2="1942" y2="670"/>
+        <line class="s-dim" x1="1918" y1="920" x2="1942" y2="920"/>
+        <text class="t-s t-gold" x="1954" y="802">250</text>
+        <text class="t-xs t-mut" x="1954" y="832">회수 대상</text>
+      </svg>
+    </div>
+
+    <table>
+      <tr><th>단계</th><th>산식 (GemDrawView.cs)</th><th>실값</th></tr>
+      <tr><td>인벤토리 높이</td><td><code>min(250, max(190, 968×0.34))</code> <code>:273-277</code></td><td><b>250</b></td></tr>
+      <tr><td>스테이지 밴드</td><td><code>max(180, 968 − 250 − 26)</code> <code>:281-282</code></td><td>692</td></tr>
+      <tr class="hl"><td>1차 클램프</td><td><code>min(692, StageMaxHeight 500)</code> <code>:283</code>, <code>:111</code></td><td><b>500</b> ← 발동</td></tr>
+      <tr class="hl"><td>2차 클램프</td><td><code>min(StageBoxMaxSize 430, 500×0.72, 1872×0.40)</code> <code>:378-380</code>, <code>:124</code></td><td>상자 <b>360</b></td></tr>
+      <tr><td>CTA</td><td><code>stageRect.yMax + 16</code>, h 44, 중심 <code>stageRect.center.x</code> <code>:342</code></td><td>x 806–1066 · y 668–712</td></tr>
+    </table>
+    <p class="note">
+      <b>편익 반전 2단</b> — 인벤토리 250px 를 빼도 <b>1차 클램프가 500 으로 자른다</b>
+      (<code>StageMaxHeight</code> 상향 없이는 스테이지 Δ=0). 그리고 상향해도
+      <b>597 을 넘는 순간 상자는 430 에서 고정</b>되어 빈 판만 커진다 → 그것이 §3(G4)의 논지다.
+      드로어화가 <b>확실히</b> 주는 것은 "하단 250px 회수 + CTA↔밴드 겹침 260×42 소멸"이고,
+      스테이지 확대는 <b>G4 를 (a) 로 골라야만</b> 생긴다.
+    </p>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       2. V2 드로어 — 닫힘/열림 × 폭 2안
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="block">
+    <h2>2. V2 드로어 — 닫힘 / 열림 <span class="g">×</span> G2 폭 2안</h2>
+    <p class="sub">
+      아래 4패널은 <b>G4=(b) 유지(500)</b> · <b>G5=(a) 오버레이</b> 를 기준선으로 그렸다
+      (G4 차이는 §3, G5 차이는 §4 에서 따로 본다). 드로어 세로 범위는 헤더 아래 전량
+      <code>y 56–968</code> 으로 가정했다 <span class="tag">T2 확정 사항</span>.
+      인벤토리를 빼면 <code>stageBand = max(180, 968 − 0 − 26) = 942</code> → 클램프 500 →
+      스테이지가 <code>y 277–777</code> 로 <b>아래로 125px 내려간다</b>(높이는 그대로).
+    </p>
+
+    <div class="quad">
+
+      <!-- ── 562 닫힘 ── -->
+      <div class="col v2">
+        <h3>G2(a) 562px — 닫힘</h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="드로어 562 닫힘">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+            <text class="t-s t-mut" x="16" y="42">헤더 3라벨</text>
+            <rect class="s-stage" x="0" y="277" width="1872" height="500" rx="6"/>
+            <text class="t-l t-teal" x="18" y="317">스테이지  y 277–777 · h 500 · 전폭 1872</text>
+            <line class="s-guide" x1="936" y1="277" x2="936" y2="777"/>
+            <rect class="s-box" x="756" y="347" width="360" height="360" rx="16"/>
+            <text class="t-l t-gold t-mid" x="936" y="540">상자 360</text>
+            <rect class="s-cta" x="806" y="793" width="260" height="44" rx="6"/>
+            <text class="t-xs t-teal t-mid" x="936" y="823">CTA 260×44</text>
+            <text class="t-s t-mut t-end" x="790" y="825">y 793–837</text>
+            <!-- 회수된 하단 -->
+            <rect x="0" y="853" width="1872" height="115" rx="6" fill="rgba(87,209,184,.04)" stroke="rgba(87,209,184,.25)" stroke-width="3" stroke-dasharray="14 10"/>
+            <text class="t-s t-teal t-mid" x="936" y="918">하단 밴드 250px 회수 — 빈 영역</text>
+            <!-- 토글 탭 -->
+            <rect class="s-drawer" x="1826" y="440" width="46" height="140" rx="8"/>
+            <text class="t-l t-teal t-mid" x="1849" y="522">◀</text>
+            <text class="t-s t-teal t-end" x="1806" y="498">토글 1개 (T3 신규)</text>
+            <text class="t-xs t-mut t-end" x="1806" y="530">CTA 806–1066 과 비겹침</text>
+          </svg>
+        </div>
+        <p class="note">
+          닫힘에서는 <b>스테이지가 전폭 1872 를 그대로 쓴다</b>. G5 (a)/(b) 어느 쪽을 고르든
+          닫힘 상태의 그림은 같다.
+        </p>
+      </div>
+
+      <!-- ── 562 열림 ── -->
+      <div class="col v2">
+        <h3>G2(a) 562px — 열림 <span style="color:var(--teal)">(권장)</span></h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="드로어 562 열림">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+            <rect class="s-stage" x="0" y="277" width="1872" height="500" rx="6"/>
+            <line class="s-guide" x1="936" y1="277" x2="936" y2="777"/>
+            <rect class="s-box" x="756" y="347" width="360" height="360" rx="16"/>
+            <text class="t-l t-gold t-mid" x="936" y="540">상자 360</text>
+            <rect class="s-cta" x="806" y="793" width="260" height="44" rx="6"/>
+            <text class="t-xs t-teal t-mid" x="936" y="823">CTA</text>
+
+            <!-- 드로어 -->
+            <rect class="s-drawer" x="1310" y="56" width="562" height="912" rx="8"/>
+            <line class="s-edge" x1="1310" y1="56" x2="1310" y2="968"/>
+            <text class="t-s t-teal t-end" x="1294" y="90">좌변 x = 1310</text>
+            <text class="t-l t-teal" x="1330" y="104">보유 젬 인벤토리</text>
+            <text class="t-s t-mut" x="1330" y="140">미장착 N개</text>
+            <!-- 필터 2행 -->
+            <rect class="s-chip" x="1330" y="164" width="150" height="30" rx="4"/>
+            <rect class="s-chip" x="1488" y="164" width="80" height="30" rx="4"/>
+            <rect class="s-chip" x="1576" y="164" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1644" y="164" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1712" y="164" width="55" height="30" rx="4"/>
+            <rect class="s-chip" x="1330" y="204" width="90" height="30" rx="4"/>
+            <rect class="s-chip" x="1428" y="204" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1496" y="204" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1564" y="204" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1632" y="204" width="60" height="30" rx="4"/>
+            <!-- 요구폭 브래킷 -->
+            <line class="s-dim" x1="1330" y1="252" x2="1767" y2="252"/>
+            <line class="s-dim" x1="1330" y1="244" x2="1330" y2="260"/>
+            <line class="s-dim" x1="1767" y1="244" x2="1767" y2="260"/>
+            <line class="s-dim" x1="1767" y1="252" x2="1852" y2="252" stroke="var(--teal)"/>
+            <line class="s-dim" x1="1852" y1="244" x2="1852" y2="260" stroke="var(--teal)"/>
+            <text class="t-xs t-mut" x="1330" y="290">1행 요구폭 ≈437</text>
+            <text class="t-xs t-teal" x="1330" y="322">여유 +125</text>
+            <!-- 타일 4열 -->
+            <g>
+              <rect class="s-tile" x="1330" y="330" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1458" y="330" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1586" y="330" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1714" y="330" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1330" y="470" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1458" y="470" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1586" y="470" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1714" y="470" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1330" y="610" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1458" y="610" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1586" y="610" width="118" height="130" rx="5"/>
+              <rect class="s-tile" x="1714" y="610" width="118" height="130" rx="5"/>
+            </g>
+            <text class="t-s t-gold" x="1330" y="794">contentWidth 544</text>
+            <text class="t-s t-gold" x="1330" y="828">→ 4열 (셀 128.5)</text>
+            <text class="t-xs t-mut" x="1330" y="862">ComputeResponsiveGrid</text>
+            <text class="t-xs t-mut" x="1330" y="892">정상 경로 (UI.cs:2808)</text>
+            <!-- 요구폭 주석은 드로어 밖 여백에 (드로어 안이 좁아 겹친다) -->
+            <text class="t-s t-teal" x="20" y="884">G2(a) 562 — 추정 요구폭 437 대비 여유 +125px</text>
+            <text class="t-xs t-mut" x="20" y="918">T0 실측이 나중에 나와도 뒤집힐 여지가 사실상 없다</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>562 = 본문 1872 × 30%</b>. 추정 요구폭 437 대비 <b>여유 +125px</b> 라
+          T0 실측이 나중에 나와도 뒤집힐 가능성이 사실상 없다.
+          <span class="tag est">R1 추정 W≈437 · TMP 실측 대기</span>
+        </p>
+      </div>
+
+      <!-- ── 452 닫힘 ── -->
+      <div class="col v2">
+        <h3>G2(b) 452px 최소안 — 닫힘</h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="드로어 452 닫힘">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+            <text class="t-s t-mut" x="16" y="42">헤더 3라벨</text>
+            <rect class="s-stage" x="0" y="277" width="1872" height="500" rx="6"/>
+            <text class="t-l t-teal" x="18" y="317">스테이지  y 277–777 · h 500 · 전폭 1872</text>
+            <line class="s-guide" x1="936" y1="277" x2="936" y2="777"/>
+            <rect class="s-box" x="756" y="347" width="360" height="360" rx="16"/>
+            <text class="t-l t-gold t-mid" x="936" y="540">상자 360</text>
+            <rect class="s-cta" x="806" y="793" width="260" height="44" rx="6"/>
+            <text class="t-xs t-teal t-mid" x="936" y="823">CTA</text>
+            <rect x="0" y="853" width="1872" height="115" rx="6" fill="rgba(87,209,184,.04)" stroke="rgba(87,209,184,.25)" stroke-width="3" stroke-dasharray="14 10"/>
+            <text class="t-s t-teal t-mid" x="936" y="918">하단 밴드 250px 회수 — 빈 영역</text>
+            <rect class="s-drawer" x="1826" y="440" width="46" height="140" rx="8"/>
+            <text class="t-l t-teal t-mid" x="1849" y="522">◀</text>
+            <text class="t-s t-teal t-end" x="1806" y="498">토글 1개</text>
+            <text class="t-xs t-mut t-end" x="1806" y="530">닫힘 그림은 562 안과 동일</text>
+          </svg>
+        </div>
+        <p class="note">닫힘 상태는 폭 선택과 무관하게 같다 — <b>폭은 열림에서만 보인다</b>.</p>
+      </div>
+
+      <!-- ── 452 열림 ── -->
+      <div class="col warn">
+        <h3>G2(b) 452px 최소안 — 열림 <span style="color:var(--red)">(실측 대기)</span></h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="드로어 452 열림">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+            <rect class="s-stage" x="0" y="277" width="1872" height="500" rx="6"/>
+            <line class="s-guide" x1="936" y1="277" x2="936" y2="777"/>
+            <rect class="s-box" x="756" y="347" width="360" height="360" rx="16"/>
+            <text class="t-l t-gold t-mid" x="936" y="540">상자 360</text>
+            <rect class="s-cta" x="806" y="793" width="260" height="44" rx="6"/>
+            <text class="t-xs t-teal t-mid" x="936" y="823">CTA</text>
+
+            <rect class="s-drawer" x="1420" y="56" width="452" height="912" rx="8"/>
+            <line class="s-edge" x1="1420" y1="56" x2="1420" y2="968"/>
+            <text class="t-s t-teal t-end" x="1404" y="90">좌변 x = 1420</text>
+            <text class="t-l t-teal" x="1440" y="104">보유 젬 인벤토리</text>
+            <text class="t-s t-mut" x="1440" y="140">미장착 N개</text>
+            <rect class="s-chip" x="1440" y="164" width="150" height="30" rx="4"/>
+            <rect class="s-chip" x="1598" y="164" width="80" height="30" rx="4"/>
+            <rect class="s-chip" x="1686" y="164" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1754" y="164" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1822" y="164" width="30" height="30" rx="4"/>
+            <rect class="s-chip" x="1440" y="204" width="90" height="30" rx="4"/>
+            <rect class="s-chip" x="1538" y="204" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1606" y="204" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1674" y="204" width="60" height="30" rx="4"/>
+            <rect class="s-chip" x="1742" y="204" width="60" height="30" rx="4"/>
+            <line class="s-dim" x1="1440" y1="252" x2="1852" y2="252" stroke="var(--red)"/>
+            <line class="s-dim" x1="1440" y1="244" x2="1440" y2="260" stroke="var(--red)"/>
+            <line class="s-dim" x1="1852" y1="244" x2="1852" y2="260" stroke="var(--red)"/>
+            <text class="t-xs t-red" x="1440" y="290">≈437 vs 452</text>
+            <text class="t-xs t-red" x="1440" y="322">여유 +15</text>
+            <g>
+              <rect class="s-tile" x="1440" y="360" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1576" y="360" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1712" y="360" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1440" y="500" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1576" y="500" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1712" y="500" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1440" y="640" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1576" y="640" width="126" height="130" rx="5"/>
+              <rect class="s-tile" x="1712" y="640" width="126" height="130" rx="5"/>
+            </g>
+            <text class="t-s t-gold" x="1440" y="820">contentWidth 434</text>
+            <text class="t-s t-gold" x="1440" y="854">→ 3열 (셀 138→136)</text>
+            <text class="t-xs t-mut" x="1440" y="888">GemTileMaxWidth 클램프</text>
+            <!-- 경고는 드로어 밖 여백에 -->
+            <text class="t-s t-red" x="20" y="884">G2(b) 452 — 여유 +15px 뿐. 실측이 437 을 넘기면</text>
+            <text class="t-s t-red" x="20" y="918">칩이 드로어 밖으로 삐져나온다 (마스크 없음 — :1382)</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>452 = 추정 437 + 패딩 15</b> 로 세운 수다 <span class="tag est">R1 추정 W≈437 · TMP 실측 대기</span>.
+          승인서 R3-1 은 이 최소안의 좌변을 <b>≈1412</b> 로 적었다 — <code>W + 패딩</code> 의 W 가 실측으로
+          확정되면 좌변은 <b>1412~1420 구간</b>에서 정해진다. 어느 쪽이든 §4 의 광선 도달선(1435)보다 왼쪽이다.
+        </p>
+      </div>
+    </div>
+
+    <table>
+      <tr><th>항목</th><th>G2(a) 562 <span class="tag rec">권장</span></th><th>G2(b) 452 최소안 <span class="tag est">추정 기반</span></th></tr>
+      <tr><td>드로어 좌변 x</td><td>1310</td><td>1420 (승인서 표기 ≈1412 — W 실측에 종속)</td></tr>
+      <tr><td>필터 1행 여유</td><td><b>+125px</b></td><td class="t-red"><b>+15px</b> — 추정 오차보다 얇다</td></tr>
+      <tr><td>타일 격자</td><td>contentWidth 544 → <b>4열</b> (셀 128.5)</td><td>contentWidth 434 → <b>3열</b> (셀 138 → 136 클램프)</td></tr>
+      <tr><td>남는 스테이지 폭 <span class="tag">G5=(b) 시</span></td><td>1310</td><td>1420</td></tr>
+      <tr><td>T0 실측 의존</td><td>낮음 — 실측이 크게 달라도 유지</td><td class="t-red">높음 — 실측 &gt; 437 이면 <b>무효</b></td></tr>
+      <tr><td>스케일 0.6 가독</td><td>타일 128.5 → 실화면 77px</td><td>타일 136 → 실화면 82px</td></tr>
+    </table>
+    <p class="note">
+      두 안 모두 밴드 <b>내부 무접촉</b>(하드 제약 1)이 성립하는 범위다 — 이보다 좁히면
+      <code>GemInventoryBand</code> 상단 블록을 폭 반응형으로 개조해야 하고 그건 별도 플랜이다.
+      열린 드로어는 밴드 루트 <code>Fill</code> 의 <code>raycastTarget</code> 기본 true 때문에
+      <b>이미 뒤쪽 클릭을 차단한다</b> — T3 에서 새로 만들 것은 없고 확인만 하면 된다(승인서 R3 NOTES).
+    </p>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       3. G4 — StageMaxHeight
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="block">
+    <h2>3. G4 — <code>StageMaxHeight</code> 상향? <span class="g">597 포화선이 실효 상한이다</span></h2>
+    <p class="sub">
+      드로어화로 <code>stageBand</code> 는 692 → <b>942</b> 로 늘지만, 실제 스테이지 높이는
+      <code>StageMaxHeight</code> 가 정한다. 그리고 스테이지를 키워도
+      <b>상자는 597 에서 멈춘다</b>(<code>StageBoxMaxSize = 430</code>, <code>430 / 0.72 = 597</code>).
+    </p>
+
+    <div class="pair">
+      <div class="col now">
+        <h3>G4(b) 유지 500 — 스테이지 Δ = 0</h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="G4 유지">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+            <rect class="s-stage" x="0" y="277" width="1872" height="500" rx="6"/>
+            <text class="t-l t-mut" x="18" y="317">스테이지 h 500 — 현행과 같은 높이</text>
+            <rect class="s-box" x="756" y="347" width="360" height="360" rx="16"/>
+            <text class="t-l t-gold t-mid" x="936" y="530">상자 360</text>
+            <text class="t-s t-mut t-mid" x="936" y="562">현행과 동일 — Δ = 0</text>
+            <line class="s-dim" x1="1930" y1="277" x2="1930" y2="777"/>
+            <line class="s-dim" x1="1918" y1="277" x2="1942" y2="277"/>
+            <line class="s-dim" x1="1918" y1="777" x2="1942" y2="777"/>
+            <text class="t-s t-mut" x="1780" y="534">500</text>
+            <rect x="0" y="853" width="1872" height="115" rx="6" fill="rgba(140,153,173,.05)" stroke="var(--muted2)" stroke-width="3" stroke-dasharray="14 10"/>
+            <text class="t-s t-mut t-mid" x="936" y="918">회수한 250px 는 전부 여백이 된다</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>편익은 "하단 정리"뿐</b>이다 — 리빌 연출은 1px 도 커지지 않는다.
+          owner 가 이걸 알고 고르는지가 G4 의 요점(승인서 F-1).
+        </p>
+      </div>
+
+      <div class="col ok">
+        <h3>G4(a) 상향 — 실효 범위 <span style="color:var(--gold)">500 &lt; h ≤ 597</span></h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="G4 상향 포화선">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <line class="s-guide" x1="0" y1="56" x2="1872" y2="56"/>
+            <!-- h=700 (초과) -->
+            <rect class="s-stage-ghost" x="0" y="177" width="1872" height="700" rx="6"/>
+            <text class="t-s t-mut" x="18" y="212">h 700 — 상자는 안 커지고 빈 판만 커진다</text>
+            <!-- h=597 포화 -->
+            <rect class="s-stage" x="0" y="228" width="1872" height="597" rx="6" stroke="var(--gold)"/>
+            <text class="t-l t-gold" x="18" y="266">h 597 — 포화선 (= 430 / 0.72)</text>
+            <!-- h=500 현행 -->
+            <rect class="s-stage-ghost" x="0" y="277" width="1872" height="500" rx="6"/>
+            <text class="t-s t-mut" x="18" y="312">h 500 — 현행</text>
+
+            <!-- 상자 360 (h500) -->
+            <rect class="s-box-ghost" x="756" y="347" width="360" height="360" rx="16"/>
+            <!-- 상자 430 (h597 이상 전부 동일) -->
+            <rect class="s-box" x="721" y="312" width="430" height="430" rx="16" stroke="var(--gold)"/>
+            <text class="t-l t-gold t-mid" x="936" y="512">상자 430</text>
+            <text class="t-s t-gold t-mid" x="936" y="544">h 597 부터 고정</text>
+            <text class="t-s t-mut t-mid" x="936" y="576">(360 → 430 : +19.4%)</text>
+
+            <!-- 포화선 강조 -->
+            <line x1="1151" y1="312" x2="1500" y2="312" class="s-dim" stroke="var(--gold)"/>
+            <line x1="1151" y1="742" x2="1500" y2="742" class="s-dim" stroke="var(--gold)"/>
+            <text class="t-s t-gold" x="1180" y="298">상자 상한 430</text>
+            <text class="t-xs t-mut" x="1180" y="332">여기서 성장이 멈춘다</text>
+            <text class="t-s t-red" x="20" y="906">597 초과 = 「더 큰 연출」이 아니라 「더 큰 빈 판」</text>
+            <text class="t-xs t-mut" x="20" y="940">더 키우려면 StageBoxMaxSize 동반 상향 (별도 육안 승인)</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>597 이 실효 상한</b>이다. 그 이상 값을 넣으면 상자·리빌은 그대로고 스테이지 빈 판만 커진다
+          (승인서 R2-2). 597 을 넘겨 키우려면 <code>StageBoxMaxSize</code>(430)를 같이 올려야 하는데
+          그건 연출 크기 변경이라 <b>별도 육안 승인 항목</b>이다.
+        </p>
+      </div>
+    </div>
+
+    <table>
+      <tr><th><code>stageHeight</code></th><th><code>h × 0.72</code></th><th><code>boxSize</code></th><th>판정</th></tr>
+      <tr><td>500 (현행 · G4(b))</td><td>360</td><td><b>360</b></td><td>높이 지배 — 현행과 동일</td></tr>
+      <tr class="hl"><td><b>597</b></td><td>429.8</td><td><b>430</b></td><td><b>포화선</b> — 상자가 최대가 되는 최소 높이</td></tr>
+      <tr class="bad"><td>700</td><td>504</td><td>430</td><td>상자 불변 — 빈 판만 +103</td></tr>
+      <tr class="bad"><td>942 (밴드 전량 회수)</td><td>678</td><td>430</td><td>상자 불변 — 빈 판만 +345</td></tr>
+    </table>
+    <p class="note">
+      <b>폭은 병목이 아니다</b> — G5=(b) 폭 축소를 골라 스테이지 폭이 1310 이 돼도
+      <code>1310 × 0.40 = 524 &gt; 430</code> 이라 여전히 <code>StageBoxMaxSize</code> 가 지배한다
+      (폭이 1075 아래로 내려가야 폭이 병목이 된다).
+      <br><b>파생 주의</b> — G4=(a) 597 을 고르면 상자가 430 이 되면서
+      <b>신화 광선 도달선도 함께 밀린다</b>: <code>gemSize = 430×0.5×1.70 = 365.5</code> →
+      <code>rayOuter ≈ 596</code> → 도달 <code>x ≈ 1532</code>. §4 의 가림 구간이 더 넓어진다.
+      <span class="tag">이 문서의 파생 계산</span>
+    </p>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       4. G5 — 오버레이 vs 폭 축소
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="block">
+    <h2>4. G5 — 열림 시 스테이지: <span class="g">(a) 오버레이</span> vs <span class="g">(b) 폭 축소</span></h2>
+    <p class="sub">
+      판정선은 <b>신화 광선의 가로 최대 도달</b>이다 —
+      <code>popScale 1.70</code>(<code>UI.cs:2883</code>) → <code>gemSize = 360×0.5×1.70 = 306</code> →
+      <code>rayOuter = 306×(1.45+0.18) ≈ 499</code>(<code>GemDrawView.cs:1086-1087</code>) →
+      중심 936 기준 <b>x ≈ 1435</b> <span class="tag src">승인서 R3-1 실측</span>.
+      광선은 <code>showElapsed</code> 내내 그려진다.
+    </p>
+
+    <div class="pair">
+      <div class="col warn">
+        <h3>G5(a) 오버레이 — 재배치 0, 가장 쌈</h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="G5 오버레이 가림">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <rect class="s-stage" x="0" y="277" width="1872" height="500" rx="6"/>
+            <text class="t-s t-mut" x="18" y="316">스테이지 전폭 1872 유지 — 재배치 0</text>
+            <line class="s-guide" x1="936" y1="277" x2="936" y2="777"/>
+            <rect class="s-box-ghost" x="756" y="347" width="360" height="360" rx="16"/>
+
+            <!-- 드로어 (먼저 — 위에 얹히는 쪽) -->
+            <rect class="s-drawer" x="1310" y="56" width="562" height="912" rx="8"/>
+            <text class="t-s t-teal" x="1330" y="112">드로어 (인벤토리)</text>
+            <text class="t-xs t-teal" x="1330" y="148">562안 좌변 1310</text>
+            <text class="t-xs t-mut" x="1330" y="180">452안 좌변 1420</text>
+
+            <!-- 가림 구간 — 드로어 위에 표시 -->
+            <rect x="1310" y="420" width="125" height="214" fill="rgba(255,107,107,.30)" stroke="var(--red)" stroke-width="3" stroke-dasharray="10 7"/>
+            <rect x="1420" y="420" width="15" height="214" fill="rgba(255,107,107,.55)"/>
+
+            <!-- 광선 가로 도달 -->
+            <line class="s-ray" x1="437" y1="527" x2="1435" y2="527"/>
+            <line class="s-ray" x1="437" y1="499" x2="437" y2="555"/>
+            <line class="s-raycap" x1="1435" y1="300" x2="1435" y2="760"/>
+            <text class="t-l t-gold t-mid" x="800" y="494">신화 광선 가로 도달 = 936 ± 499</text>
+            <line class="s-dim" x1="1435" y1="300" x2="1200" y2="240" stroke="var(--red)"/>
+            <text class="t-s t-red t-end" x="1186" y="230">광선 최대 도달 x ≈ 1435</text>
+            <line class="s-guide" x1="1317" y1="640" x2="1317" y2="740" stroke="var(--muted)"/>
+            <text class="t-xs t-mut t-end" x="1300" y="762">커먼~에픽(popScale ≤1.30) 도달 ≈1317</text>
+
+            <text class="t-l t-red" x="20" y="880">가림 — 562안 125px · 452안 15px</text>
+            <text class="t-xs t-mut" x="20" y="916">두 안의 좌변이 둘 다 광선 끝(1435)보다 왼쪽이다</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>재배치 비용 0</b> — 스테이지·CTA·<code>RevealFx</code> 를 전혀 건드리지 않고
+          z-순서와 마스크 경계만 판정하면 된다. 대신 <b>드로어가 열려 있는 동안 레전더리·신화 광선의
+          바깥 끝이 가린다</b>. 이 가림은 <b>G1=(c)(i)(리빌 종료 직후 열림) 조합에서만 0</b> 이다
+          — §5 참조 <span class="tag src">승인서 R3-1</span>.
+          <br>G4=(a) 597 을 같이 고르면 도달선이 <b>x≈1532</b> 로 밀려 가림이
+          562안 222px · 452안 112px 로 커진다 <span class="tag">파생</span>.
+        </p>
+      </div>
+
+      <div class="col ok">
+        <h3>G5(b) 폭 축소 — 가림 0, 재배치 유상</h3>
+        <div class="figwrap">
+          <svg class="dia" viewBox="-10 -10 1892 988" role="img" aria-label="G5 폭 축소">
+            <rect class="s-body" x="0" y="0" width="1872" height="968" rx="6"/>
+            <!-- 원래 전폭 (고스트) -->
+            <rect class="s-stage-ghost" x="0" y="277" width="1872" height="500" rx="6"/>
+            <text class="t-xs t-mut t-end" x="1290" y="262">닫힘 시 전폭 1872</text>
+            <!-- 축소된 스테이지 -->
+            <rect class="s-stage" x="0" y="277" width="1310" height="500" rx="6" stroke="var(--gold)"/>
+            <text class="t-l t-gold" x="18" y="317">스테이지 폭 1310 (= 1872 − 562)</text>
+            <line class="s-guide" x1="655" y1="277" x2="655" y2="777" stroke="var(--gold)"/>
+            <text class="t-s t-gold" x="668" y="352">중심 x 936 → 655 로 이동</text>
+            <rect class="s-box" x="475" y="347" width="360" height="360" rx="16"/>
+            <text class="t-l t-gold t-mid" x="655" y="560">상자 360 (불변)</text>
+            <text class="t-s t-mut t-mid" x="655" y="592">1310×0.40 = 524 &gt; 430</text>
+
+            <!-- 광선 -->
+            <line class="s-ray" x1="156" y1="527" x2="1154" y2="527"/>
+            <line class="s-ray" x1="156" y1="503" x2="156" y2="551"/>
+            <line class="s-ray" x1="1154" y1="503" x2="1154" y2="551"/>
+            <text class="t-s t-gold" x="700" y="500">광선 도달 655 ± 499 → x ≤ 1154</text>
+            <!-- 여유 -->
+            <line class="s-dim" x1="1154" y1="640" x2="1310" y2="640" stroke="var(--teal)"/>
+            <text class="t-s t-teal t-mid" x="1232" y="626">여유</text>
+            <text class="t-s t-teal t-mid" x="1232" y="676">156px</text>
+
+            <!-- CTA 이동 -->
+            <rect class="s-cta" x="525" y="793" width="260" height="44" rx="6"/>
+            <text class="t-xs t-teal t-mid" x="655" y="824">CTA</text>
+            <text class="t-xs t-mut" x="805" y="824">x 806–1066 → 525–785 로 이동</text>
+
+            <!-- 드로어 -->
+            <rect class="s-drawer" x="1310" y="56" width="562" height="912" rx="8"/>
+            <text class="t-s t-teal" x="1330" y="110">드로어 562</text>
+            <text class="t-l t-teal" x="1330" y="880">가림 0</text>
+            <text class="t-xs t-mut" x="1330" y="912">452안이면 여유 211px — 역시 0</text>
+          </svg>
+        </div>
+        <p class="note">
+          <b>가림 0</b>이고 G1 어느 조합에서도 안전하다. 대가는 재배치 6개
+          (<code>_stageRoot</code> · <code>_stageLocalRect</code> · <code>_stepLabel</code> ·
+          무지개 밴드 · CTA · <code>RevealFx._stage</code>).
+          단 승인서 R3 실측대로 <b>실비용은 무지개 밴드 6장 재배치 + <code>_stage</code> readonly 해제뿐</b>이다
+          — 링(h≥274 면 260 캡)·파티클(앞항 ≤150 지배)은 폭 1310~1872 구간에서 시각 결과가 불변이라
+          <code>RevealFx</code> 통째 재생성(≈162 <code>Image</code>)은 <b>불필요</b>하다.
+          <br>⚠ G3=(b) 0.18s 슬라이드와 조합하면 <b>재배치는 슬라이드 종료 시 1회</b>로 못박아야 한다
+          (프레임당 재생성 금지).
+        </p>
+      </div>
+    </div>
+
+    <table>
+      <tr><th>조합</th><th>드로어 좌변</th><th>광선 도달 x</th><th>가림 폭</th><th>판정</th></tr>
+      <tr class="bad"><td>G5(a) × G2(a) 562 × G4(b)</td><td>1310</td><td>1435</td><td><b>125px</b></td><td>신화·레전더리 광선 끝 가림</td></tr>
+      <tr class="bad"><td>G5(a) × G2(b) 452 × G4(b)</td><td>1420 (≈1412)</td><td>1435</td><td><b>15px</b> (≈23px)</td><td>얇지만 0 아님</td></tr>
+      <tr class="bad"><td>G5(a) × G2(a) 562 × <b>G4(a) 597</b></td><td>1310</td><td>≈1532 <span class="tag">파생</span></td><td><b>222px</b></td><td>상자 430 이 광선을 더 밀어낸다</td></tr>
+      <tr><td>G5(a) × <b>G1(c)(i)</b> 어느 폭이든</td><td>—</td><td>—</td><td><b>0</b></td><td>리빌이 끝난 뒤 열리므로 겹칠 광선이 없다</td></tr>
+      <tr class="hl"><td>G5(b) × G2(a) 562</td><td>1310</td><td>1154</td><td><b>0</b> (여유 156)</td><td>G1 조합과 무관하게 안전</td></tr>
+      <tr class="hl"><td>G5(b) × G2(b) 452</td><td>1420</td><td>1209</td><td><b>0</b> (여유 211)</td><td>안전</td></tr>
+    </table>
+    <p class="note">
+      커먼~에픽은 <code>popScale ≤ 1.30</code> 이라 도달 ≈1317 — 562안에서 아슬하게 걸치고 452안에서는 안 걸린다.
+      <b>가림이 문제가 되는 것은 레전더리·신화뿐</b>이고, 그건 정확히 owner 가 넓게 보고 싶어 한 연출이다.
+    </p>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       5. G1(c) 자동 열림 시점
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="block">
+    <h2>5. G1(c) 자동 열림 시점 — (i) 리빌 종료 직후 <span class="g">vs</span> (ii) 결과 표시 동시</h2>
+    <p class="sub">
+      단계 길이는 <code>MvpGameController.GemGacha.cs:71-76</code> 실측 —
+      appear <code>0.30</code> · charge <code>0.60</code> · open <code>0.35</code> · show <code>1.20</code>,
+      합계 <code>2.45s</code>. 뷰는 이 값들을 매 프레임 읽으므로
+      <b>컨트롤러 접촉 0 의 뷰 로컬 엣지 검출</b>로 두 시점 다 잡을 수 있다(T3, R2-4).
+    </p>
+
+    <div class="figwrap seq">
+      <svg viewBox="-10 -10 1220 480" role="img" aria-label="자동 열림 시점 시퀀스">
+        <!-- 단계 타임라인 -->
+        <text class="t-s t-mut" x="0" y="34">연출 단계</text>
+        <rect x="120" y="50" width="115" height="46" fill="rgba(140,153,173,.10)" stroke="var(--muted2)" stroke-width="2"/>
+        <rect x="235" y="50" width="231" height="46" fill="rgba(140,153,173,.16)" stroke="var(--muted2)" stroke-width="2"/>
+        <rect x="466" y="50" width="135" height="46" fill="rgba(140,153,173,.22)" stroke="var(--muted2)" stroke-width="2"/>
+        <rect x="601" y="50" width="461" height="46" fill="rgba(245,232,89,.10)" stroke="var(--gold)" stroke-width="2"/>
+        <text class="t-xs t-mut t-mid" x="177" y="79">appear</text>
+        <text class="t-xs t-mut t-mid" x="350" y="79">charge 0.60</text>
+        <text class="t-xs t-mut t-mid" x="533" y="79">open 0.35</text>
+        <text class="t-xs t-gold t-mid" x="831" y="79">show 1.20 — 결과 표시</text>
+
+        <!-- 광선 렌더 구간 -->
+        <text class="t-s t-mut" x="0" y="140">광선 렌더</text>
+        <rect x="601" y="118" width="461" height="30" fill="rgba(245,166,35,.22)" stroke="var(--g-legendary)" stroke-width="2"/>
+        <text class="t-xs t-gold t-mid" x="831" y="139">레전더리·신화 광선 (showElapsed 0 → 1.20)</text>
+
+        <!-- (ii) -->
+        <text class="t-s t-red" x="0" y="205">(ii) 결과 표시 동시</text>
+        <line class="s-raycap" x1="601" y1="165" x2="601" y2="245"/>
+        <circle cx="601" cy="192" r="9" fill="var(--red)"/>
+        <text class="t-xs t-red" x="616" y="182">열림 @ 1.25s (openStageEnd)</text>
+        <rect x="601" y="205" width="461" height="30" fill="rgba(255,107,107,.22)" stroke="var(--red)" stroke-width="2" stroke-dasharray="8 6"/>
+        <text class="t-xs t-red t-mid" x="831" y="226">G5(a) 조합 시 광선 끝 가림 1.20s 내내</text>
+
+        <!-- (i) -->
+        <text class="t-s t-teal" x="0" y="300">(i) 리빌 종료 직후</text>
+        <line class="s-edge" x1="1062" y1="260" x2="1062" y2="340" stroke="var(--teal)" stroke-dasharray="0"/>
+        <circle cx="1062" cy="287" r="9" fill="var(--teal)"/>
+        <text class="t-xs t-teal t-end" x="1048" y="278">열림 @ 2.45s (_gemBoxRevealActive false 전이)</text>
+        <rect x="601" y="300" width="461" height="30" fill="none" stroke="var(--teal)" stroke-width="2" stroke-dasharray="8 6"/>
+        <text class="t-xs t-teal t-mid" x="831" y="321">가림 0 — 연출이 끝난 뒤에 열린다</text>
+
+        <!-- 축 -->
+        <line class="s-dim" x1="120" y1="380" x2="1120" y2="380"/>
+        <g class="t-xs t-mut">
+          <line class="s-dim" x1="120" y1="374" x2="120" y2="388"/><text x="120" y="410" class="t-mid">0</text>
+          <line class="s-dim" x1="235" y1="374" x2="235" y2="388"/><text x="235" y="410" class="t-mid">0.30</text>
+          <line class="s-dim" x1="466" y1="374" x2="466" y2="388"/><text x="466" y="410" class="t-mid">0.90</text>
+          <line class="s-dim" x1="601" y1="374" x2="601" y2="388"/><text x="601" y="410" class="t-mid">1.25</text>
+          <line class="s-dim" x1="1062" y1="374" x2="1062" y2="388"/><text x="1062" y="410" class="t-mid">2.45</text>
+        </g>
+        <text class="t-xs t-mut" x="120" y="440">chargeStageEnd 0.90 · openStageEnd 1.25 · GemBoxRevealTotalDuration 2.45 (초)</text>
+        <text class="t-xs t-mut" x="120" y="466">감지는 전부 뷰가 이미 매 프레임 읽는 필드로 — GemGacha.cs 무접촉</text>
+      </svg>
+    </div>
+
+    <table>
+      <tr><th>시점</th><th>트리거(뷰 로컬)</th><th>열림 시각</th><th>G5(a) 오버레이와의 궁합</th><th>UX</th></tr>
+      <tr class="hl"><td><b>(i) 리빌 종료 직후</b> <span class="tag rec">가림 0</span></td><td><code>_gemBoxRevealActive</code> true→false 전이</td><td>2.45s</td><td><b>가림 0</b> — G5(a) 를 안전하게 고를 수 있는 유일한 조합</td><td>연출을 끝까지 보고 나서 인벤토리가 열린다</td></tr>
+      <tr class="bad"><td>(ii) 결과 표시 동시</td><td><code>age ≥ openStageEnd</code>(1.25) 전이</td><td>1.25s</td><td><b>1.20s 내내 가림</b>(G5(b) 를 고르면 해소)</td><td>결과 젬이 인벤토리에 꽂히는 것을 같은 프레임에서 본다</td></tr>
+    </table>
+    <p class="note">
+      <b>G1(b) 단독(기본 닫힘 + 수동 토글)은 승인 계약을 되돌린다</b> —
+      직전 라운드(<code>gem-draw-to-inventory-followup</code>)가 뽑은 젬의 <b>NEW 배지를 같은 화면에서 보게 한 것</b>이
+      그 플랜의 취지였고, 기본 닫힘이면 그 피드백 고리가 끊긴다(승인서 F-7).
+      <br><b>G1(a) 기본 열림</b>은 (ii) 와 같은 가림 문제를 항상 안고 간다 — G5(a) 와 조합하면 매 뽑기마다 광선이 가린다.
+    </p>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       6. owner 결정 박스
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="block" id="decide">
+    <h2>6. owner 결정 — G1 ~ G5</h2>
+    <p class="sub" style="margin-bottom:14px;">
+      체크한 결과를 플랜 §2 에 옮겨 적으면 T2 착수 조건이 열린다.
+      (T2~ 는 <b>PR #181 병합 후</b>가 별도 게이트다.)
+    </p>
+
+    <div class="dgrid">
+
+      <div class="dgroup">
+        <div class="dh">G1 — 드로어 기본 상태</div>
+        <label class="opt"><input type="radio" name="g1">(a) 기본 열림
+          <span class="why">— 항상 열려 있음.</span> <span class="risk">G5(a)와 조합 시 매 뽑기 광선 가림</span></label>
+        <label class="opt"><input type="radio" name="g1">(b) 기본 닫힘 + 수동 토글
+          <span class="risk">— 직전 승인 라운드(NEW 배지 즉시 확인)를 되돌린다</span></label>
+        <label class="opt"><input type="radio" name="g1">(c) 닫힘 + 결과 시 자동 열림 <span class="rec">(권장)</span></label>
+        <label class="opt sub"><input type="radio" name="g1c">(i) 리빌 종료 직후 · 2.45s <span class="rec">— 가림 0</span></label>
+        <label class="opt sub"><input type="radio" name="g1c">(ii) 결과 표시 동시 · 1.25s <span class="risk">— G5(a)면 1.20s 가림</span></label>
+      </div>
+
+      <div class="dgroup">
+        <div class="dh">G2 — 드로어 폭 <small>(T0 실측 대기)</small></div>
+        <label class="opt"><input type="radio" name="g2">(a) 고정 <b>562px</b> (= 본문 30%) <span class="rec">(권장)</span>
+          <span class="why">— 추정 요구폭 대비 여유 +125 · 타일 4열</span></label>
+        <label class="opt"><input type="radio" name="g2">(b) 최소안 <b>452px</b> (= W + 패딩)
+          <span class="risk">— 여유 +15 · T0 실측 &gt; 437 이면 무효</span></label>
+        <div class="note" style="margin-top:8px;">
+          ⚠ <b>T0(TMP 요구폭 실측)이 아직 잔여</b>다. (b) 를 고를 경우 실측 후 수치를 재확정해야 한다.
+          <span class="tag est">R1 추정 W≈437</span>
+        </div>
+      </div>
+
+      <div class="dgroup">
+        <div class="dh">G3 — 애니메이션</div>
+        <label class="opt"><input type="radio" name="g3">(a) 즉시 전환
+          <span class="why">— <code>Relayout</code> + <code>SetActive</code> 로 가장 쌈</span></label>
+        <label class="opt"><input type="radio" name="g3">(b) 0.18s 슬라이드 (저모션 토글 시 즉시)
+          <span class="risk">— G5(b)와 조합 시 "재배치는 슬라이드 종료 1회" 규칙 필수</span></label>
+      </div>
+
+      <div class="dgroup">
+        <div class="dh">G4 — <code>StageMaxHeight</code>(500) 상향</div>
+        <label class="opt"><input type="radio" name="g4">(a) 상향 — 상한값
+          <input class="numin" type="number" min="501" max="597" step="1" placeholder="500&lt;h≤597">
+          <span class="why">— 597 에서 상자 430 포화</span></label>
+        <label class="opt"><input type="radio" name="g4">(b) 유지 500
+          <span class="why">— 스테이지 Δ=0 · 편익은 하단 정리뿐</span></label>
+        <div class="note" style="margin-top:8px;">
+          597 초과를 원하면 <code>StageBoxMaxSize</code>(430) 동반 상향이 필요하고,
+          글로우 지름이 <code>boxSize×1.85</code> 로 따라 커져 <b>별도 육안 승인</b> 대상이 된다.
+        </div>
+      </div>
+
+      <div class="dgroup" style="grid-column:1 / -1;">
+        <div class="dh">G5 — 열림 시 스테이지 처리</div>
+        <label class="opt"><input type="radio" name="g5">(a) 오버레이 — 스테이지 전폭 유지, 드로어가 위에 겹침
+          <span class="why">— 재배치 0, 가장 쌈.</span>
+          <span class="risk">가림 0 은 G1=(c)(i) 조합 한정</span>
+          <span class="why">(562안 125px / 452안 15px / G4(a)597 이면 222px 가림)</span></label>
+        <label class="opt"><input type="radio" name="g5">(b) 열림 시 스테이지 폭 축소
+          <span class="why">— 가림 0, G1 조합 무관하게 안전. 실비용은 무지개 밴드 6장 재배치 +
+          <code>RevealFx._stage</code> <code>readonly</code> 해제(통째 재생성 불필요)</span></label>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="foot">
+    <b>근거 출처</b> — 수치는 전부 아래에서만 가져왔다.
+    <br>· 코드 실측: <code>Assets/_Game/Runtime/GemDrawView.cs</code>
+    (<code>:111</code> <code>:124</code> <code>:244-249</code> <code>:273-277</code> <code>:281-284</code>
+    <code>:342</code> <code>:378-380</code> <code>:807</code> <code>:972-973</code> <code>:1012</code>
+    <code>:1058</code> <code>:1086-1087</code>) ·
+    <code>MvpGameController.GemGacha.cs:71-76</code> ·
+    <code>MvpGameController.UI.cs:14-15, 1893-1901, 2808-2818, 2883, 2904</code> ·
+    <code>SocketsView.cs:1331-1333, 1382, 1446-1452, 1484, 1588-1606</code>
+    <br>· 플랜: <code>docs/plans/03-qa-pending/phase-1/gem-draw-inventory-side-drawer-plan.md</code> (v4, §1~§5)
+    <br>· 승인서: <code>docs/reviews/2026-08-30-gem-draw-inventory-side-drawer-plan.md</code>
+    (R1 F-1/F-2/F-5/F-7 · R2-1/R2-2/R2-3/R2-4 · <b>R3-1 광선 도달선 실측</b> · R3 NOTES)
+    <br>· <span class="tag">파생</span> 표시가 붙은 값은 <b>이 문서가 같은 공식으로 계산한 것</b>이다
+    (G4(a) 597 조합의 광선 도달 ≈1532, G5(b) 의 655±499 / 710±499).
+    <br>
+    <br><b>미이행 잔여</b> — <b>T0(필터 바 TMP 요구폭 실측)</b>. Unity 에디터 부재로 이번에 재지 못했다.
+    폭 관련 수치는 전부 <b>R1 추정 W≈437</b> 기준이며, G2=(b) 최소안을 확정하려면 T0 이 먼저 끝나야 한다.
+    <br><b>정본 무수정 확인</b> — <code>html/armament-menu.html</code>(<code>#view-draw</code> <code>:1030</code>) ·
+    <code>html/ui-prototype.html</code> · 게임 코드 <code>.cs</code> 전부 <b>읽기만</b> 했다.
+    이 파일은 사본이 아니라 비교 전용 신규 파일이고, 색은 <code>armament-menu.html:9-30</code> 토큰
+    그대로라 <b>신규 색 리터럴 0</b> 이다.
+  </p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>런 결과 화면 비교</title>
+<!--
+  run-result-screen-compare.html
+  ─────────────────────────────────────────────────────────────────────────────
+  용도  : docs/plans/01-defined/phase-1/run-result-screen-plan.md T1 목업 — owner·쿠키네모 2026-09-29
+          "목업 먼저 보고 결정". 현재(코드 그대로) vs 안 ⓐ·ⓑ·ⓒ 를 같은 시계로 나란히 재생한다.
+  정본  : html/ui-prototype.html 은 **무수정**. 여기는 비교 전용 별도 파일(사본 아님).
+  팔레트: ui-prototype.html :62-104 토큰 그대로 + 코드 UiTheme.cs 실제값(아래 주석). 신규 색 0.
+  기준  : main 128f67fd.
+    · 흐름    — MvpGameController.Run.cs:416-520(EndRun) · :58-79(EnterMainMenu) · :606-609(타이머 종료)
+    · 베일    — MvpGameController.cs:157-159(0.28s · α0.55 · 18px) · MainMenuView.cs:657-671(숙주 _content 에만)
+                · Rendering.cs:1877-1881(TransitionEaseOut = 1-(1-t)²)
+    · 패널    — MainMenuOverlayViews.cs:115-305(Build) · :548-742(Sync) · 카운트업 0.75s ease-out cubic(:47, :610-613)
+    · 숫자    — 이 PC 로컬 텔레메트리 ctc-telemetry.jsonl `run_end`(sid defec914 · runIdx 1→2) 실측값.
+                지갑·상자·피버·티켓 줄은 서식만 코드 그대로이고 **양은 예시**다(화면에 표시).
+  아이콘: 게임은 스프라이트(coin/paper/coin2/diamond) + GetCurrencyThemeColor 틴트. 여기선 색 원으로 근사.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ── ui-prototype.html :62-104 토큰(그대로) ── */
+  --bg:#0b1218; --panel:#111b24; --border:#c9a227; --teal:#57d1b8; --cyan:#52ffce; --gold:#f5e859;
+  --purple:#bf9cfe; --red:#ff6b6b; --amber:#fbb03b; --green:#34d399;
+  --text:#e2e8f0; --muted:#8c99ad;
+  --surface-card:#0a1017; --surface-raised-a:#16202c; --surface-raised-b:#0e1620;
+  --hairline:#1b2836; --btn-border:#26384a;
+  --btn-gold-border:#7a6420; --btn-gold-fill-a:#2a2008; --btn-gold-fill-b:#1a1505;
+  --bg-deep:#070c11; --bg-mid:#0b1218; --bg-rise:#12202c;
+  --field-surface:#0c1621; --field-grid:rgba(87,209,184,.11); --field-gold:rgba(201,162,39,.42);
+  --text-title:#eaf3f2; --text-num:#cfdae6; --text-btn:#c9d6e2; --text-caption:#b9c6d3;
+  --font-title:'Black Han Sans','Noto Sans KR',system-ui,sans-serif;
+  --font-ui:'Jua','Noto Sans KR',system-ui,sans-serif;
+  --font-body:'Pretendard','Noto Sans KR',system-ui,sans-serif;
+
+  /* ── 코드 실제값(UiTheme.cs) ── */
+  --menu-gold:#ffdb3d;              /* MenuGoldTextColor (1,.86,.24)     :88  */
+  --menu-sub:rgba(140,153,173,.85); /* MenuSubtitleColor                 :89  */
+  --result-border:rgba(115,133,179,.70); /* ResultPanelBorderColor      :100 */
+  --cur-gold:#f5e859; --cur-commit:#a8d9a8; --cur-bcoin:#5cabff; --cur-arch:#bf85fc; /* :208-211 */
+  --g1:#9ca3af; --g3:#3b82f6; --g5:#a855f7;                          /* ChestGrade*Color :106-113 */
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--text); font-family:var(--font-body); font-size:14px; line-height:1.55;}
+a{color:var(--teal)}
+code{font-family:ui-monospace,Consolas,monospace; font-size:.86em; color:var(--text-caption);
+  background:rgba(255,255,255,.04); padding:1px 4px; border-radius:4px; word-break:break-all}
+.wrap{max-width:1360px; margin:0 auto; padding:24px 16px 64px}
+.label-xs{font-size:10px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase}
+h1{font-family:var(--font-title); font-weight:400; color:var(--text-title); font-size:26px; margin:4px 0 6px; letter-spacing:.01em}
+h2{font-family:var(--font-title); font-weight:400; color:var(--text-title); font-size:18px; margin:0 0 10px}
+.lede{color:var(--text-caption); max-width:900px; margin:0}
+.muted{color:var(--muted)}
+.game-panel{
+  background:linear-gradient(180deg, rgba(22,32,44,1) 0%, rgba(22,32,44,.45) 50%, rgba(22,32,44,0) 100%), var(--surface-card);
+  border:1.2px solid var(--hairline); border-radius:14px; box-shadow:inset 0 1px 0 rgba(201,214,226,.24);
+}
+section{margin-top:28px}
+
+/* ── 사실 카드 ── */
+.facts{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px}
+.fact{padding:14px 16px}
+.fact b.big{display:block; font-family:var(--font-ui); font-weight:400; font-size:22px; color:var(--text-title); line-height:1.2; margin:2px 0 4px}
+.fact p{margin:0; color:var(--text-caption); font-size:12.5px}
+
+/* ── 컨트롤 ── */
+.controls{position:sticky; top:0; z-index:20; margin-top:22px; padding:12px 14px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center;
+  background:rgba(11,18,24,.94); backdrop-filter:blur(6px); border:1.2px solid var(--hairline); border-radius:14px}
+.seg{display:flex; gap:6px; flex-wrap:wrap}
+.seg button,.btn{font-family:var(--font-ui); font-size:13px; letter-spacing:.04em; color:var(--text-btn); cursor:pointer;
+  background:linear-gradient(175deg,var(--surface-raised-a),var(--surface-raised-b)); border:1px solid var(--btn-border);
+  border-radius:11px; padding:7px 13px; box-shadow:inset 0 1px 0 rgba(201,214,226,.24); white-space:nowrap}
+.seg button[aria-pressed="true"]{background:linear-gradient(175deg,var(--btn-gold-fill-a),var(--btn-gold-fill-b)); border-color:var(--btn-gold-border); color:var(--menu-gold)}
+.seg button small{color:var(--muted); font-family:var(--font-body); font-size:11px; margin-left:4px}
+.seg button[aria-pressed="true"] small{color:var(--text-caption)}
+.scrub{display:flex; align-items:center; gap:8px; flex:1 1 280px; min-width:0}
+.scrub input{flex:1; min-width:0; accent-color:var(--teal)}
+.scrub output{font-family:ui-monospace,Consolas,monospace; font-size:12px; color:var(--text-num); min-width:62px; text-align:right}
+.chk{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-caption); white-space:nowrap}
+
+/* ── 비교 ── */
+.compare{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; margin-top:16px}
+.col{padding:14px}
+.col-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+.chip{display:inline-block; font-family:var(--font-ui); font-size:12px; padding:2px 10px; border-radius:999px; border:1px solid var(--btn-border); color:var(--text-btn); background:var(--surface-raised-b)}
+.chip.now{border-color:rgba(140,153,173,.5)}
+.chip.prop{border-color:var(--btn-gold-border); color:var(--menu-gold); background:var(--btn-gold-fill-b)}
+.col-head .sum{color:var(--text-caption); font-size:12.5px}
+.stage{position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:10px; border:1px solid var(--hairline); background:#000}
+.screen{position:absolute; left:0; top:0; width:1280px; height:720px; transform-origin:0 0; overflow:hidden; font-family:var(--font-body)}
+.strip{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:8px}
+.strip figure{margin:0}
+.strip .stage{border-radius:6px}
+.strip figcaption{font-family:ui-monospace,Consolas,monospace; font-size:10.5px; color:var(--muted); text-align:center; margin-top:2px}
+.tl{list-style:none; margin:12px 0 0; padding:0; font-size:12.5px}
+.tl li{display:grid; grid-template-columns:78px minmax(0,1fr); gap:8px; padding:6px 0; border-top:1px solid var(--hairline)}
+.tl li .t{font-family:ui-monospace,Consolas,monospace; color:var(--teal); font-size:11.5px; padding-top:1px}
+.tl li.on .t{color:var(--menu-gold)}
+.tl li.on{background:linear-gradient(90deg,rgba(201,162,39,.07),transparent)}
+.tl .ref{display:block; color:var(--muted); font-size:11px; margin-top:1px}
+.verdict{margin-top:10px; padding:9px 11px; border-radius:8px; font-size:12.5px; background:rgba(255,255,255,.025); border:1px solid var(--hairline); color:var(--text-caption)}
+.verdict b{color:var(--text-title)}
+
+/* ═════════ 가상 화면(1280×720) 안쪽 ═════════ */
+/* 메인 메뉴 — ui-prototype.html :1136-1187 값 이식 */
+.mm{position:absolute; inset:0; transform-origin:50% 50%}
+.mm > .l{position:absolute; inset:0}
+.l-deep{background:radial-gradient(ellipse at 50% 38%, #12202c 0%, #0b1218 55%, #070c11 100%)}
+.l-circuit{opacity:.055; background-image:repeating-linear-gradient(0deg,var(--teal) 0 1px,transparent 1px 40px),repeating-linear-gradient(90deg,var(--teal) 0 1px,transparent 1px 40px)}
+.l-vignette{background:radial-gradient(ellipse at center, transparent 46%, rgba(4,8,12,.82) 100%)}
+.mm-anchor{position:absolute; left:70px; bottom:50px; width:420px; display:flex; flex-direction:column; gap:11px}
+.mm-title{font-family:var(--font-title); font-size:82px; line-height:1.02; color:var(--text-title); text-shadow:0 0 22px rgba(87,209,184,.35),0 3px 0 rgba(0,0,0,.5)}
+.mm-title .br{color:var(--menu-gold)}
+.mm-cursor{display:inline-block; width:.5em; height:.9em; background:var(--teal); margin-left:.12em; vertical-align:-.08em}
+.mm-sub{font-size:15px; color:var(--muted); letter-spacing:.18em; margin:2px 0 26px}
+.mm-btn{font-family:var(--font-ui); font-size:19px; padding:13px 0 13px 30px; border-radius:11px; background:rgba(41,48,71,.95); color:var(--text-btn); box-shadow:inset 0 1px 0 rgba(201,214,226,.24)}
+.mm-btn.primary{background:linear-gradient(175deg,var(--btn-gold-fill-a),var(--btn-gold-fill-b)); color:var(--gold); box-shadow:inset 0 1px 0 rgba(201,214,226,.24),0 0 16px rgba(201,162,39,.16)}
+.mm-stats{position:absolute; right:64px; top:44px; display:flex; flex-direction:column; gap:12px; align-items:flex-end; font-size:13px; color:var(--muted)}
+.mm-stats b{display:block; text-align:right; color:var(--text-num); font-size:19px}
+.mm-show{position:absolute; right:90px; top:200px; width:420px; height:300px; border-radius:50%;
+  background:radial-gradient(circle,rgba(201,162,39,.16),rgba(87,209,184,.06) 45%,transparent 70%)}
+.mm-show i{position:absolute; left:80px; right:80px; top:100px; height:90px; border-radius:14px; border:2px solid rgba(201,162,39,.35); background:rgba(22,32,44,.7); transform:perspective(900px) rotateX(18deg)}
+.mm-show span{position:absolute; left:0; right:0; top:215px; text-align:center; font-size:17px; color:var(--text-caption)}
+.mm-show span b{color:var(--gold)}
+
+/* 런 화면 — 좌 보드 62% / 우 38% (ui-prototype.html 런 레이아웃 · RunBoardViewportWidthRatio 0.62) */
+.run{position:absolute; inset:0; background:var(--bg-deep)}
+.run .board{position:absolute; left:0; top:0; width:794px; height:720px; background:var(--field-surface);
+  background-image:repeating-linear-gradient(0deg,var(--field-grid) 0 1px,transparent 1px 48px),repeating-linear-gradient(90deg,var(--field-grid) 0 1px,transparent 1px 48px)}
+.run .frame{position:absolute; inset:10px; border:1.5px solid var(--field-gold); border-radius:6px}
+.run .node{position:absolute; width:62px; height:62px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-family:ui-monospace,Consolas,monospace; font-weight:700; font-size:14px; color:#0b1218}
+.run .node::after{content:""; position:absolute; left:4px; right:4px; bottom:-9px; height:4px; border-radius:2px; background:linear-gradient(90deg,var(--green) var(--hp,70%),#1e2d3a var(--hp,70%))}
+.run .hud{position:absolute; left:22px; top:20px; display:flex; gap:8px}
+.run .pill{display:flex; align-items:center; gap:6px; padding:4px 11px; border-radius:999px; font-size:15px; font-weight:700; background:var(--btn-gold-fill-b); border:1px solid #3a2a10; color:var(--gold)}
+.run .pill.c{background:#0f1d14; border-color:#1f3a28; color:var(--cur-commit)}
+.run .timer{position:absolute; right:30px; top:18px; text-align:center; color:var(--teal); font-weight:700; font-size:34px; font-variant-numeric:tabular-nums; line-height:1}
+.run .timer small{display:block; color:#4b5563; font-size:12px; font-weight:400; margin-top:4px}
+.run .fever{position:absolute; left:22px; right:22px; bottom:22px; display:flex; align-items:center; gap:10px; font-size:13px; letter-spacing:.1em; color:#ff6b2e}
+.run .fever div{flex:1; height:8px; border-radius:99px; background:#141c26; overflow:hidden}
+.run .fever div i{display:block; height:100%; width:60%; background:linear-gradient(90deg,#ff6b2e,#ffb545)}
+.run .side{position:absolute; left:806px; right:12px; top:12px; bottom:12px; display:flex; flex-direction:column; gap:12px}
+.run .side > div{flex:1; border-radius:14px; border:1.2px solid var(--hairline); background:var(--surface-card); padding:16px 18px; color:var(--muted); font-size:14px}
+.run .side b{display:block; color:var(--text-title); font-size:17px; margin-bottom:10px}
+.run .side .bar{height:10px; border-radius:5px; background:#141c26; margin:10px 0}
+.run .side .bar i{display:block; height:100%; border-radius:5px; background:var(--teal); opacity:.55}
+.run .timeup{position:absolute; left:0; width:794px; top:300px; text-align:center; font-family:var(--font-title); font-size:58px; color:var(--text-title); letter-spacing:.04em; text-shadow:0 4px 0 rgba(0,0,0,.5)}
+
+/* 결과 오버레이 — ResultOverlayView (딤 α0.65 · 비네트 · 패널 480) */
+.dim{position:absolute; inset:0; background:rgba(0,0,0,.65)}
+.vig{position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 46%, rgba(4,8,12,.82) 100%)}
+.rp{position:absolute; left:50%; top:50%; width:480px; transform:translate(-50%,-50%); padding:24px 28px; border-radius:14px;
+  background:linear-gradient(180deg, rgba(22,32,44,1) 0%, rgba(22,32,44,.45) 50%, rgba(22,32,44,0) 100%), var(--surface-card);
+  border:1.2px solid var(--result-border); box-shadow:inset 0 1px 0 rgba(201,214,226,.24); color:var(--text-num); font-family:var(--font-body)}
+.rp .head{display:flex; align-items:center; gap:12px; min-height:37px}
+.rp .title{flex:1; font-family:var(--font-title); font-size:24px; color:var(--text-title)}
+.rp .best{flex:0 0 auto; width:196px; max-width:52%; height:24px; border-radius:12px; border:1px solid var(--menu-gold); color:var(--menu-gold);
+  font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; white-space:nowrap}
+.rp hr{border:0; height:1px; background:var(--hairline); margin:6px 0}
+.rp .rec{display:flex; align-items:center; gap:10px; min-height:40px}
+.rp .rec span{width:110px; flex:0 0 auto; color:var(--text-caption); font-size:14px}
+.rp .rec b{font-size:30px; color:var(--text-title); font-variant-numeric:tabular-nums}
+.rp .cap{font-size:13px; color:var(--text-caption); margin:3px 0; line-height:1.35}
+.rp .cap.goal-done{color:var(--gold)}
+.rp .cap.pin{color:var(--teal)}
+.rp .cur{display:flex; align-items:center; gap:8px; height:26px; padding:0 6px; border-radius:8px; background:var(--surface-raised-b); margin:4px 0}
+.rp .cur i{width:18px; height:18px; border-radius:50%; flex:0 0 auto; box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.rp .cur .n{width:96px; flex:0 0 auto; font-size:14px; color:var(--text-caption); white-space:nowrap; overflow:hidden; text-overflow:clip}
+.rp .cur .g{flex:1; text-align:right; font-size:18px; font-weight:700; color:var(--text-num); font-variant-numeric:tabular-nums}
+.rp .cur .g.gold{color:var(--menu-gold)}
+.rp .cur .w{width:92px; flex:0 0 auto; text-align:right; font-size:13px; color:var(--menu-sub); font-variant-numeric:tabular-nums}
+.rp .chest{display:flex; align-items:center; gap:10px; height:38px; padding:0 11px; border-radius:8px; margin:4px 0; border:1px solid}
+.rp .chest .d{width:9px; height:9px; border-radius:2px; flex:0 0 auto}
+.rp .chest .gr{width:82px; flex:0 0 auto; font-size:12px; font-weight:700}
+.rp .chest .k{font-size:11px; color:var(--menu-sub)}
+.rp .chest .r{flex:1; text-align:right; font-size:12px; color:var(--text-num)}
+.rp .act{display:flex; align-items:center; gap:10px; min-height:30px}
+.rp .act span{flex:1; font-size:14px; color:var(--text-num)}
+.rp .mini,.rp .btn2{font-family:var(--font-ui); color:var(--text-btn); border-radius:11px; border:1px solid var(--btn-border);
+  background:linear-gradient(175deg,var(--surface-raised-a),var(--surface-raised-b)); box-shadow:inset 0 1px 0 rgba(201,214,226,.24);
+  display:flex; align-items:center; justify-content:center; white-space:nowrap}
+.rp .mini{width:96px; height:26px; font-size:13px; flex:0 0 auto}
+.rp .btns{display:flex; gap:24px; padding-top:12px}
+.rp .btn2{height:40px; font-size:14px}
+.rp .btn2.ok{width:184px}
+.rp .btn2.re{width:216px; color:var(--menu-gold); border-color:var(--teal)}   /* 포커스 링 = 다시 시작(_focusOrder[0]) */
+.rp .btn2.lock{opacity:.45}
+.rp .ex{font-size:10px; color:var(--amber); border:1px dashed rgba(251,176,59,.45); border-radius:4px; padding:0 4px; margin-left:6px; vertical-align:1px; font-weight:400}
+.rp.note-hidden .ex{display:none}
+
+/* ⓒ HUD 카운트업 */
+.cu{position:absolute; left:0; width:794px; top:170px; display:flex; flex-direction:column; align-items:center; gap:14px}
+.cu .row{display:flex; align-items:center; gap:16px; font-size:40px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-title); text-shadow:0 3px 0 rgba(0,0,0,.55)}
+.cu .row i{width:40px; height:40px; border-radius:50%}
+.cu .row small{font-size:20px; font-weight:400; color:var(--text-caption); width:150px}
+.cu .clr{font-family:var(--font-title); font-size:30px; color:var(--text-caption); letter-spacing:.04em}
+.cu .clr b{color:var(--text-title); font-size:52px; margin-left:10px}
+.cu .skip{margin-top:16px; font-size:15px; color:var(--menu-sub); letter-spacing:.08em}
+.freeze-tag{position:absolute; left:22px; bottom:52px; font-size:13px; color:var(--text-caption); background:rgba(0,0,0,.45); padding:3px 10px; border-radius:6px}
+
+/* ── 결과 패널 원치수 ── */
+.panel-area{display:grid; grid-template-columns:minmax(0,520px) minmax(0,1fr); gap:20px; align-items:start}
+.panel-real{position:relative}
+.panel-real .rp{position:relative; left:auto; top:auto; transform:none; width:100%; max-width:480px}
+.anno{list-style:none; margin:0; padding:0; font-size:13px}
+.anno li{padding:8px 0; border-top:1px solid var(--hairline)}
+.anno li b{color:var(--text-title)}
+
+/* ── 표·결정 ── */
+.tbl{width:100%; border-collapse:collapse; font-size:13px}
+.tbl th,.tbl td{text-align:left; vertical-align:top; padding:9px 10px; border-top:1px solid var(--hairline)}
+.tbl th{font-weight:700; color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; border-top:0}
+.tbl td:first-child{color:var(--text-caption); width:30%}
+.tbl td.fix{color:var(--text-title)}
+.decisions{counter-reset:d; list-style:none; margin:0; padding:0}
+.decisions > li{counter-increment:d; padding:14px 16px 14px 56px; position:relative; margin-top:10px}
+.decisions > li::before{content:counter(d); position:absolute; left:16px; top:14px; width:28px; height:28px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-ui); font-size:15px; color:var(--menu-gold); border:1px solid var(--btn-gold-border); background:var(--btn-gold-fill-b)}
+.decisions h3{margin:0 0 6px; font-size:15px; color:var(--text-title); font-weight:700}
+.decisions .opts{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0}
+.decisions .opts span{font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--btn-border); color:var(--text-caption)}
+.decisions .opts span.rec{border-color:var(--btn-gold-border); color:var(--menu-gold); background:var(--btn-gold-fill-b)}
+.decisions p{margin:4px 0 0; font-size:13px; color:var(--text-caption)}
+.decisions p b{color:var(--text-title)}
+
+@media (max-width:980px){
+  .compare{grid-template-columns:minmax(0,1fr)}
+  .facts{grid-template-columns:minmax(0,1fr)}
+  .panel-area{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  h1{font-size:22px}
+  .col{padding:10px}
+  .tl li{grid-template-columns:64px minmax(0,1fr)}
+  .strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .panel-real .rp{padding:18px 16px}
+  .rp .cur .n{width:78px; font-size:13px}
+  .rp .cur .w{width:62px}
+  .rp .btns{gap:10px}
+  .rp .btn2.ok,.rp .btn2.re{width:auto; flex:1}
+  .rp .best{width:auto; padding:0 8px; font-size:11px}
+  .rp .rec span{width:92px}
+  .tbl td:first-child{width:40%}
+  .decisions > li{padding-left:50px}
+  .decisions > li::before{left:12px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="label-xs">run-result-screen-plan · T1 목업 v1 · 2026-09-29 · 기준 main 128f67fd</div>
+  <h1>런 결과 화면 — 현재 vs 제안</h1>
+  <p class="lede">
+    런이 끝난 뒤 「무엇을 벌었나」를 <b>어디서, 언제</b> 읽게 할지 고르기 위한 비교본이다.
+    왼쪽은 <b>코드가 지금 그리는 것</b>, 오른쪽은 플랜 §2 의 안 ⓐ·ⓑ·ⓒ 중 하나다. 두 화면은 <b>같은 시계</b>로 돈다 —
+    아래 막대를 끌거나 「재생」을 누르면 런 종료 순간(t=0)부터 같이 움직인다.
+  </p>
+
+  <div class="facts">
+    <div class="fact game-panel">
+      <div class="label-xs">지금 결과는 무엇인가</div>
+      <b class="big">토스트가 아니라 패널이다</b>
+      <p>런이 끝난 같은 프레임에 메인 메뉴로 넘어가고, 그 위에 딤 + 480px 결과 패널(4구역)이 바로 뜬다.
+        <code>Run.cs:517-518</code> · <code>MainMenuOverlayViews.cs:24</code>. 안내문 「런 정산이 완료되었습니다…」는 메인 메뉴에서 <b>아무도 그리지 않는다</b>(<code>MainMenuView.cs:249-251</code>).</p>
+    </div>
+    <div class="fact game-panel">
+      <div class="label-xs">0.28초 베일은 어디에 걸리나</div>
+      <b class="big">패널 아래, 메뉴 본체에만</b>
+      <p>베일(α 0.55 · 18px 슬라이드)은 메인 메뉴 <code>_content</code> 에만 걸리고 오버레이는 흔들리지 않는다
+        (<code>MainMenuView.cs:657-671</code>). 즉 패널 위로 베일이 겹치지 않는다. 겹치는 건 <b>배경이 런 → 메뉴로 한 프레임에 바뀌는 것</b>이다.</p>
+    </div>
+    <div class="fact game-panel">
+      <div class="label-xs">이 PC 텔레메트리 · 결과 닫기 27회</div>
+      <b class="big">머문 시간 중앙값 2.4초</b>
+      <p>1.5초 안에 닫은 경우 10회, 최단 0.20초 — 카운트업(0.75초)이 끝나기도 전에 닫혔다.
+        「확인」 22 · 「다시 시작」 4 · 연구소 1. 출처 <code>ctc-telemetry.jsonl</code> <code>result_close.dwellSec</code>(2026-08-28~09-26).</p>
+    </div>
+  </div>
+</header>
+
+<div class="controls" role="group" aria-label="비교 조작">
+  <div class="seg" id="variantSeg" role="radiogroup" aria-label="제안 안">
+    <button type="button" data-v="a" aria-pressed="true">ⓐ 런 화면에서 정산<small>중</small></button>
+    <button type="button" data-v="b" aria-pressed="false">ⓑ 베일 뒤에 띄움<small>소</small></button>
+    <button type="button" data-v="c" aria-pressed="false">ⓒ HUD 카운트업<small>대</small></button>
+  </div>
+  <button type="button" class="btn" id="playBtn">▶ 재생</button>
+  <label class="chk"><input type="checkbox" id="slowChk" checked> 느리게 ×4</label>
+  <div class="scrub">
+    <span class="label-xs">t</span>
+    <input type="range" id="scrub" min="0" max="1.8" step="0.01" value="1.0" aria-label="런 종료 뒤 경과 시간">
+    <output id="tOut">1.00 s</output>
+  </div>
+</div>
+
+<section class="compare" aria-label="현재와 제안 비교">
+  <div class="col game-panel">
+    <div class="col-head"><span class="chip now">현재</span><span class="sum">메뉴로 넘어가면서 결과를 띄운다</span></div>
+    <div class="stage" data-scn="now"><div class="screen"></div></div>
+    <div class="strip" data-strip="now"></div>
+    <ol class="tl" data-tl="now"></ol>
+  </div>
+  <div class="col game-panel">
+    <div class="col-head"><span class="chip prop" id="propChip">제안 ⓐ</span><span class="sum" id="propSum"></span></div>
+    <div class="stage" data-scn="prop"><div class="screen"></div></div>
+    <div class="strip" data-strip="prop"></div>
+    <ol class="tl" data-tl="prop"></ol>
+    <div class="verdict" id="propVerdict"></div>
+  </div>
+</section>
+
+<section>
+  <h2>결과 패널 — 실제 크기</h2>
+  <p class="lede" style="margin-bottom:14px">현재·ⓐ·ⓑ 는 <b>같은 패널</b>을 쓴다(바뀌는 건 뒤에 깔린 화면과 뜨는 시점뿐). 구조·문자열·색은 <code>ResultOverlayView</code> 그대로이고,
+    <span style="color:var(--amber)">예시</span> 표시가 붙은 줄은 서식만 코드이고 양은 지어낸 값이다. 나머지 숫자는 로컬 텔레메트리 실측(런 #1 → #2).</p>
+  <div class="panel-area">
+    <div class="panel-real" id="panelReal"></div>
+    <ul class="anno">
+      <li><b>① 머리</b> — 「런 결과」(검은고딕 24) + 신기록일 때만 <code>NEW BEST · 최고 N</code> 알약. 기준은 클리어 수 하나(<code>:626-631</code>).</li>
+      <li><b>② 기록</b> — 처리한 리소스(30px, 카운트업) · 직전 런 대비 · 피버 이월 · 런 목표. 목표 달성 줄만 골드(<code>:633-682</code>).
+        예: 직전 클리어 17 → 이번 목표 = max(15, ⌈17×1.1⌉) = <b>19</b>(<code>Run.cs:275-276</code>).</li>
+      <li><b>③ 재화</b> — 4행 [아이콘][이름][획득][정산 후 지갑]. 카운트업은 골드 행만(<code>:683-696</code>). 이어서 「획득한 상자」 최대 6행(<code>:241-248</code> · <code>:698-707</code>).</li>
+      <li><b>④ 행동</b> — 보물티켓 → 장비로 · 목표 핀 · 「지금 구매 가능 / 다음 노드까지」. 셋 다 없으면 구역째 접힌다(<code>:709-735</code>).
+        예시의 「조건 분기 (골드 40)」는 <code>skill_tree_nodes_draft.json</code> 실제 노드·기본가.</li>
+      <li><b>버튼</b> — 「확인」(오버레이만 닫음) · 「다시 시작」(<code>StartRun</code>, 포커스 1순위·골드 라벨). 둘 다 <b>열리는 첫 프레임부터 눌린다</b>(<code>:284-305</code>).</li>
+      <li class="muted">⚠ 상자 구역의 캡션 「획득한 상자」는 상자가 0개여도 남는다 — 행만 끄고 구역·구분선은 끄지 않는다(<code>:241-248</code> · <code>:698-707</code>, ④ 구역의 “고아 구분선 금지” 처리와 다름).</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>플랜 서술 vs 코드 — 목업 전에 바로잡을 것</h2>
+  <div class="game-panel" style="padding:6px 14px; overflow-x:auto">
+    <table class="tbl">
+      <thead><tr><th>플랜(또는 조사 문서)이 적은 것</th><th>코드가 하는 것</th></tr></thead>
+      <tbody>
+        <tr><td>§0·§1 「결과는 메뉴 위에 뜨는 <b>토스트 한 줄</b>」(<code>playtest-findings-2026-09-21.md:18</code>)</td>
+            <td class="fix">4구역 결과 <b>패널</b>(<code>ResultOverlayView</code>)이 <code>_showRunResult = true</code>(<code>Run.cs:518</code>)로 뜬다. 토스트 문자열 <code>_statusMessage</code> 는 메인 메뉴에서 청구자가 없어 안 그려진다(<code>MainMenuView.cs:249-251</code>).</td></tr>
+        <tr><td>§0 「0.28초 전환 베일이 결과 토스트 <b>위에 겹친다</b>」</td>
+            <td class="fix">베일은 메뉴 숙주 <code>_content</code> 에만(<code>MainMenuView.cs:660</code>). 패널은 첫 프레임부터 α 1. ⇒ ⓑ(「겹침만 제거」)가 실제로 바꾸는 건 <b>패널이 0.28초 늦게 뜨는 것</b>뿐이다.</td></tr>
+        <tr><td>§1 흐름 시작 = 「종료 확인 모달 → EndRun()」</td>
+            <td class="fix">주 경로는 <b>타이머 만료</b>로 모달 없이 <code>EndRun()</code>(<code>Run.cs:606-609</code>). 모달 경로는 「세션 종료 → 종료할게요」 = <code>EndRun(abandoned: true)</code>(<code>RunOverlayView.cs:299-301</code>).</td></tr>
+        <tr><td>§4 「중도 포기 0보상 계약(<code>OpenPendingChests(abandoned)</code>)」</td>
+            <td class="fix"><code>abandoned</code> 는 <b>상자만</b> 버리고 골드·커밋 등은 정산한다(<code>Run.cs:387-391</code>, <code>:445-448</code>, 주석 <code>:470-474</code>). 정산 0 은 다른 길 — 「일시정지 → 메인 메뉴」가 <code>EnterMainMenu</code> 로 직행(<code>RunOverlayView.cs:257-260</code>)해 결과 자체가 없다.</td></tr>
+        <tr><td>T1 「정본 <code>ui-prototype.html</code> 에 런 결과 화면 블록이 <b>없다</b>」</td>
+            <td class="fix">있다 — <code>#result</code> 탭(<code>ui-prototype.html:4551-4571</code>). 다만 <b>옛 3줄 구조</b>(골드 1줄 · 「허브로 돌아가기」)라 현행 4구역 패널과 갈라져 있다. 같은 파일 <code>:2045-2054</code> 는 없어진 <code>GamePhase.Result</code> 를 전제한다(현 enum 은 MainMenu·Settings·Running·Lab, <code>MvpGameController.cs:824-830</code>).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>결정할 것</h2>
+  <ol class="decisions">
+    <li class="game-panel">
+      <h3>어느 안으로 가나 (플랜 T2 ①)</h3>
+      <div class="opts"><span class="rec">ⓐ 런 화면에서 정산 먼저 — 추천</span><span>ⓑ 베일 뒤에 띄움</span><span>ⓒ HUD 카운트업</span></div>
+      <p><b>근거:</b> owner 가 이상하다고 한 건 <b>결과를 보는 순간 배경이 메뉴로 바뀌어 있는 것</b>이다. ⓑ 는 코드상 이미 겹침이 없어(<code>MainMenuView.cs:660</code>)
+        0.28초 지연만 더하고 원인은 그대로 둔다. ⓒ 는 상자·목표·다음 행동을 담을 자리가 없어 결국 메뉴에서 패널을 한 번 더 띄워야 한다.
+        ⓐ 는 <b>패널을 새로 만들지 않는다</b> — 같은 <code>ResultOverlayView</code> 를 런 필드 위에 세우고, <code>EnterMainMenu(...)</code> 호출(<code>Run.cs:517</code>)을 「확인」 뒤로 옮기는 것이 핵심이다.
+        정산·저장 순서(<code>:443-520</code>)는 그대로 둔다.</p>
+      <p class="muted">ⓐ 구현 주의: 지금은 <code>EnterMainMenu</code> 가 필드를 끄고 <code>ClearNodes()</code> 를 하므로, 미루면 그동안 필드를 멈춰 둘 장치가 필요하다(<code>GamePhase</code> 에 <code>Result</code> 가 없다 — 새 값 또는 플래그). 상자 정산이 필드 노드를 읽는 순서(<code>:511-516</code> 주석)는 그대로 지켜진다.</p>
+    </li>
+    <li class="game-panel">
+      <h3>ⓐ 에서 「확인」을 누르면 어디로 가나</h3>
+      <div class="opts"><span>메인 메뉴</span><span class="rec">연구소 개요 — 추천</span></div>
+      <p><b>근거:</b> owner 가 2026-08-26 에 이미 C-1=(b) 「확인 → 연구소 개요 착지」를 확정했는데, 「EndRun·화면 생명주기 변경」이라 별도 플랜으로 미뤄져 있다(<code>MainMenuOverlayViews.cs:284-286</code>).
+        ⓐ 가 바로 그 생명주기 변경이라 같이 처리하면 <code>EnterMainMenu</code> 한 번을 <code>EnterLab(LabTab.Overview, …)</code> 로 바꾸는 것으로 끝난다. 이번에 한 번 더 확인만 받으면 된다.</p>
+    </li>
+    <li class="game-panel">
+      <h3>뜨자마자 버튼을 누르는 문제 — 입력 유예와 건너뛰기</h3>
+      <div class="opts"><span>현행 유지(즉시 누를 수 있음)</span><span class="rec">카운트업 0.75초 동안 버튼 잠금 + 클릭 = 즉시 최종값 — 추천</span><span>잠금만</span></div>
+      <p><b>근거:</b> 결과 닫기 27회 중 10회가 1.5초 안, 최단 0.20초 — 읽기도 전에 닫혔다. ⓐ 는 클릭 연타 중인 <b>런 필드 위</b>에 패널이 뜨므로 이 문제가 더 커진다.
+        잠금 시간은 새 상수가 아니라 기존 <code>ResultCountUpDuration</code>(0.75초, <code>:47</code>)를 쓰고, 저모션(<code>_queueLowMotion</code>)은 지금처럼 즉시 최종값이라 잠금도 0이다.
+        오른쪽 ⓐ 화면에서 버튼이 흐린 구간이 이 안이다.</p>
+    </li>
+    <li class="game-panel">
+      <h3>결과에 무엇을 적나 (플랜 T2 ②)</h3>
+      <div class="opts"><span class="rec">현행 4구역 그대로 — 추천</span><span>+ 최고 DPS</span><span>+ 처치 수</span></div>
+      <p><b>근거:</b> 플랜 후보 중 「처치 수」는 이미 ② 의 큰 숫자(처리한 리소스)이고, 「다음 목표」는 ④ 의 핀·다음 행동 줄이 맡고 있다.
+        「최고 DPS」는 런 중에 재는 값이 없다 — <code>run_end</code> 가 남기는 필드는 clears·gold·commit·bcoin·arch·feverEnters·maxCombo 뿐이다(<code>Telemetry.cs:103-113</code>).
+        넣으려면 새 관측 필드가 필요하니 별도 플랜으로 분리하자.</p>
+    </li>
+    <li class="game-panel">
+      <h3>중도 종료 두 경로를 어떻게 다루나</h3>
+      <div class="opts"><span class="rec">「종료할게요」도 같은 결과 단계 · 「일시정지 → 메인 메뉴」는 결과 없음(현행) — 추천</span><span>둘 다 결과 단계</span></div>
+      <p><b>근거:</b> 두 길은 정산 여부가 다르고(<code>Run.cs:470-474</code>), 주석이 「섞지 말 것」이라고 못박고 있다. 대신 「종료할게요」 때 상자가 0개면 「획득한 상자」 캡션만 덩그러니 남으므로
+        <b>상자 0개면 구역째 접기</b>를 같이 하자(④ 구역과 같은 규칙, 신규 색·문구 0).</p>
+    </li>
+  </ol>
+</section>
+
+<p class="muted" style="margin-top:28px; font-size:12px">
+  정본 <code>html/ui-prototype.html</code> 은 이 비교본 때문에 바뀌지 않았다. 안이 정해지면 정본의 <code>#result</code> 탭을 현행 4구역 + 채택안으로 갱신한다(플랜 T3 전).
+</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // ── 실측(로컬 텔레메트리 run_end sid defec914: runIdx 1 = 17/14, runIdx 2 = 112/195/419/161/8) ──
+  var R = { clears:112, prevClears:17, gold:195, prevGold:14, commit:419, bcoin:161, arch:8 };
+  // 예시(서식은 코드, 양은 가정) — 지갑 · 피버 잔량 · 상자 · 티켓
+  var EX = { wGold:1482, wCommit:3905, wBcoin:612, wArch:41, feverLeft:78, tickets:3 };
+  var FEVER_MAX = 130, CARRY = 0.3;            // MvpGameController.cs:107 · RewardEventTuning.cs:34
+  var VEIL = 0.28, VEIL_A = 0.55, VEIL_PX = 18; // MvpGameController.cs:157-159
+  var COUNT = 0.75;                             // MainMenuOverlayViews.cs:47
+  var GOAL_TARGET = Math.max(15, Math.ceil(R.prevClears * 1.1)); // Run.cs:275-276 → 19
+
+  function n0(v){ return Math.round(v).toLocaleString("en-US"); }
+  function signed(v){ return v > 0 ? "+" + n0(v) : n0(v); }
+  function clamp01(x){ return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function easeCubic(p){ return 1 - Math.pow(1 - p, 3); }           // MainMenuOverlayViews.cs:613
+  function veilEase(t){ var c = clamp01(t); return 1 - (1 - c) * (1 - c); } // Rendering.cs:1877
+
+  function panelHTML(p, opts){
+    opts = opts || {};
+    var e = easeCubic(clamp01(p));
+    var ex = '<span class="ex">예시</span>';
+    var fp = Math.round(clamp01(EX.feverLeft / FEVER_MAX) * 100);
+    var cp = Math.round(clamp01(EX.feverLeft * CARRY / FEVER_MAX) * 100);
+    var lock = opts.lock ? " lock" : "";
+    return '' +
+      '<div class="rp' + (opts.noEx ? ' note-hidden' : '') + '">' +
+        '<div class="head"><div class="title">런 결과</div><div class="best">NEW BEST · 최고 ' + n0(R.clears) + '</div></div>' +
+        '<hr>' +
+        '<div class="rec"><span>처리한 리소스</span><b>' + n0(R.clears * e) + '</b></div>' +
+        '<div class="cap">직전 런 대비 클리어 ' + signed(R.clears - R.prevClears) + ' · 골드 ' + signed(R.gold - R.prevGold) + '</div>' +
+        '<div class="cap">피버 게이지: ' + fp + '% — 다음 런에 ' + cp + '% 이월' + ex + '</div>' +
+        '<div class="cap goal-done">목표: 클리어 ' + GOAL_TARGET + ' — 달성!  (+아키텍트 1)</div>' +
+        '<hr>' +
+        cur("var(--cur-gold)", "골드 :", n0(R.gold * e), n0(EX.wGold), true) +
+        cur("var(--cur-commit)", "커밋 :", n0(R.commit), n0(EX.wCommit)) +
+        cur("var(--cur-bcoin)", "B코인 :", n0(R.bcoin), n0(EX.wBcoin)) +
+        cur("var(--cur-arch)", "아키텍트 토큰 :", n0(R.arch), n0(EX.wArch)) +
+        '<div class="cap">우측 흐린 숫자 = 정산 후 지갑' + ex + '</div>' +
+        '<hr>' +
+        '<div class="cap">획득한 상자' + ex + '</div>' +
+        chest("var(--g3)", "rgba(59,130,246,.07)", "rgba(59,130,246,.38)", "3단계", "골드 +6") +
+        chest("var(--g1)", "rgba(156,163,175,.07)", "rgba(156,163,175,.38)", "1단계", "골드 +2") +
+        '<hr>' +
+        '<div class="act"><span>보물티켓 ' + EX.tickets + '장' + ex + '</span><div class="mini">장비로</div></div>' +
+        '<div class="act"><span>지금 구매 가능: 조건 분기 (골드 40)</span><div class="mini">바로 가기</div></div>' +
+        '<div class="btns"><div class="btn2 ok' + lock + '">확인</div><div class="btn2 re' + lock + '">다시 시작</div></div>' +
+      '</div>';
+  }
+  function cur(color, name, gain, wallet, gold){
+    return '<div class="cur"><i style="background:' + color + '"></i><span class="n">' + name + '</span>' +
+      '<span class="g' + (gold ? ' gold' : '') + '">+' + gain + '</span><span class="w">' + wallet + '</span></div>';
+  }
+  function chest(dot, bg, bd, grade, reward){
+    return '<div class="chest" style="background:' + bg + '; border-color:' + bd + '"><span class="d" style="background:' + dot + '"></span>' +
+      '<span class="gr" style="color:' + dot + '">' + grade + '</span><span class="k">상자</span><span class="r">' + reward + '</span></div>';
+  }
+
+  function menuHTML(veilT){ // veilT = remaining/total (1→0)
+    var e = veilEase(veilT);
+    return '<div class="mm" style="opacity:' + (1 - e * VEIL_A).toFixed(3) + '; transform:translateY(' + (e * VEIL_PX).toFixed(1) + 'px)">' +
+      '<div class="l l-deep"></div><div class="l l-circuit"></div><div class="l l-vignette"></div>' +
+      '<div class="mm-stats"><div>총 커밋<b>12,480</b></div><div>최고 티어<b>T4</b></div><div>도전과제<b>7 / 15</b></div></div>' +
+      '<div class="mm-show"><i></i><span>해커 키보드 · <b>Lv.6</b></span></div>' +
+      '<div class="mm-anchor"><div class="mm-title">Click to<br><span class="br">Commit</span><span class="mm-cursor"></span></div>' +
+      '<div class="mm-sub">MINE&nbsp;THE&nbsp;STACK</div>' +
+      '<div class="mm-btn primary">PLAY</div><div class="mm-btn">연구소</div><div class="mm-btn">뽑기</div><div class="mm-btn">도전과제</div><div class="mm-btn">설정</div></div>' +
+      '</div>';
+  }
+
+  var NODES = [
+    [120,150,"#e67e22","IF",80],[300,110,"#57d1b8","SQL",55],[520,180,"#bf9cfe","API",90],[640,90,"#fbb03b","CSS",35],
+    [180,380,"#5cabff","JS",65],[420,330,"#34d399","GIT",100],[610,420,"#ff6b6b","BUG",20],[250,560,"#bf9cfe","DOM",75],
+    [470,540,"#e67e22","CI",45],[680,600,"#57d1b8","YML",60]
+  ];
+  function runHTML(opts){
+    opts = opts || {};
+    var nodes = NODES.map(function(n){
+      return '<div class="node" style="left:' + n[0] + 'px; top:' + n[1] + 'px; background:' + n[2] + '; --hp:' + n[4] + '%">' + n[3] + '</div>';
+    }).join("");
+    var hud = opts.hideHud ? '' : '<div class="hud"><span class="pill">● ' + n0(R.gold) + '</span><span class="pill c">● ' + n0(R.commit) + '</span></div>';
+    return '<div class="run"><div class="board"><div class="frame"></div>' + nodes + hud +
+      '<div class="timer">0.0<small>남은 시간</small></div>' +
+      '<div class="fever"><span>FEVER</span><div><i></i></div></div>' +
+      (opts.timeup ? '<div class="timeup">TIME UP</div>' : '') +
+      (opts.freeze ? '<div class="freeze-tag">필드 정지 — 스폰·틱·입력 멈춤</div>' : '') +
+      '</div><div class="side"><div><b>Build Pipeline</b>lint → test → build<div class="bar"><i style="width:72%"></i></div>deploy 대기</div>' +
+      '<div><b>DPS</b>누적 피해 · 무기별<div class="bar"><i style="width:48%"></i></div><div class="bar"><i style="width:31%"></i></div></div></div></div>';
+  }
+  function overlayHTML(p, lock){
+    return '<div class="dim"></div><div class="vig"></div>' + panelHTML(p, {lock:lock, noEx:true});
+  }
+  function hudCountHTML(t){
+    // ⓒ — 재화 4종을 0.3s 간격으로 차례로 세고(각 0.45s), 1.35s 에 메뉴로.
+    function row(i, color, label, v){
+      var p = easeCubic(clamp01((t - i * 0.3) / 0.45));
+      var show = t >= i * 0.3;
+      return '<div class="row" style="opacity:' + (show ? 1 : 0.15) + '"><i style="background:' + color + '"></i><small>' + label + '</small>+' + n0(v * p) + '</div>';
+    }
+    return '<div class="cu"><div class="clr">처리한 리소스<b>' + n0(R.clears * easeCubic(clamp01(t / 0.45))) + '</b></div>' +
+      row(0, "var(--cur-gold)", "골드", R.gold) + row(1, "var(--cur-commit)", "커밋", R.commit) +
+      row(2, "var(--cur-bcoin)", "B코인", R.bcoin) + row(3, "var(--cur-arch)", "아키텍트 토큰", R.arch) +
+      '<div class="skip">클릭 = 건너뛰기</div></div>';
+  }
+
+  // ── 시나리오: t(초) → 화면 HTML ──
+  var C_END = 1.35; // ⓒ 카운트업 끝 → 메뉴 이동
+  var SCN = {
+    now: function(t){
+      return menuHTML(clamp01(1 - t / VEIL)) + overlayHTML(t / COUNT, false);
+    },
+    a: function(t){
+      return runHTML({freeze:true}) + overlayHTML(t / COUNT, t < COUNT);
+    },
+    b: function(t){
+      var html = menuHTML(clamp01(1 - t / VEIL));
+      if (t >= VEIL) html += overlayHTML((t - VEIL) / COUNT, false);
+      return html;
+    },
+    c: function(t){
+      if (t < C_END) return runHTML({freeze:true, hideHud:true}) + '<div class="vig"></div>' + hudCountHTML(t);
+      return menuHTML(clamp01(1 - (t - C_END) / VEIL));
+    }
+  };
+
+  var TL = {
+    now: [
+      [0, "타이머 0 → <b>EndRun()</b> 정산·지갑·업적·저장이 한 프레임에", "Run.cs:606-609 · 416-520"],
+      [0, "같은 프레임 <b>EnterMainMenu</b> — 런 필드 끔 · 노드 제거 · 메뉴 BGM", "Run.cs:517 → 58-79"],
+      [0, "<b>결과 패널 즉시 α 1</b> (딤 0.65 + 비네트 + 480px 패널)", "Run.cs:518 · MainMenuOverlayViews.cs:548-553"],
+      [0, "0 → 0.28 s 메뉴 본체만 베일(α 0.45→1 · 18px 슬라이드) — 패널 아래", "MainMenuView.cs:662-671"],
+      [0.15, "0 → 0.75 s 클리어·골드 카운트업 · 0.15 s 부터 틱 SFX · 끝에 NEW BEST SFX", "MainMenuOverlayViews.cs:593-623"],
+      [0.75, "「확인」 = 오버레이만 닫고 메뉴에 남음 · 「다시 시작」 = StartRun", "MainMenuOverlayViews.cs:287-293"]
+    ],
+    a: [
+      [0, "타이머 0 → <b>정산 계산</b>(EndRun 앞부분 그대로 · 저장까지)", "Run.cs:416-516 무접촉"],
+      [0, "<b>런 필드를 멈춘 채</b> 같은 딤 + 같은 결과 패널", "ResultOverlayView 재사용"],
+      [0, "0 → 0.75 s 카운트업(현행과 동일) · 이 동안 버튼 잠금(결정 3)", "ResultCountUpDuration 재사용"],
+      [0.75, "「확인」 → 그때 메뉴(또는 연구소 개요, 결정 2)로 · 베일 0.28 s", "EnterMainMenu 호출 위치만 이동"],
+      [0.75, "「다시 시작」 → 메뉴를 거치지 않고 바로 StartRun", "현행 핸들러 그대로"]
+    ],
+    b: [
+      [0, "타이머 0 → EndRun() · EnterMainMenu (현재와 동일)", "Run.cs:517"],
+      [0, "0 → 0.28 s 메뉴만 보인다(베일 중 · 패널 없음)", "_showRunResult 를 베일 끝으로 미룸"],
+      [0.28, "0.28 s <b>패널 등장</b> → 1.03 s 카운트업 끝", ""],
+      [1.03, "배경이 메뉴인 건 그대로 — owner 가 짚은 지점은 남는다", ""]
+    ],
+    c: [
+      [0, "타이머 0 → 정산 계산 · 필드 정지 · HUD 숫자가 화면 중앙으로", "신규 연출"],
+      [0, "0 → 1.35 s 클리어 → 골드 → 커밋 → B코인 → 아키텍트 차례로 카운트업 · 클릭 = 건너뛰기", "신규 스킵 입력"],
+      [1.35, "1.35 s 메뉴로 · 베일 0.28 s — <b>상자·목표·다음 행동은 표시할 자리가 없다</b>", "패널을 메뉴에서 또 띄울지 별도 결정"]
+    ]
+  };
+  var PROP_META = {
+    a: { chip:"제안 ⓐ", sum:"런 필드 위에서 정산을 읽고, 확인한 뒤에 떠난다",
+         verdict:"<b>바뀌는 것</b> — 결과를 읽는 동안 배경이 방금 뛴 런 그대로다. 메뉴 이동은 「확인」 뒤. <b>안 바뀌는 것</b> — 패널 · 문자열 · 정산·저장 순서." },
+    b: { chip:"제안 ⓑ", sum:"지금 흐름 그대로, 패널만 베일이 끝난 뒤에",
+         verdict:"<b>바뀌는 것</b> — 패널이 0.28초 늦게 뜬다. 코드상 베일은 원래 패널 아래에만 걸려 있어서 겹침은 이미 없다. <b>남는 것</b> — 결과를 보는 배경이 메뉴." },
+    c: { chip:"제안 ⓒ", sum:"런 화면 안에서 숫자를 세고 메뉴로",
+         verdict:"<b>바뀌는 것</b> — 런 안에서 보상이 올라가는 순간이 생긴다. <b>비용</b> — 새 연출 · 스킵 입력, 그리고 패널 4구역(상자·목표·행동)을 담을 곳이 없다." }
+  };
+
+  var variant = "a";
+  var t = 1.0;
+  var FRAMES = [0.00, 0.14, 0.40, 1.00];
+
+  function fit(stage){
+    var s = stage.clientWidth / 1280;
+    stage.firstChild.style.transform = "scale(" + s + ")";
+  }
+  function renderStage(stage, key, time){
+    stage.firstChild.innerHTML = SCN[key](time);
+    fit(stage);
+  }
+  function renderStrip(el, key){
+    el.innerHTML = FRAMES.map(function(f){
+      return '<figure><div class="stage"><div class="screen">' + SCN[key](f) + '</div></div><figcaption>t=' + f.toFixed(2) + 's</figcaption></figure>';
+    }).join("");
+    el.querySelectorAll(".stage").forEach(fit);
+  }
+  function renderTL(el, key){
+    el.innerHTML = TL[key].map(function(r){
+      return '<li data-at="' + r[0] + '"><span class="t">' + (r[0] === 0 ? "0" : r[0].toFixed(2)) + ' s</span><span>' + r[1] +
+        (r[2] ? '<span class="ref">' + r[2] + '</span>' : '') + '</span></li>';
+    }).join("");
+  }
+  function markTL(el){
+    var items = el.querySelectorAll("li"); var last = -1;
+    items.forEach(function(li, i){ if (parseFloat(li.dataset.at) <= t + 1e-6) last = i; });
+    items.forEach(function(li, i){ li.classList.toggle("on", i === last); });
+  }
+
+  var stNow = document.querySelector('[data-scn="now"]');
+  var stProp = document.querySelector('[data-scn="prop"]');
+  var tlNow = document.querySelector('[data-tl="now"]');
+  var tlProp = document.querySelector('[data-tl="prop"]');
+  var scrub = document.getElementById("scrub");
+  var tOut = document.getElementById("tOut");
+
+  function drawTime(){
+    renderStage(stNow, "now", t);
+    renderStage(stProp, variant, t);
+    tOut.textContent = t.toFixed(2) + " s";
+    markTL(tlNow); markTL(tlProp);
+  }
+  function drawVariant(){
+    var m = PROP_META[variant];
+    document.getElementById("propChip").textContent = m.chip;
+    document.getElementById("propSum").textContent = m.sum;
+    document.getElementById("propVerdict").innerHTML = m.verdict;
+    renderTL(tlProp, variant);
+    renderStrip(document.querySelector('[data-strip="prop"]'), variant);
+    document.querySelectorAll("#variantSeg button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.v === variant)); });
+    drawTime();
+  }
+
+  document.getElementById("panelReal").innerHTML = panelHTML(1, {});
+  renderTL(tlNow, "now");
+  renderStrip(document.querySelector('[data-strip="now"]'), "now");
+  drawVariant();
+
+  document.querySelectorAll("#variantSeg button").forEach(function(b){
+    b.addEventListener("click", function(){ variant = b.dataset.v; drawVariant(); });
+  });
+  scrub.addEventListener("input", function(){ stop(); t = parseFloat(scrub.value); drawTime(); });
+
+  var raf = 0, startWall = 0;
+  var playBtn = document.getElementById("playBtn");
+  function stop(){ if (raf) { cancelAnimationFrame(raf); raf = 0; playBtn.textContent = "▶ 재생"; } }
+  function tick(now){
+    var slow = document.getElementById("slowChk").checked ? 4 : 1;
+    t = Math.min(1.8, (now - startWall) / 1000 / slow);
+    scrub.value = t; drawTime();
+    if (t < 1.8) raf = requestAnimationFrame(tick); else stop();
+  }
+  playBtn.addEventListener("click", function(){
+    if (raf) { stop(); return; }
+    startWall = performance.now(); playBtn.textContent = "■ 정지"; raf = requestAnimationFrame(tick);
+  });
+
+  var ro = window.ResizeObserver ? new ResizeObserver(function(){ document.querySelectorAll(".stage").forEach(fit); }) : null;
+  if (ro) document.querySelectorAll(".compare .col").forEach(function(c){ ro.observe(c); });
+  else window.addEventListener("resize", function(){ document.querySelectorAll(".stage").forEach(fit); });
+})();
+</script>
+</body>
+</html>

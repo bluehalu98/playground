@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<title>Equipment Menu — Click to Commit</title>
+<style>
+:root {
+  --bg:#0b1218;
+  --surface-raised-b:#0e1620;
+  --btn-gold-fill-b:#1a1505;
+  --teal:#57d1b8;
+  --purple:#bf9cfe;
+  --border:#c9a227;
+  --text:#e2e8f0;
+  --gold:#f5e859;
+  --red:#ff6b6b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  user-select: none;
+}
+
+/* ── HUD Bar ─────────────────────────────── */
+#hud-bar {
+  width: 100%; max-width: 960px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 14px;
+  background: rgba(13,22,36,0.95);
+  border: 1px solid rgba(87,209,184,0.15);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.hud-chip {
+  font-size: 11px; padding: 2px 9px; border-radius: 3px;
+  display: flex; align-items: center; gap: 5px;
+}
+.hud-gold   { background:var(--btn-gold-fill-b); color:var(--gold); border:1px solid #3a2a10; }
+.hud-insight{ background:#1a1030; color:var(--purple); border:1px solid #3a1a60; }
+.hud-commit { background:#0a1a10; color:var(--teal); border:1px solid #1a3a28; }
+.hud-sep    { color:#2a3a4a; }
+.hud-label  { font-size:10px; color:#4a5a6a; letter-spacing:.08em; }
+
+/* ── Screen Flash ────────────────────────── */
+#screen-flash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  opacity: 0; transition: opacity 0.08s ease;
+}
+
+/* ── Panel Wrap ──────────────────────────── */
+#eq-wrap {
+  width: 100%; max-width: 960px;
+  position: relative;
+}
+#eq-panel {
+  background: #0e1822;
+  border: 1px solid rgba(201,162,39,0.25);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.03s;
+}
+
+/* ── Header ──────────────────────────────── */
+#eq-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(201,162,39,0.18);
+  background: rgba(11,18,24,0.6);
+}
+#eq-header .title-block { display: flex; align-items: center; gap: 10px; }
+#eq-header .title-icon  { font-size: 20px; }
+#eq-header .title-text  { font-size: 14px; font-weight: bold; letter-spacing: .06em; color: var(--text); }
+#eq-header .title-meta  { font-size: 11px; color: var(--teal); margin-left: 6px; }
+#eq-header .pts-badge {
+  /* 2026-09-01 QA(쿠키네모) 티켓 배지 상향 — 게임(EquipmentView) 12→14px·높이 26→32 와 동기화(목업 스케일 11→13) */
+  font-size: 13px; background: var(--btn-gold-fill-b); color: var(--gold);
+  border: 1px solid #3a2a10; border-radius: 3px; padding: 3px 10px;
+}
+#btn-close {
+  font-size: 11px; color: #4a5a6a; background: none;
+  border: 1px solid #1e2e3e; border-radius: 3px; padding: 3px 10px;
+  cursor: pointer; font-family: 'Courier New', monospace;
+  transition: color .15s, border-color .15s;
+}
+#btn-close:hover { color: var(--text); border-color: #4a6a80; }
+
+/* ── Body ────────────────────────────────── */
+#eq-body {
+  display: flex;
+  min-height: 340px;
+}
+
+/* ── Slot Sidebar ────────────────────────── */
+#slot-sidebar {
+  width: 220px; flex-shrink: 0;
+  border-right: 1px solid rgba(201,162,39,0.15);
+  padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sidebar-label {
+  font-size: 9px; letter-spacing: .12em; color: #2a3a4a;
+  text-transform: uppercase; padding: 0 6px; margin-bottom: 4px;
+}
+.slot-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .12s, border-color .12s;
+  position: relative;
+}
+.slot-row:hover { background: rgba(87,209,184,0.05); border-color: rgba(87,209,184,0.15); }
+.slot-row.active {
+  background: rgba(87,209,184,0.08);
+  border-color: rgba(87,209,184,0.3);
+}
+.slot-icon-wrap { width: 32px; height: 32px; flex-shrink: 0; }
+.slot-icon-wrap canvas { display: block; }
+@keyframes slot-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
+.slot-row.equip-pop .slot-icon-wrap { animation: slot-pop 0.34s ease; }
+.slot-row.equip-pop { box-shadow: 0 0 14px rgba(87,209,184,0.5); }
+.slot-info { flex: 1; min-width: 0; }
+.slot-name { font-size: 11px; font-weight: bold; color: #c8d0e0; letter-spacing: .04em; }
+.slot-tier-text { font-size: 9px; color: #4a5a6a; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot-tier-text.owned { color: var(--teal); }
+.slot-effect-badge {
+  font-size: 9px; white-space: nowrap;
+  padding: 1px 5px; border-radius: 2px;
+}
+
+/* ── Card Area ───────────────────────────── */
+#card-area {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px 24px;
+  gap: 14px;
+  position: relative;
+}
+.card-area-label {
+  align-self: flex-start;
+  font-size: 9px; letter-spacing: .12em; color: #2a3a4a; text-transform: uppercase;
+}
+#tier-timeline {
+  width: 100%;
+  padding: 9px 10px 8px;
+  margin-bottom: 12px;
+  background: rgba(14,24,34,0.6);
+  border: 1px solid rgba(60,80,110,0.5);
+  border-radius: 6px;
+}
+.tl-header {
+  font-size: 11px;
+  color: #8aa0b4;
+  margin-bottom: 6px;
+  letter-spacing: .03em;
+}
+.tl-track {
+  position: relative;
+  height: 42px;
+  margin: 0 22px;
+}
+.tl-seg,
+.tl-fill {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+}
+.tl-seg { opacity: .3; }
+.tl-fill {
+  left: 0;
+  transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+.tl-marker {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(226,232,240,0.12);
+  border-radius: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 3;
+}
+.tl-marker.current {
+  animation: tl-pulse 1.4s ease-in-out infinite;
+}
+.tl-marker.pop {
+  animation: tl-pop 0.35s ease;
+}
+.tl-tier,
+.tl-year {
+  position: absolute;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tl-tier {
+  top: 0;
+  font-size: 8px;
+  color: #4a5a6a;
+}
+.tl-year {
+  bottom: 0;
+  font-size: 8px;
+  color: #3a4a5a;
+}
+#card-board {
+  display: flex; gap: 18px; align-items: center; justify-content: center;
+  position: relative;
+}
+.card-wrap {
+  position: relative; flex-shrink: 0;
+  width: 154px; height: 216px;
+  border-radius: 8px; overflow: hidden;
+  cursor: default;
+  transition: transform .2s, filter .2s;
+}
+.card-wrap.selectable { cursor: pointer; }
+.card-wrap.selectable:hover { transform: translateY(-5px); }
+.card-wrap.dimmed { filter: brightness(0.35) saturate(0.2); }
+.card-wrap.selected { transform: scale(1.04); }
+.card-wrap canvas { display: block; width: 100%; height: 100%; }
+
+/* -- Grade FX (legendary holo / rare light) -- */
+@keyframes legend-rim {
+  0%,100% { box-shadow: 0 0 12px 3px rgba(201,162,39,.5), 0 0 28px 8px rgba(201,162,39,.2); }
+  50%     { box-shadow: 0 0 24px 8px rgba(201,162,39,.8), 0 0 50px 16px rgba(201,162,39,.4); }
+}
+@keyframes rare-rim {
+  0%,100% { box-shadow: 0 0 8px 2px rgba(59,130,246,.35); }
+  50%     { box-shadow: 0 0 16px 5px rgba(59,130,246,.6); }
+}
+@keyframes holo-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
+}
+@keyframes holo-sparkle {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: .9; }
+}
+@keyframes card-materialize {
+  0%   { filter: brightness(2.2) saturate(0.4); }
+  100% { filter: brightness(1) saturate(1); }
+}
+.card-wrap.grade-legendary { animation: legend-rim 2s ease infinite; }
+.card-wrap.grade-rare      { animation: rare-rim 2.4s ease infinite; }
+.card-wrap.materialize { animation: card-materialize 0.45s ease-out; }
+.card-wrap.grade-legendary::after,
+.card-wrap.grade-rare::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+  background-repeat: no-repeat;
+}
+.card-wrap.grade-legendary::after {
+  background-image: linear-gradient(115deg,
+    transparent 38%,
+    rgba(255,80,80,.18) 44%,
+    rgba(255,220,90,.20) 48%,
+    rgba(120,255,160,.20) 52%,
+    rgba(120,180,255,.18) 56%,
+    transparent 62%);
+  background-size: 250% 100%;
+  animation: holo-sweep 2.4s linear infinite;
+}
+.card-wrap.grade-rare::after {
+  background-image: linear-gradient(115deg,
+    transparent 42%,
+    rgba(59,130,246,.12) 50%,
+    transparent 58%);
+  background-size: 250% 100%;
+  animation: holo-sweep 3.2s linear infinite;
+}
+.card-wrap.grade-legendary::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  background-image:
+    radial-gradient(circle 2px at 22% 18%, rgba(255,255,255,.95) 0 40%, transparent 60%),
+    radial-gradient(circle 1.6px at 68% 30%, rgba(255,255,255,.85) 0 40%, transparent 60%),
+    radial-gradient(circle 2.2px at 44% 42%, rgba(255,255,255,.9) 0 40%, transparent 60%),
+    radial-gradient(circle 1.4px at 80% 12%, rgba(255,255,255,.8) 0 40%, transparent 60%),
+    radial-gradient(circle 1.8px at 12% 38%, rgba(255,255,255,.85) 0 40%, transparent 60%);
+  animation: holo-sparkle 1.8s ease-in-out infinite;
+}
+
+/* Curtain overlay */
+.curtain {
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(115deg, rgba(150,120,255,0.04) 0 2px, transparent 2px 14px),
+    linear-gradient(165deg, #141024, #0a0816);
+  border: 1px solid rgba(150,120,255,0.35);
+  border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 10;
+  transition: transform 0.55s cubic-bezier(.4,0,.2,1), opacity 0.25s;
+  transform-origin: top center;
+  animation: curtain-pulse 2.4s ease-in-out infinite;
+}
+@keyframes curtain-pulse {
+  0%,100% { box-shadow: 0 0 8px rgba(150,120,255,0.18), inset 0 0 18px rgba(150,120,255,0.06); }
+  50%     { box-shadow: 0 0 18px rgba(150,120,255,0.38), inset 0 0 26px rgba(150,120,255,0.12); }
+}
+.curtain.up {
+  transform: translateY(-105%);
+  opacity: 0;
+  pointer-events: none;
+}
+.curtain-rune {
+  position: relative;
+  width: 44px; height: 44px;
+  margin-bottom: 12px;
+}
+.curtain-rune .rune-diamond {
+  position: absolute; inset: 6px;
+  transform: rotate(45deg);
+  border: 1.5px solid rgba(170,140,255,0.55);
+  background: rgba(120,90,220,0.10);
+  box-shadow: 0 0 10px rgba(150,120,255,0.35);
+}
+.curtain-rune .rune-q {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: bold;
+  color: #cabcff;
+  text-shadow: 0 0 8px rgba(150,120,255,0.8);
+}
+.curtain-text { font-size: 10px; color: #8a7fc0; letter-spacing: .14em; text-transform: uppercase; }
+.curtain-sub  { font-size: 9px; color: #4a4470; margin-top: 4px; }
+
+/* Compare strip */
+.card-compare {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(6,11,20,0.95);
+  padding: 6px 8px;
+  font-size: 9px; line-height: 1.6;
+  border-top: 1px solid rgba(87,209,184,0.15);
+  opacity: 0; transform: translateY(4px);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  z-index: 3;
+}
+.card-compare.show { opacity: 1; transform: translateY(0); }
+.compare-before { color: #4a5a6a; }
+.compare-arrow  { color: #3a5a70; margin: 0 4px; }
+.compare-after  { color: var(--teal); font-weight: bold; }
+.equip-flyer {
+  position: fixed; z-index: 600; pointer-events: none;
+  border-radius: 6px; border: 1.4px solid;
+  will-change: transform, opacity;
+}
+
+/* VFX canvas */
+#vfx-canvas {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 20;
+  width: 100%; height: 100%;
+}
+
+/* Status */
+#status-line {
+  font-size: 11px; color: #4a5a6a; height: 16px;
+  letter-spacing: .04em;
+  transition: color .2s;
+}
+#status-line.ok  { color: var(--teal); }
+#status-line.err { color: var(--red); }
+
+/* ── Footer ──────────────────────────────── */
+#eq-footer {
+  border-top: 1px solid rgba(201,162,39,0.15);
+  padding: 12px 18px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: rgba(11,18,24,0.5);
+}
+#btn-reveal {
+  background: linear-gradient(135deg, #1a2a10, #0f1a08);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  font-family: 'Courier New', monospace;
+  font-size: 12px; padding: 8px 22px;
+  border-radius: 4px; cursor: pointer;
+  letter-spacing: .06em;
+  transition: background .15s, box-shadow .15s;
+  box-shadow: 0 0 12px rgba(201,162,39,0.15);
+}
+#btn-reveal:hover:not(:disabled) {
+  background: linear-gradient(135deg, #243818, #152211);
+  box-shadow: 0 0 20px rgba(201,162,39,0.3);
+}
+#btn-reveal:disabled { opacity: .4; cursor: not-allowed; }
+#btn-reset {
+  font-size: 11px; background: none;
+  border: 1px solid #1e2e3e; color: #4a5a6a;
+  border-radius: 3px; padding: 6px 12px;
+  cursor: pointer; font-family: 'Courier New', monospace;
+  transition: color .15s, border-color .15s;
+  opacity: 0; pointer-events: none;
+}
+#btn-reset.show { opacity: 1; pointer-events: auto; }
+#btn-reset:hover { color: var(--text); border-color: #4a6a80; }
+
+/* ── Slot Tooltip ────────────────────────── */
+#slot-tooltip {
+  position: fixed; z-index: 500; pointer-events: none;
+  background: rgba(6,10,18,0.97);
+  border: 1px solid rgba(87,209,184,0.2);
+  border-radius: 5px; padding: 8px 10px;
+  font-size: 10px; line-height: 1.7;
+  min-width: 160px;
+  opacity: 0; transform: translateX(4px);
+  transition: opacity .12s, transform .12s;
+}
+#slot-tooltip.show { opacity: 1; transform: translateX(0); }
+
+/* ── Animations ──────────────────────────── */
+@keyframes glow-legacy {
+  0%,100% { box-shadow: 0 0 8px rgba(156,163,175,0.25); }
+  50%      { box-shadow: 0 0 18px rgba(156,163,175,0.45); }
+}
+@keyframes glow-mid {
+  0%,100% { box-shadow: 0 0 10px rgba(59,130,246,0.3); }
+  50%      { box-shadow: 0 0 22px rgba(59,130,246,0.55); }
+}
+@keyframes glow-current {
+  0%,100% { box-shadow: 0 0 12px rgba(245,158,11,0.35); }
+  50%      { box-shadow: 0 0 28px rgba(245,158,11,0.65); }
+}
+@keyframes jitter-legacy {
+  0%,100%{transform:translate(0,0) rotate(0deg)}
+  20%{transform:translate(-1px,1px) rotate(-0.4deg)}
+  40%{transform:translate(1px,-1px) rotate(0.4deg)}
+  60%{transform:translate(-1px,0) rotate(0deg)}
+  80%{transform:translate(1px,1px) rotate(-0.2deg)}
+}
+@keyframes jitter-mid {
+  0%,100%{transform:translate(0,0) rotate(0deg)}
+  15%{transform:translate(-2px,2px) rotate(-0.6deg)}
+  30%{transform:translate(2px,-2px) rotate(0.6deg)}
+  50%{transform:translate(-2px,1px) rotate(-0.3deg)}
+  70%{transform:translate(2px,0) rotate(0.3deg)}
+  85%{transform:translate(-1px,-1px) rotate(0deg)}
+}
+@keyframes jitter-current {
+  0%,100%{transform:translate(0,0) rotate(0deg) scale(1)}
+  10%{transform:translate(-3px,2px) rotate(-0.8deg) scale(1.01)}
+  25%{transform:translate(3px,-3px) rotate(0.8deg) scale(1.02)}
+  40%{transform:translate(-2px,3px) rotate(-0.5deg) scale(1.01)}
+  60%{transform:translate(3px,-1px) rotate(0.5deg) scale(1.02)}
+  80%{transform:translate(-1px,2px) rotate(-0.3deg) scale(1.01)}
+}
+@keyframes tl-pulse {
+  0%,100% { box-shadow: 0 0 6px var(--tl-glow, rgba(87,209,184,0.35)); }
+  50%      { box-shadow: 0 0 16px var(--tl-glow, rgba(87,209,184,0.65)); }
+}
+@keyframes tl-pop {
+  0%   { transform: translate(-50%,-50%) scale(1); }
+  40%  { transform: translate(-50%,-50%) scale(1.5); }
+  100% { transform: translate(-50%,-50%) scale(1); }
+}
+.jitter-legacy  { animation: jitter-legacy  0.42s ease forwards; }
+.jitter-mid     { animation: jitter-mid     0.60s ease forwards; }
+.jitter-current { animation: jitter-current 0.75s ease forwards; }
+.era-legacy  { animation: glow-legacy  2.5s ease infinite; }
+.era-mid     { animation: glow-mid     2.0s ease infinite; }
+.era-current { animation: glow-current 1.8s ease infinite; }
+
+/* ── T0 · G2 컨셉 비교 (gacha-presentation-overhaul-plan) ──
+   장비 뽑기 연출 방향 owner 결정 재료. 시대 팔레트는 위 ERA 정의(#9ca3af/#3b82f6/#f59e0b)와 동일. */
+#t0-g2 { width:100%; max-width:960px; margin-top:16px; padding:14px;
+  background:#0e1822; border:1px dashed rgba(201,162,39,0.35); border-radius:8px; }
+.t0g2-title { font-size:12px; color:var(--border); letter-spacing:.08em; margin-bottom:6px; }
+.t0g2-note { font-size:10px; color:#7a8a9a; line-height:1.7; margin-bottom:12px; }
+.t0g2-note b { color:var(--text); }
+.t0g2-grid { display:grid; grid-template-columns:1fr 1.5fr 1fr; gap:10px; }
+.t0g2-card { background:#0b141d; border:1px solid #1e2e3e; border-radius:6px; padding:10px; }
+.t0g2-card.pick { border-color:#f59e0b; box-shadow:0 0 12px rgba(245,158,11,0.15); }
+.t0g2-head { font-size:11px; color:var(--text); font-weight:bold; margin-bottom:6px; }
+.t0g2-card.pick .t0g2-head { color:#fbbf24; }
+.t0g2-body { font-size:10px; color:#7a8a9a; line-height:1.6; }
+.t0g2-fine { font-size:9px; color:#4a5a6a; margin-top:8px; line-height:1.5; }
+#g2b-demo { position:relative; height:92px; margin:10px 0 4px; border-radius:6px;
+  background:#060c12; border:1px solid #1e2e3e; overflow:hidden; }
+.g2b-chip { position:absolute; top:16px; left:50%; width:130px; margin-left:-65px;
+  padding:9px 6px; border-radius:5px; font-size:10px; text-align:center; font-weight:bold; }
+#g2b-old { background:#141008; border:1px solid #9ca3af; color:#c4cad4; }
+#g2b-new { background:#1a1208; border:1px solid #f59e0b; color:#fcd34d; opacity:0; }
+#g2b-stamp { position:absolute; left:50%; top:54px; transform:translateX(-50%) scale(0);
+  font-size:13px; font-weight:bold; color:#fbbf24; text-shadow:0 0 12px rgba(245,158,11,.8); z-index:2; }
+#g2b-tl { position:absolute; left:10%; right:10%; bottom:12px; height:3px; background:#1e2e3e; border-radius:2px; }
+#g2b-tl-fill { height:100%; width:30%; background:linear-gradient(90deg,#9ca3af,#3b82f6);
+  border-radius:2px; transition:width .6s ease .9s; }
+#g2b-tl-marker { position:absolute; top:50%; left:30%; width:9px; height:9px; border-radius:50%;
+  background:#fbbf24; transform:translate(-50%,-50%); transition:left .6s ease .9s;
+  box-shadow:0 0 8px rgba(245,158,11,.8); }
+@keyframes g2b-out { to { transform:translateX(-160px) rotate(-6deg); opacity:0; } }
+@keyframes g2b-in {
+  0% { transform:translateX(160px); opacity:0; }
+  60% { transform:translateX(-8px); opacity:1; }
+  100% { transform:translateX(0); opacity:1; }
+}
+@keyframes g2b-stamp-pop {
+  0% { transform:translateX(-50%) scale(0); }
+  55% { transform:translateX(-50%) scale(1.4) rotate(-4deg); }
+  100% { transform:translateX(-50%) scale(1) rotate(-4deg); }
+}
+.g2b-play #g2b-old { animation:g2b-out .45s ease forwards .25s; }
+.g2b-play #g2b-new { animation:g2b-in .5s cubic-bezier(.2,1.2,.4,1) forwards .6s; }
+.g2b-play #g2b-stamp { animation:g2b-stamp-pop .4s cubic-bezier(.34,1.56,.64,1) forwards 1.05s; }
+.g2b-play #g2b-tl-fill { width:80%; background:linear-gradient(90deg,#9ca3af,#3b82f6,#f59e0b); }
+.g2b-play #g2b-tl-marker { left:80%; }
+#g2b-btn { margin-top:6px; font-family:'Courier New',monospace; font-size:10px; padding:5px 12px;
+  background:#0a2420; border:1px solid var(--teal); color:var(--teal); border-radius:4px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<!-- HUD -->
+<div id="hud-bar">
+  <span class="hud-label">CLICK TO COMMIT</span>
+  <div class="hud-sep">|</div>
+  <div class="hud-chip hud-gold">🪙 Gold <strong id="hud-gold-val">2,480</strong></div>
+  <div class="hud-chip hud-insight">💡 Insight <strong id="hud-insight-val">5</strong></div>
+  <div class="hud-chip hud-commit">📄 Commit <strong>124</strong></div>
+  <div style="margin-left:auto; font-size:10px; color:#4a5a6a;">
+    특성 레벨 <span style="color:var(--teal);">7</span>
+    &nbsp;·&nbsp;
+    티켓 <span id="hud-pts" style="color:var(--gold); font-weight:bold;">4</span>
+  </div>
+</div>
+
+<!-- Screen flash overlay -->
+<div id="screen-flash"></div>
+
+<!-- Slot Tooltip -->
+<div id="slot-tooltip"></div>
+
+<!-- Equipment Panel -->
+<div id="eq-wrap">
+<div id="eq-panel">
+
+  <!-- Header -->
+  <div id="eq-header">
+    <div class="title-block">
+      <span class="title-icon">⚙</span>
+      <span class="title-text">장비</span>
+      <span class="title-meta">장비 단계 <span id="hdr-lvl">7</span></span>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="pts-badge">티켓 <span id="hdr-pts">4</span></span>
+      <button id="btn-close" onclick="closePanel()">닫기</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div id="eq-body">
+
+    <!-- Sidebar -->
+    <div id="slot-sidebar">
+      <div class="sidebar-label">보유 장비</div>
+      <div id="slot-list"></div>
+    </div>
+
+    <!-- Card Area -->
+    <div id="card-area">
+      <div id="tier-timeline"></div>
+      <div class="card-area-label" id="card-area-label">장비 카드 선택</div>
+      <div id="card-board">
+        <!-- Cards injected by JS -->
+        <canvas id="vfx-canvas"></canvas>
+      </div>
+      <div id="status-line"></div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div id="eq-footer">
+    <button id="btn-reveal" onclick="doReveal()">
+      ★ 카드 공개 &nbsp;·&nbsp; 티켓 <span id="reveal-cost">1</span>
+    </button>
+    <!-- 하이브리드: 공개 중 Reroll(세션 무료 1회)/Skip(소멸) -->
+    <button id="btn-reroll" onclick="doReroll()" style="display:none;">↻ 다시뽑기 · <span id="reroll-cost">무료</span></button>
+    <button id="btn-skip" onclick="doSkip()" style="display:none;">넘기기</button>
+    <button id="btn-demo-max" onclick="setAllSlotsMax()">전 슬롯 MAX</button>
+    <button id="btn-reset" onclick="doReset()">↺ 초기화</button>
+    <div class="t0g2-note" id="max-fallback-note">전 슬롯 MAX 말기에는 공개 대신 보물티켓을 골드로 전환해 데드엔드를 막습니다.</div>
+  </div>
+
+</div>
+</div>
+
+<!-- T0 · G2 컨셉 비교 (gacha-presentation-overhaul-plan): 장비 뽑기 연출 방향 — owner 결정 재료.
+     실측: 현재 Unity 구현은 상자를 그리지 않는다(DrawEquipmentRevealCover = 카드 플립 + 등급 플래시/스파클).
+     "상자 언어"는 젬 뽑기와 공유하는 사운드(sfx_treasure_charge → sfx_treasure_pop)에 있다. -->
+<div id="t0-g2">
+  <div class="t0g2-title">T0 · G2 — 장비 뽑기 연출 컨셉 비교 (owner 결정 완료 → (b) 채택)</div>
+  <div class="t0g2-note">
+    현재 Unity 구현은 카드 플립 + 등급 플래시/스파클이고 시각적 상자는 없다. 다만
+    <b>사운드가 젬 뽑기와 같은 보물상자 언어</b>(sfx_treasure_charge → sfx_treasure_pop 공유)라서
+    두 축이 청각적으로 구분되지 않는다 — owner: <i>"차라리 여기는 보물상자보다 다른 효과가 있는게 더 좋겠는데?"</i><br>
+    <b>2026-08-16 결정·구현</b>: owner가 <b>(b) 부품 세대 교체 언어</b>를 채택했고 T4로 구현 완료 —
+    Unity <code>DrawEquipmentGenerationSwap</code>(UI.cs)이 <code>revealProgress</code>
+    (<code>GachaRevealDuration 1.07s</code>) 위에서 아래 (b) 데모와 같은 순서
+    <b>구형 칩 OUT → 신형 칩 IN → 세대 스탬프 → 타임라인 틱</b>을 재생한다.
+    구현 차이: 리빌 커버는 <code>t&gt;=1</code>에 그리기가 끊기므로 <b>레이어를 t 0.88~1.0 에서 0 으로 수렴</b>시키고,
+    타임라인 틱은 카드 하단이 아니라 <b>스탬프 바로 아래</b>에 둔다(카드 하단은 상시 시대 배지 밴드).
+    <b>사운드는 이번에도 상자 언어 그대로</b> — 조립·부팅 계열 분리는 <b>신규 사운드 id 가 필요해 별도 owner 게이트</b>로 남는다.
+  </div>
+  <div class="t0g2-grid">
+    <div class="t0g2-card">
+      <div class="t0g2-head">(a) 상자 유지</div>
+      <div class="t0g2-body">현행 그대로 — 젬·장비 모두 충전→팝 사운드. 비용 0.
+        "무엇을 뽑았는지 순간 구분 안 됨" 문제는 그대로 남는다.</div>
+    </div>
+    <div class="t0g2-card pick">
+      <div class="t0g2-head">(b) 부품 세대 교체 언어 — owner 제안 방향</div>
+      <div class="t0g2-body">이 목업의 고유 서사(시대 배지 LEGACY/MID-GEN/CURRENT · 연도 타임라인)를
+        연출로 승격 — 구형 부품 OUT → 신형 부품 IN + 세대 스탬프 + 타임라인 틱.</div>
+      <div id="g2b-demo">
+        <div id="g2b-old" class="g2b-chip">8086 CPU · LEGACY</div>
+        <div id="g2b-new" class="g2b-chip">RTX GPU · CURRENT</div>
+        <div id="g2b-stamp">세대 교체!</div>
+        <div id="g2b-tl"><div id="g2b-tl-fill"></div><div id="g2b-tl-marker"></div></div>
+      </div>
+      <button id="g2b-btn" onclick="g2bPlay()">▶ 세대 교체 데모 재생</button>
+      <div class="t0g2-fine">사운드도 상자 언어에서 분리(조립·부팅 계열)하는 것이 이 안의 완성형 —
+        단 신규 사운드 id 는 owner 승인 게이트(플랜 하드제약 4). 카드 확정 로직·확률은 무변경(T4).</div>
+    </div>
+    <div class="t0g2-card">
+      <div class="t0g2-head">(c) 상자 유지 + 시각 언어만 분리</div>
+      <div class="t0g2-body">연출 구조는 두 축 모두 유지하되 젬=보석함 / 장비=부품 크레이트로
+        시각만 분리. 사운드 공유(청각 구분 불가) 문제는 남는다.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// CONSTANTS & DATA
+// ═══════════════════════════════════════════════════
+
+const ERA = {
+  legacy:  { bg1:'#141008', bg2:'#0a0804', border:'#9ca3af', glow:'rgba(156,163,175,0.45)', text:'#c4cad4', label:'LEGACY',  labelColor:'#9ca3af' },
+  mid:     { bg1:'#0a1428', bg2:'#060c1c', border:'#3b82f6', glow:'rgba(59,130,246,0.55)',  text:'#93c5fd', label:'MID-GEN', labelColor:'#60a5fa' },
+  current: { bg1:'#1a1208', bg2:'#0e0a04', border:'#f59e0b', glow:'rgba(245,158,11,0.65)',  text:'#fcd34d', label:'CURRENT', labelColor:'#fbbf24' },
+};
+
+function getEra(tier1idx) { // 0-based
+  const t = tier1idx + 1;
+  return t <= 2 ? 'legacy' : t <= 5 ? 'mid' : 'current';
+}
+
+function getGrade(tierIdx) { // 0-based, Unity GetEquipmentCardGrade와 동일 경계
+  const t = tierIdx + 1;
+  return t >= 6 ? 'legendary' : t >= 3 ? 'rare' : 'common';
+}
+
+const SLOTS = [
+  { id:'cpu',    name:'CPU',    effect:'클릭 파워',   effectShort:'CLK',
+    tiers:['Intel 8086','486 DX2','Pentium III','Core 2 Duo','Core i7 4세대','Ryzen 5000','Core Ultra 200'],
+    effects:['+5%','+12%','+22%','+35%','+50%','+70%','+100%'],
+    years:[1978,1992,1999,2006,2013,2020,2024] },
+  { id:'gpu',    name:'GPU',    effect:'Worker 피해',  effectShort:'WKR',
+    tiers:['Voodoo 1','GeForce 256','GeForce 6800','GTX 580','GTX 1080','RTX 3090','RTX 5090'],
+    effects:['+5%','+12%','+22%','+35%','+50%','+70%','+100%'],
+    years:[1996,1999,2004,2010,2016,2020,2025] },
+  { id:'mb',     name:'메인보드', effect:'재화 획득',  effectShort:'ECO',
+    tiers:['ISA 보드','AT 보드','ATX 초기','LGA775 보드','Z77 보드','X570 보드','Z890 보드'],
+    effects:['+3%','+7%','+12%','+20%','+30%','+45%','+65%'],
+    years:[1981,1987,1995,2004,2012,2019,2024] },
+  { id:'cooler', name:'쿨러',   effect:'런 시간',     effectShort:'RUN',
+    tiers:['기본 박스 쿨러','알루미늄 타워 쿨러','히트파이프 쿨러','240mm 수랭','커스텀 수냉','360mm 올인원 수랭','풀커버 커스텀 루프'],
+    effects:['+1s','+2s','+3s','+5s','+7s','+10s','+15s'],
+    years:[1990,1998,2004,2010,2015,2020,2024] },
+  { id:'ram',    name:'RAM',    effect:'패시브 수입',  effectShort:'PAS',
+    tiers:['DRAM 256KB','SIMM 4MB','SDRAM 64MB','DDR2 2GB','DDR4 16GB','DDR5 32GB','DDR5 96GB'],
+    effects:['+5%','+10%','+18%','+28%','+40%','+55%','+75%'],
+    years:[1984,1990,1997,2004,2014,2021,2024] },
+  { id:'ssd',    name:'SSD',    effect:'스폰 속도',   effectShort:'SPN',
+    tiers:['HDD 40MB','HDD 1GB','HDD 80GB','SSD 128GB','NVMe 500GB','NVMe 2TB','PCIe 5.0 NVMe 4TB'],
+    effects:['-3%','-6%','-10%','-16%','-24%','-33%','-45%'],
+    years:[1980,1991,2002,2009,2016,2021,2024] },
+  { id:'psu',    name:'파워',   effect:'Gold 획득',   effectShort:'GLD',
+    tiers:['AT 파워 150W','ATX 파워 200W','ATX 파워 400W','80+ 브론즈 550W','80+ 골드 750W','80+ 플래티넘 1000W','80+ 티타늄 1600W'],
+    effects:['+4%','+8%','+14%','+22%','+32%','+45%','+65%'],
+    years:[1985,1995,2002,2007,2013,2020,2024] },
+];
+
+// Player state (demo)
+const playerState = { cpu:0, gpu:-1, ram:0, ssd:1, mb:-1, cooler:-1, psu:-1 };
+const PLAYER_LEVEL = 7;
+let gold = 2480;
+let points = 4;
+let selectedSlotId = 'cpu';        // Timeline display slot (Unity _selectedEquipmentSlot)
+// @canon-src Assets/_Game/Runtime/MvpGameController.Currency.cs#GetEquipmentRevealCost keys=base,divisor,min,max as=REVEAL_COST_RULE
+const REVEAL_COST_RULE = { base: 1, divisor: 3, min: 1, max: 5 };
+// 실제 비용 = clamp(base + floor(menuLevel / divisor), min, max),
+// menuLevel = max(1, 보유 티어 총합 + 1)  (Currency.cs GetEquipmentMenuLevel)
+function equipmentMenuLevel() {
+  const totalTier = Object.values(playerState).reduce((sum, tier) => sum + Math.max(0, tier), 0);
+  return Math.max(1, totalTier + 1);
+}
+function revealCost() {
+  return Math.min(REVEAL_COST_RULE.max,
+    Math.max(REVEAL_COST_RULE.min,
+      REVEAL_COST_RULE.base + Math.floor(equipmentMenuLevel() / REVEAL_COST_RULE.divisor)));
+}
+// 정본: Assets/_Game/Runtime/MvpGameController.Currency.cs:1015 (Gold => 80 + _playerLevel * 20)
+const GACHA_GOLD_REWARD = { base: 80, perLevel: 20 };
+function gachaGoldRewardAmount() {
+  return GACHA_GOLD_REWARD.base + PLAYER_LEVEL * GACHA_GOLD_REWARD.perLevel;
+}
+
+// ═══════════════════════════════════════════════════
+// CANVAS DRAW UTILITIES
+// ═══════════════════════════════════════════════════
+
+function hex2rgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+
+function drawRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+// ── Circuit background patterns ──
+
+function drawCircuitLegacy(ctx, w, h, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.7;
+  // Manhattan straight traces
+  const step = 18;
+  for (let x = step; x < w - 4; x += step * 2) {
+    const len = 20 + Math.floor((x * 7) % 30);
+    const y0 = 10 + Math.floor((x * 3) % (h - 40));
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + len); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y0 + len); ctx.lineTo(x + step, y0 + len); ctx.stroke();
+    // via dot
+    ctx.beginPath(); ctx.arc(x, y0, 1.5, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
+    ctx.beginPath(); ctx.arc(x + step, y0 + len, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+  for (let y = step; y < h - 4; y += step * 2.5) {
+    const len = 15 + Math.floor((y * 5) % 25);
+    const x0 = 8 + Math.floor((y * 4) % (w - 30));
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + len, y); ctx.stroke();
+  }
+}
+
+function drawCircuitMid(ctx, w, h, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+  // 45-degree diagonal traces
+  const offsets = [15, 35, 55, 75, 95, 115, 135];
+  offsets.forEach((off, i) => {
+    const startX = (i % 2 === 0) ? off : w - off;
+    const len = 25 + (i * 8) % 35;
+    ctx.beginPath();
+    if (i % 2 === 0) {
+      ctx.moveTo(startX, 8);
+      ctx.lineTo(startX + len, 8 + len);
+    } else {
+      ctx.moveTo(startX, 8);
+      ctx.lineTo(startX - len, 8 + len);
+    }
+    ctx.stroke();
+    // square pad at joints
+    ctx.fillStyle = color;
+    const px = i % 2 === 0 ? startX + len : startX - len;
+    ctx.fillRect(px - 2, 8 + len - 2, 4, 4);
+    ctx.fillRect(startX - 2, 6, 4, 4);
+  });
+  // horizontal connector
+  ctx.beginPath();
+  ctx.moveTo(12, h - 35); ctx.lineTo(w - 12, h - 35);
+  ctx.stroke();
+  for (let x = 20; x < w - 16; x += 22) {
+    ctx.beginPath(); ctx.arc(x, h - 35, 2, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawCircuitCurrent(ctx, w, h, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.9;
+  // Curved organic traces
+  const curves = [
+    [8, h*0.3, w*0.4, h*0.1, w*0.6, h*0.4, w-8, h*0.2],
+    [8, h*0.6, w*0.3, h*0.8, w*0.7, h*0.5, w-8, h*0.7],
+    [w*0.2, 8, w*0.4, h*0.35, w*0.5, h*0.55, w*0.3, h-8],
+    [w*0.7, 8, w*0.8, h*0.25, w*0.6, h*0.6, w*0.75, h-8],
+  ];
+  curves.forEach(c => {
+    ctx.beginPath();
+    ctx.moveTo(c[0], c[1]);
+    ctx.bezierCurveTo(c[2], c[3], c[4], c[5], c[6], c[7]);
+    ctx.stroke();
+    // glow dots at endpoints
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(c[0], c[1], 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c[6], c[7], 2, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+// ── Hardware icons (simplified) ──
+
+function drawPinRows(ctx, x, y, w, h, count, len, lw) {
+  ctx.lineWidth = lw;
+  for (let i = 0; i < count; i++) {
+    const p = count === 1 ? 0.5 : i / (count - 1);
+    const px = x + w * p;
+    ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, y - len); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, y + h); ctx.lineTo(px, y + h + len); ctx.stroke();
+  }
+}
+
+function drawSidePins(ctx, x, y, w, h, count, len, lw) {
+  ctx.lineWidth = lw;
+  for (let i = 0; i < count; i++) {
+    const p = count === 1 ? 0.5 : i / (count - 1);
+    const py = y + h * p;
+    ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(x - len, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + w, py); ctx.lineTo(x + w + len, py); ctx.stroke();
+  }
+}
+
+function drawFan(ctx, x, y, r, blades, lw) {
+  ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r * 0.22, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < blades; i++) {
+    const a = Math.PI * 2 / blades * i;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * r * 0.28, y + Math.sin(a) * r * 0.28);
+    ctx.quadraticCurveTo(
+      x + Math.cos(a + 0.22) * r * 0.62,
+      y + Math.sin(a + 0.22) * r * 0.62,
+      x + Math.cos(a + 0.52) * r * 0.9,
+      y + Math.sin(a + 0.52) * r * 0.9
+    );
+    ctx.stroke();
+  }
+}
+
+function drawLineGrid(ctx, x, y, w, h, count, vertical, lw) {
+  ctx.lineWidth = lw;
+  for (let i = 1; i < count; i++) {
+    const p = i / count;
+    ctx.beginPath();
+    if (vertical) { ctx.moveTo(x + w * p, y); ctx.lineTo(x + w * p, y + h); }
+    else { ctx.moveTo(x, y + h * p); ctx.lineTo(x + w, y + h * p); }
+    ctx.stroke();
+  }
+}
+
+function drawSmallChips(ctx, x, y, cols, rows, cw, ch, gap, maxCount) {
+  let n = 0;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (maxCount && n >= maxCount) return;
+    ctx.strokeRect(x + c * (cw + gap), y + r * (ch + gap), cw, ch);
+    n++;
+  }
+}
+
+function drawHardwareIcon(ctx, slotId, tier, cx, cy, size, color) {
+  const t = Math.max(0, Math.min(7, tier || 0));
+  const s = size * 0.5;
+  const lw = Math.max(0.8, size / 110);
+  const dlw = Math.max(0.6, lw * 0.82);
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (t === 0) ctx.globalAlpha *= 0.42;
+
+  switch(slotId) {
+    case 'cpu': {
+      if (t === 0) {
+        const b = s * 0.68; ctx.lineWidth = lw;
+        drawRoundRect(ctx, -b, -b, b*2, b*2, s*0.04); ctx.stroke();
+        ctx.lineWidth = dlw;
+        ctx.beginPath(); ctx.moveTo(-b*0.55, -b*0.55); ctx.lineTo(b*0.55, b*0.55); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(b*0.55, -b*0.55); ctx.lineTo(-b*0.55, b*0.55); ctx.stroke();
+      } else if (t === 1) {
+        const w=s*1.18,h=s*0.76; ctx.lineWidth=lw;
+        drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.03); ctx.stroke();
+        drawPinRows(ctx,-w*0.42,-h/2,w*0.84,h,8,s*0.18,dlw);
+        ctx.lineWidth=dlw; ctx.strokeRect(-w*0.24,-h*0.2,w*0.48,h*0.4);
+      } else if (t === 2) {
+        const b=s*0.72; ctx.lineWidth=lw; drawRoundRect(ctx,-b,-b,b*2,b*2,s*0.04); ctx.stroke();
+        drawSidePins(ctx,-b,-b,b*2,b*2,7,s*0.13,dlw); drawPinRows(ctx,-b,-b,b*2,b*2,7,s*0.13,dlw);
+        ctx.globalAlpha*=0.7; for(let y=-2;y<=2;y++) for(let x=-2;x<=2;x++){ctx.beginPath();ctx.arc(x*s*0.14,y*s*0.14,s*0.014,0,Math.PI*2);ctx.fill();} ctx.globalAlpha/=0.7;
+      } else if (t === 3) {
+        const w=s*1.55,h=s*0.72; ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.035); ctx.stroke();
+        ctx.lineWidth=dlw; ctx.strokeRect(-w*0.22,-h*0.25,w*0.44,h*0.5);
+        for(let i=0;i<12;i++) ctx.fillRect(-w*0.42+i*w*0.07,h*0.36,w*0.035,s*0.08);
+      } else {
+        const b=s*(0.72 + t*0.015); ctx.lineWidth=lw; drawRoundRect(ctx,-b,-b,b*2,b*2,s*0.055); ctx.stroke();
+        const ihs=b*1.12; ctx.lineWidth=dlw; drawRoundRect(ctx,-ihs/2,-ihs/2,ihs,ihs,s*0.035); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-b*0.88,-b*0.62); ctx.lineTo(-b*0.62,-b*0.88); ctx.stroke();
+        drawRoundRect(ctx,-ihs*0.36,-ihs*0.36,ihs*0.72,ihs*0.72,s*0.025); ctx.stroke();
+        if (t >= 5) drawSmallChips(ctx,-ihs*0.32,-ihs*0.28,2,2,ihs*0.25,ihs*0.2,ihs*0.12);
+        if (t >= 6) { drawSidePins(ctx,-b,-b,b*2,b*2,9 + t,s*0.11,dlw); drawPinRows(ctx,-b,-b,b*2,b*2,9 + t,s*0.11,dlw); }
+        if (t >= 7) { ctx.lineWidth=dlw; ctx.strokeRect(-ihs*0.08,-ihs*0.08,ihs*0.16,ihs*0.16); }
+      }
+      break;
+    }
+    case 'gpu': {
+      const bw=s*(t >= 6 ? 1.72 : t >= 4 ? 1.58 : 1.42), bh=s*(t <= 2 ? 0.58 : 0.68);
+      ctx.lineWidth=lw; drawRoundRect(ctx,-bw/2,-bh/2,bw,bh,s*0.035); ctx.stroke();
+      ctx.lineWidth=dlw; ctx.strokeRect(-bw*0.57,-bh*0.34,s*0.12,bh*0.68);
+      const fans = t >= 6 ? 3 : t >= 5 ? 2 : t >= 3 ? 1 : 0;
+      if (fans === 0) {
+        if (t >= 1) ctx.strokeRect(-bw*0.18,-bh*0.22,bw*0.34,bh*0.44);
+        if (t >= 2) drawLineGrid(ctx,bw*0.08,-bh*0.24,bw*0.24,bh*0.48,5,false,dlw);
+      } else {
+        for(let i=0;i<fans;i++) {
+          const x = fans === 1 ? bw*0.16 : -bw*0.22 + i*bw*0.22;
+          drawFan(ctx,x,0,s*0.22,5 + Math.min(t,2) + (t >= 7 ? 2 : 0),dlw);
+        }
+      }
+      if (t >= 4) { ctx.beginPath();ctx.moveTo(-bw*0.34,-bh*0.38);ctx.lineTo(bw*0.36,-bh*0.38);ctx.lineTo(bw*0.46,0);ctx.lineTo(bw*0.34,bh*0.38);ctx.lineTo(-bw*0.34,bh*0.38);ctx.stroke(); }
+      if (t === 6) for(let p=0;p<2;p++) ctx.strokeRect(bw*0.38, -bh*0.28+p*bh*0.3, bw*0.11, bh*0.12);
+      if (t >= 7) {
+        ctx.strokeRect(bw*0.34,-bh*0.30,bw*0.15,bh*0.20);
+        drawLineGrid(ctx,bw*0.34,-bh*0.30,bw*0.15,bh*0.20,4,true,dlw);
+        for(let p=0;p<3;p++) ctx.strokeRect(-bw*0.555,-bh*0.30+p*bh*0.21,s*0.09,bh*0.15);
+        ctx.beginPath();ctx.moveTo(-bw*0.46,bh*0.46);ctx.lineTo(bw*0.46,bh*0.46);ctx.stroke();
+      }
+      break;
+    }
+    case 'mb': {
+      const b=s*0.9; ctx.lineWidth=lw; ctx.strokeRect(-b,-b,b*2,b*2);
+      ctx.lineWidth=dlw; ctx.strokeRect(-b*0.25,-b*0.2,b*0.48,b*0.42);
+      const ramSlots = Math.min(4, 1 + Math.ceil(t/2));
+      for(let r=0;r<ramSlots;r++) ctx.strokeRect(b*0.36,-b*0.72+r*b*0.28,b*0.12,b*0.22);
+      const expansion = Math.min(5, 1 + Math.floor(t*0.65));
+      for(let r=0;r<expansion;r++) ctx.strokeRect(-b*0.72,b*0.28+r*b*0.11,b*(0.76-r*0.04),b*0.045);
+      if (t >= 3) ctx.strokeRect(-b*0.72,-b*0.72,b*0.3,b*0.18);
+      if (t >= 5) { ctx.strokeRect(b*0.04,b*0.5,b*0.52,b*0.12); ctx.strokeRect(-b*0.08,-b*0.68,b*0.34,b*0.16); }
+      if (t >= 6) drawLineGrid(ctx,-b*0.7,-b*0.08,b*1.35,b*0.78,6,true,dlw*0.8);
+      break;
+    }
+    case 'cooler': {
+      if (t === 0) {
+        ctx.lineWidth=lw; drawRoundRect(ctx,-s*0.55,-s*0.55,s*1.1,s*1.1,s*0.05); ctx.stroke();
+        drawLineGrid(ctx,-s*0.44,-s*0.34,s*0.88,s*0.68,5,false,dlw);
+      } else if (t === 1) {
+        ctx.lineWidth=lw; drawRoundRect(ctx,-s*0.62,-s*0.62,s*1.24,s*1.24,s*0.05); ctx.stroke(); drawFan(ctx,0,0,s*0.42,5,dlw);
+      } else if (t <= 3) {
+        const w=s*0.78,h=s*1.36; ctx.lineWidth=lw; ctx.strokeRect(-w/2,-h/2,w,h); drawLineGrid(ctx,-w/2,-h/2,w,h,5+t,false,dlw);
+        for(let i=0;i<t;i++){ctx.beginPath();ctx.moveTo(-w*0.28+i*w*0.28,h/2);ctx.quadraticCurveTo(-w*0.18+i*w*0.28,h*0.12,-w*0.24+i*w*0.28,-h/2);ctx.stroke();}
+        if (t === 3) drawFan(ctx,w*0.72,0,s*0.28,6,dlw);
+      } else {
+        const radW=s*(t >= 6 ? 1.48 : 1.18), radH=s*0.46; ctx.lineWidth=lw; ctx.strokeRect(-radW/2,-s*0.56,radW,radH);
+        drawLineGrid(ctx,-radW/2,-s*0.56,radW,radH,6+t,true,dlw);
+        const fans = t >= 6 ? 3 : 2;
+        for(let i=0;i<fans;i++) drawFan(ctx,-radW*0.34+i*(radW*0.34),-s*0.33,s*0.16,5,dlw);
+        ctx.beginPath();ctx.moveTo(-s*0.25,-s*0.1);ctx.quadraticCurveTo(-s*0.55,s*0.34,-s*0.16,s*0.56);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(s*0.25,-s*0.1);ctx.quadraticCurveTo(s*0.55,s*0.34,s*0.16,s*0.56);ctx.stroke();
+        if (t >= 5) { ctx.strokeRect(-s*0.3,s*0.42,s*0.6,s*0.3); }
+        if (t >= 7) { ctx.beginPath();ctx.arc(0,s*0.58,s*0.24,0,Math.PI*2);ctx.stroke(); }
+      }
+      break;
+    }
+    case 'ram': {
+      const w=s*(t <= 1 ? 1.1 : 1.5), h=s*(t <= 1 ? 0.42 : 0.5); ctx.lineWidth=lw; ctx.strokeRect(-w/2,-h/2,w,h);
+      const chips = Math.min(8, 2 + t);
+      ctx.lineWidth=dlw; drawSmallChips(ctx,-w*0.42,-h*0.18,chips,1,w*0.065,h*0.32,w*0.035,chips);
+      const contacts = 8 + t*2;
+      ctx.globalAlpha*=0.85; for(let i=0;i<contacts;i++) ctx.fillRect(-w*0.44+i*(w*0.88/contacts),h*0.34,w*0.88/contacts*0.62,s*0.055); ctx.globalAlpha/=0.85;
+      if (t >= 4) { ctx.lineWidth=lw; drawRoundRect(ctx,-w*0.46,-h*0.43,w*0.92,h*0.62,s*0.025); ctx.stroke(); }
+      if (t >= 6) { ctx.lineWidth=dlw; ctx.strokeRect(-w*0.08,-h*0.36,w*0.16,h*0.18); }
+      if (t >= 7) {
+        for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(-w*0.32+i*w*0.16,-h*0.5);ctx.lineTo(-w*0.32+i*w*0.16,-h*0.86);ctx.stroke();}
+        ctx.beginPath();ctx.moveTo(-w*0.34,-h*0.86);ctx.lineTo(w*0.34,-h*0.86);ctx.stroke();
+      }
+      break;
+    }
+    case 'ssd': {
+      if (t <= 3) {
+        const r=s*(t === 1 ? 0.43 : 0.5), w=s*(t === 1 ? 1.22 : 1.34), h=s*(t === 1 ? 0.92 : 1.02);
+        ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.04);ctx.stroke();
+        ctx.beginPath();ctx.arc(-w*0.12,-h*0.02,r,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-w*0.12,-h*0.02);ctx.lineTo(w*0.24,h*0.22);ctx.stroke();
+        if (t >= 2) ctx.strokeRect(w*0.22,-h*0.36,w*0.16,h*0.14);
+        if (t >= 3) drawLineGrid(ctx,-w*0.36,h*0.34,w*0.72,h*0.12,7,true,dlw);
+      } else if (t === 4) {
+        const w=s*1.28,h=s*0.72; ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.035);ctx.stroke();
+        ctx.lineWidth=dlw; ctx.strokeRect(w*0.36,-h*0.24,w*0.08,h*0.48); drawSmallChips(ctx,-w*0.36,-h*0.17,3,2,w*0.18,h*0.16,w*0.06);
+      } else {
+        const w=s*(t >= 7 ? 1.62 : 1.42), h=s*0.44; ctx.lineWidth=lw; ctx.strokeRect(-w/2,-h/2,w,h);
+        ctx.lineWidth=dlw; ctx.strokeRect(-w*0.48,-h*0.22,w*0.12,h*0.44);
+        // NAND 은 보드 안(|x| < w/2)에 들어와야 한다 — 4개일 때 폭·간격을 줄인다
+        const nand = 3 + (t>=7?1:0);
+        drawSmallChips(ctx,-w*0.30,-h*0.16,nand,1,w*(t>=7?0.13:0.16),h*0.32,w*(t>=7?0.05:0.07));
+        ctx.beginPath();ctx.arc(w*0.5,0,h*0.2,Math.PI*0.5,Math.PI*1.5);ctx.stroke();
+        if (t >= 6) { drawRoundRect(ctx,-w*0.08,-h*0.38,w*0.5,h*0.76,s*0.025); ctx.stroke(); drawLineGrid(ctx,-w*0.08,-h*0.38,w*0.5,h*0.76,5,false,dlw); }
+      }
+      break;
+    }
+    case 'psu': {
+      const w=s*(t >= 6 ? 1.48 : 1.28), h=s*0.9; ctx.lineWidth=lw; drawRoundRect(ctx,-w/2,-h/2,w,h,s*0.045);ctx.stroke();
+      drawFan(ctx,-w*0.22,0,s*(t >= 5 ? 0.34 : 0.28),5 + (t >= 4 ? 1 : 0),dlw);
+      const ports = Math.min(8, 2 + t);
+      for(let i=0;i<ports;i++) ctx.strokeRect(w*0.18 + (i%2)*w*0.17, -h*0.3 + Math.floor(i/2)*h*0.16, w*0.12, h*0.08);
+      if (t >= 4) { ctx.strokeRect(-w*0.42,-h*0.38,w*0.18,h*0.12); }
+      if (t >= 5) drawLineGrid(ctx,-w*0.48,h*0.34,w*0.96,h*0.08,8,true,dlw);
+      if (t >= 7) { for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(w*0.48,-h*0.3+i*h*0.18);ctx.quadraticCurveTo(s*0.9,-h*0.24+i*h*0.18,s*0.98,-h*0.08+i*h*0.12);ctx.stroke();} }
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+// ── Slot sidebar icon (32×32) ──
+
+function drawSlotIcon(canvas, slotId, owned, eraIdx) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const era = owned ? getEra(eraIdx) : null;
+  const color = owned ? ERA[era].border : '#2a3a4a';
+  ctx.globalAlpha = owned ? 1 : 0.5;
+  drawHardwareIcon(ctx, slotId, owned ? eraIdx + 1 : 0, w/2, h/2, Math.min(w,h) * 0.85, color);
+  ctx.globalAlpha = 1;
+}
+
+// ── Full card canvas ──
+
+function drawLockedCard(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Dark background
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#0c1118'); grad.addColorStop(1, '#060a10');
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx, 0, 0, w, h, 7); ctx.fill();
+
+  // Border
+  ctx.strokeStyle = '#1a2a3a'; ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, 0.75, 0.75, w-1.5, h-1.5, 7); ctx.stroke();
+
+  // Lock icon
+  ctx.fillStyle = '#1e2e3e';
+  ctx.font = 'bold 28px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🔒', w/2, h/2 - 10);
+
+  ctx.font = '9px Courier New';
+  ctx.fillStyle = '#2a3a4a';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('잠금 카드', w/2, h/2 + 22);
+  ctx.fillStyle = '#1e2a34';
+  ctx.fillText('공개 전', w/2, h/2 + 36);
+}
+
+function drawRevealedCard(canvas, slot, tierIdx) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const era = getEra(tierIdx);
+  const eraData = ERA[era];
+  const tierName = slot.tiers[tierIdx];
+  const effect = slot.effects[tierIdx];
+  const year = slot.years[tierIdx];
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, eraData.bg1); grad.addColorStop(1, eraData.bg2);
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx, 0, 0, w, h, 7); ctx.fill();
+
+  // Top color band
+  const bandGrad = ctx.createLinearGradient(0, 0, 0, 28);
+  const [r,g,b] = hex2rgb(eraData.border);
+  bandGrad.addColorStop(0, `rgba(${r},${g},${b},0.25)`);
+  bandGrad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = bandGrad;
+  ctx.fillRect(0, 0, w, 28);
+
+  // Circuit pattern
+  ctx.save();
+  ctx.globalAlpha = 0.1;
+  const traceColor = `rgba(${r},${g},${b},1)`;
+  if (era === 'legacy')  drawCircuitLegacy(ctx, w, h, traceColor);
+  if (era === 'mid')     drawCircuitMid(ctx, w, h, traceColor);
+  if (era === 'current') drawCircuitCurrent(ctx, w, h, traceColor);
+  ctx.restore();
+
+  // Border glow
+  ctx.save();
+  ctx.shadowColor = eraData.glow;
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = eraData.border; ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, 0.75, 0.75, w-1.5, h-1.5, 7); ctx.stroke();
+  ctx.restore();
+
+  // Hardware icon (upper center)
+  ctx.save();
+  ctx.shadowColor = eraData.glow; ctx.shadowBlur = 8;
+  drawHardwareIcon(ctx, slot.id, tierIdx + 1, w/2, h * 0.28, Math.min(w,h) * 0.52, eraData.border);
+  ctx.restore();
+
+  // Separator line
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(12, h*0.5); ctx.lineTo(w-12, h*0.5); ctx.stroke();
+
+  // Slot name
+  ctx.textAlign = 'center';
+  ctx.font = `bold 13px 'Courier New'`;
+  ctx.fillStyle = eraData.text;
+  ctx.fillText(slot.name, w/2, h * 0.57);
+
+  // Tier name
+  ctx.font = `10px 'Courier New'`;
+  ctx.fillStyle = '#6a7a8a';
+  const shortName = tierName.length > 14 ? tierName.slice(0,14)+'…' : tierName;
+  ctx.fillText(shortName, w/2, h * 0.645);
+
+  // Effect value
+  ctx.font = `bold 16px 'Courier New'`;
+  ctx.fillStyle = eraData.text;
+  ctx.save();
+  ctx.shadowColor = eraData.glow; ctx.shadowBlur = 6;
+  ctx.fillText(effect, w/2, h * 0.755);
+  ctx.restore();
+
+  // Effect label
+  ctx.font = `9px 'Courier New'`;
+  ctx.fillStyle = '#4a5a6a';
+  ctx.fillText(slot.effect, w/2, h * 0.815);
+
+  // Footer: era badge + year
+  const eraLabelBg = { legacy:'#1e2025', mid:'#0d1628', current:'#1e1608' };
+  ctx.fillStyle = eraLabelBg[era];
+  ctx.beginPath(); ctx.roundRect(8, h-26, w-16, 18, 2); ctx.fill();
+
+  ctx.font = `bold 8px 'Courier New'`;
+  ctx.fillStyle = eraData.labelColor;
+  ctx.fillText(eraData.label, w/2 - 14, h - 14);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#3a4a5a';
+  ctx.fillText(year, w - 12, h - 14);
+}
+
+// ═══════════════════════════════════════════════════
+// VFX SYSTEM
+// ═══════════════════════════════════════════════════
+
+let vfxQueue = [];
+let vfxRaf = null;
+let vfxLastT = 0;
+let shakeT = 0, shakeDur = 0, shakeMag = 0;
+
+const vfxCanvas = document.getElementById('vfx-canvas');
+const vfxCtx    = vfxCanvas.getContext('2d');
+
+function resizeVfx() {
+  const board = document.getElementById('card-board');
+  const rect = board.getBoundingClientRect();
+  vfxCanvas.width  = rect.width;
+  vfxCanvas.height = rect.height;
+  vfxCanvas.style.width  = rect.width  + 'px';
+  vfxCanvas.style.height = rect.height + 'px';
+}
+
+function triggerFlash(color, alpha, durationMs) {
+  const el = document.getElementById('screen-flash');
+  el.style.background = color;
+  el.style.opacity = alpha;
+  setTimeout(() => { el.style.opacity = 0; }, durationMs * 0.2);
+}
+
+function triggerShake(mag, dur) {
+  shakeMag = mag; shakeDur = dur / 1000; shakeT = 0;
+}
+
+function spawnParticles(type, cx, cy, color, count) {
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.4;
+    const spd = type === 'shimmer' ? 30 + Math.random()*30 : 80 + Math.random()*100;
+    vfxQueue.push({
+      type: 'particle',
+      x: cx, y: cy,
+      vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+      t: 0, dur: 0.45 + Math.random() * 0.35,
+      color,
+      size: type === 'shimmer' ? 1.5 : 2.2,
+      text: type === 'bit' ? (Math.random() > 0.5 ? '1' : '0') : null,
+    });
+  }
+}
+
+function spawnRevealVfx(era, cardEl) {
+  resizeVfx();
+  const boardRect = vfxCanvas.getBoundingClientRect();
+  const cardRect  = cardEl.getBoundingClientRect();
+  const cx = cardRect.left - boardRect.left + cardRect.width  / 2;
+  const cy = cardRect.top  - boardRect.top  + cardRect.height / 2;
+  const [r,g,b] = hex2rgb(ERA[era].border);
+  const color = ERA[era].border;
+
+  if (era === 'legacy') {
+    spawnParticles('shimmer', cx, cy, color, 14);
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 70, t: 0, dur: 0.5, color });
+  } else if (era === 'mid') {
+    spawnParticles('spark', cx, cy, color, 22);
+    spawnParticles('bit',   cx, cy, `rgba(${r},${g},${b},0.7)`, 8);
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 110, t: 0, dur: 0.55, color });
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 80,  t: 0.1, dur: 0.5, color:`rgba(${r},${g},${b},0.5)` });
+  } else if (era === 'current') {
+    spawnParticles('spark', cx, cy, color, 36);
+    spawnParticles('bit',   cx, cy, `rgba(${r},${g},${b},0.8)`, 12);
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 160, t: 0,   dur: 0.7, color });
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 110, t: 0.1, dur: 0.6, color:`rgba(${r},${g},${b},0.6)` });
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 70,  t: 0.2, dur: 0.5, color:`rgba(${r},${g},${b},0.4)` });
+    triggerFlash(ERA[era].border, 0.18, 500);
+    triggerShake(4, 280);
+  }
+
+  if (!vfxRaf) vfxLastT = performance.now(), vfxRaf = requestAnimationFrame(vfxLoop);
+}
+
+// 등급별 공개 임팩트 — legendary 강플래시+골드 스파크 버스트, rare 중간, common 경량(기존 era vfx만)
+function spawnGradeImpact(grade, cardEl) {
+  if (grade === 'common') return;
+  const boardRect = vfxCanvas.getBoundingClientRect();
+  const cardRect  = cardEl.getBoundingClientRect();
+  const cx = cardRect.left - boardRect.left + cardRect.width  / 2;
+  const cy = cardRect.top  - boardRect.top  + cardRect.height / 2;
+  if (grade === 'legendary') {
+    triggerFlash('#f5d76e', 0.28, 650);
+    spawnParticles('spark', cx, cy, '#f5d76e', 40);
+    vfxQueue.push({ type: 'ring', x: cx, y: cy, r: 0, maxR: 190, t: 0, dur: 0.75, color: '#c9a227' });
+  } else { // rare
+    spawnParticles('spark', cx, cy, '#3b82f6', 18);
+  }
+  if (!vfxRaf) vfxLastT = performance.now(), vfxRaf = requestAnimationFrame(vfxLoop);
+}
+
+function vfxLoop(now) {
+  const dt = Math.min((now - vfxLastT) / 1000, 0.05);
+  vfxLastT = now;
+
+  // Screen shake
+  if (shakeT < shakeDur) {
+    shakeT += dt;
+    const s = 1 - shakeT / shakeDur;
+    const dx = Math.sin(shakeT * 90) * shakeMag * s;
+    const dy = Math.cos(shakeT * 70) * shakeMag * s * 0.6;
+    document.getElementById('eq-panel').style.transform = `translate(${dx}px,${dy}px)`;
+  } else if (shakeDur > 0) {
+    document.getElementById('eq-panel').style.transform = '';
+    shakeDur = 0;
+  }
+
+  vfxCtx.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+
+  let len = vfxQueue.length;
+  while (len--) {
+    const v = vfxQueue[len];
+    v.t += dt;
+    if (v.t < 0) continue; // delayed spawn
+
+    const normalT = v.t < 0 ? 0 : v.t / v.dur;
+    if (normalT >= 1) { vfxQueue[len] = vfxQueue[vfxQueue.length-1]; vfxQueue.pop(); continue; }
+
+    const ease = 1 - normalT * normalT;
+
+    if (v.type === 'ring') {
+      if (v.t < 0) continue;
+      const t2 = (v.t - Math.max(0, -v.t < 0 ? v.t : 0)) / v.dur;
+      const rr = v.r + (v.maxR - v.r) * t2;
+      vfxCtx.beginPath();
+      vfxCtx.arc(v.x, v.y, Math.max(0, rr), 0, Math.PI*2);
+      vfxCtx.strokeStyle = v.color;
+      vfxCtx.lineWidth = 2 * (1 - t2) + 0.5;
+      vfxCtx.globalAlpha = (1 - t2) * 0.8;
+      vfxCtx.stroke();
+      vfxCtx.globalAlpha = 1;
+    } else if (v.type === 'particle') {
+      const px = v.x + v.vx * v.t;
+      const py = v.y + v.vy * v.t + 60 * v.t * v.t;
+      if (v.text) {
+        vfxCtx.globalAlpha = ease * 0.85;
+        vfxCtx.fillStyle = v.color;
+        vfxCtx.font = `bold ${Math.round(8 + ease*4)}px Courier New`;
+        vfxCtx.textAlign = 'center'; vfxCtx.textBaseline = 'middle';
+        vfxCtx.fillText(v.text, px, py);
+        vfxCtx.globalAlpha = 1;
+      } else {
+        vfxCtx.beginPath();
+        vfxCtx.arc(px, py, v.size * ease, 0, Math.PI*2);
+        vfxCtx.fillStyle = v.color;
+        vfxCtx.globalAlpha = ease * 0.9;
+        vfxCtx.fill();
+        vfxCtx.globalAlpha = 1;
+      }
+    }
+  }
+
+  if (vfxQueue.length > 0 || shakeT < shakeDur) {
+    vfxRaf = requestAnimationFrame(vfxLoop);
+  } else {
+    vfxRaf = null;
+    vfxCtx.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CARD OFFER SYSTEM
+// ═══════════════════════════════════════════════════
+
+// Generate 3 random slot upgrades for this reveal
+function getAvailableEquipmentOfferCount() {
+  return SLOTS.filter(s => playerState[s.id] < s.tiers.length - 1).length;
+}
+
+function generateOffer() {
+  // Pick 3 distinct upgradeable slots
+  const upgradeable = SLOTS.filter(s => {
+    const cur = playerState[s.id];
+    return cur < s.tiers.length - 1;
+  });
+  if (upgradeable.length < 3) return upgradeable; // edge case
+  // Shuffle & pick 3
+  const shuffled = [...upgradeable].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 3);
+}
+
+let currentOffer = []; // [{ slot, tierIdx }]
+
+// ═══════════════════════════════════════════════════
+// STATE MACHINE
+// ═══════════════════════════════════════════════════
+
+let demoState = 'idle'; // idle | revealing | choosing | equipping
+let rerollUsed = false; // 세션 무료 reroll 1회(하이브리드 결정 2)
+const cardWraps = [];
+const cardCanvases = [];
+
+function buildCardBoard() {
+  const board = document.getElementById('card-board');
+  // Remove old cards (keep vfx canvas)
+  cardWraps.forEach(w => w.remove());
+  cardWraps.length = 0; cardCanvases.length = 0;
+
+  currentOffer = generateOffer().map(slot => ({
+    slot,
+    tierIdx: playerState[slot.id] + 1
+  }));
+  document.getElementById('card-area-label').textContent =
+    currentOffer.length > 0 ? '장비 카드 선택' : '모든 장비 MAX';
+
+  currentOffer.forEach((offer, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card-wrap';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 154; canvas.height = 216;
+    drawLockedCard(canvas);
+
+    const curtain = document.createElement('div');
+    curtain.className = 'curtain';
+    curtain.innerHTML = `<div class="curtain-rune"><div class="rune-diamond"></div><div class="rune-q">?</div></div><div class="curtain-text">잠금 카드</div><div class="curtain-sub">티켓으로 공개</div>`;
+
+    const compare = document.createElement('div');
+    compare.className = 'card-compare';
+    const cur = playerState[offer.slot.id];
+    const curTier = cur >= 0 ? `T${cur+1} ${offer.slot.tiers[cur]}` : '미보유';
+    const nxtTier = `T${offer.tierIdx+1} ${offer.slot.tiers[offer.tierIdx]}`;
+    const curVal  = cur >= 0 ? offer.slot.effects[cur] : '—';
+    const nxtVal  = offer.slot.effects[offer.tierIdx];
+    compare.innerHTML = `
+      <div><span class="compare-before">${offer.slot.name}</span></div>
+      <div><span class="compare-before">${curTier}</span><span class="compare-arrow">→</span><span class="compare-after">${nxtTier}</span></div>
+      <div><span class="compare-before">${curVal}</span><span class="compare-arrow">→</span><span class="compare-after">${nxtVal}</span></div>`;
+
+    wrap.appendChild(curtain);
+    wrap.appendChild(canvas);
+    wrap.appendChild(compare);
+
+    wrap.addEventListener('mouseenter', () => { if (demoState === 'choosing') compare.classList.add('show'); });
+    wrap.addEventListener('mouseleave', () => compare.classList.remove('show'));
+    wrap.addEventListener('click',      () => { if (demoState === 'choosing') selectCard(i); });
+
+    board.insertBefore(wrap, vfxCanvas);
+    cardWraps.push(wrap);
+    cardCanvases.push(canvas);
+  });
+
+  resizeVfx();
+}
+
+function doReveal() {
+  if (demoState !== 'idle') return;
+  if (getAvailableEquipmentOfferCount() <= 0) {
+    tryConvertTicketToGold();
+    return;
+  }
+  const cost = revealCost();
+  if (points < cost) { setStatus('티켓이 부족합니다.', 'err'); return; }
+
+  demoState = 'revealing';
+  document.getElementById('btn-reveal').disabled = true;
+  points -= cost;
+  updatePtsDisplay();
+  setStatus('카드를 공개하는 중...');
+
+  // Curtain slide up with stagger
+  cardWraps.forEach((wrap, i) => {
+    const curtain = wrap.querySelector('.curtain');
+    setTimeout(() => {
+      curtain.classList.add('up');
+    }, i * 90);
+  });
+
+  // After curtain done → redraw cards revealed + jitter + vfx
+  setTimeout(() => {
+    currentOffer.forEach((offer, i) => {
+      setTimeout(() => {
+        drawRevealedCard(cardCanvases[i], offer.slot, offer.tierIdx);
+        const era = getEra(offer.tierIdx);
+        const grade = getGrade(offer.tierIdx);
+        cardWraps[i].classList.add('era-' + era, 'jitter-' + era, 'grade-' + grade, 'materialize');
+        setTimeout(() => cardWraps[i].classList.remove('materialize'), 500);
+        setTimeout(() => spawnRevealVfx(era, cardWraps[i]), 60);
+        spawnGradeImpact(grade, cardWraps[i]);
+      }, i * 140);
+    });
+
+    setTimeout(() => {
+      demoState = 'choosing';
+      cardWraps.forEach(w => w.classList.add('selectable'));
+      setStatus('장착할 장비를 선택하세요. (다시뽑기 / 넘기기 가능)');
+      document.getElementById('btn-reset').classList.add('show');
+      showChoiceButtons();
+    }, currentOffer.length * 140 + 400);
+
+  }, 580);
+}
+
+function flyEquipCard(cardEl, slotId, era) {
+  const slotIdx = SLOTS.findIndex(s => s.id === slotId);
+  if (slotIdx < 0 || !cardEl) return;
+  const rows = document.querySelectorAll('.slot-row');
+  const targetRow = rows[slotIdx];
+  if (!targetRow) return;
+  const iconWrap = targetRow.querySelector('.slot-icon-wrap');
+  const cardR = cardEl.getBoundingClientRect();
+  const tR = (iconWrap || targetRow).getBoundingClientRect();
+  const accent = (ERA[era] && ERA[era].border) || '#57d1b8';
+
+  const flyer = document.createElement('div');
+  flyer.className = 'equip-flyer';
+  Object.assign(flyer.style, {
+    left: (cardR.left + cardR.width / 2 - 24) + 'px',
+    top:  (cardR.top + cardR.height / 2 - 34) + 'px',
+    width: '48px', height: '68px',
+    borderColor: accent,
+    boxShadow: '0 0 12px ' + accent,
+    background: 'rgba(6,8,21,0.9)',
+    transition: 'transform 0.34s cubic-bezier(0.4,0,0.2,1), opacity 0.34s ease'
+  });
+  document.body.appendChild(flyer);
+
+  requestAnimationFrame(() => {
+    const dx = (tR.left + tR.width / 2) - (cardR.left + cardR.width / 2);
+    const dy = (tR.top + tR.height / 2) - (cardR.top + cardR.height / 2);
+    flyer.style.transform = `translate(${dx}px, ${dy}px) scale(0.42)`;
+    flyer.style.opacity = '0.2';
+  });
+
+  setTimeout(() => {
+    flyer.remove();
+    // updateSlotList() rebuilt the rows at +300ms, so pop the fresh row.
+    const freshRow = document.querySelectorAll('.slot-row')[slotIdx];
+    if (freshRow) {
+      freshRow.classList.add('equip-pop');
+      setTimeout(() => freshRow.classList.remove('equip-pop'), 360);
+    }
+  }, 340);
+}
+
+function selectCard(idx) {
+  if (demoState !== 'choosing') return;
+  demoState = 'equipping';
+  hideChoiceButtons();
+
+  const offer = currentOffer[idx];
+  cardWraps.forEach((w, i) => {
+    w.classList.remove('selectable');
+    if (i === idx) w.classList.add('selected');
+    else           w.classList.add('dimmed');
+  });
+
+  // Update player state
+  const prevIdx = playerState[offer.slot.id];
+  const fromTier = prevIdx + 1;
+  playerState[offer.slot.id] = offer.tierIdx;
+  flyEquipCard(cardWraps[idx], offer.slot.id, getEra(offer.tierIdx));
+  selectedSlotId = offer.slot.id;
+  renderTimeline(offer.slot.id, { animate: true, fromTier });
+
+  setTimeout(() => {
+    setStatus(`${offer.slot.name} → ${offer.slot.tiers[offer.tierIdx]} 장착 완료!`, 'ok');
+    updateSlotList();
+    updatePtsDisplay();
+    setTimeout(doReset, 1800);
+  }, 300);
+}
+
+function doReset() {
+  demoState = 'idle';
+  rerollUsed = false;
+  document.getElementById('btn-reveal').disabled = false;
+  document.getElementById('btn-reset').classList.remove('show');
+  hideChoiceButtons();
+  setStatus('');
+  buildCardBoard();
+  updateRevealButton();
+}
+
+function tryConvertTicketToGold() {
+  if (getAvailableEquipmentOfferCount() > 0) {
+    setStatus('업그레이드 가능 장비가 남아 있습니다.', 'err');
+    return;
+  }
+  if (points <= 0) {
+    setStatus('보물티켓이 없습니다.', 'err');
+    return;
+  }
+  const amount = gachaGoldRewardAmount();
+  points -= 1;
+  gold += amount;
+  updatePtsDisplay();
+  setStatus(`보물티켓 1장을 골드 ${amount}로 전환했습니다.`, 'ok');
+}
+
+function setAllSlotsMax() {
+  SLOTS.forEach(slot => {
+    playerState[slot.id] = slot.tiers.length - 1;
+  });
+  selectedSlotId = 'cpu';
+  demoState = 'idle';
+  rerollUsed = false;
+  hideChoiceButtons();
+  document.getElementById('btn-reset').classList.remove('show');
+  document.getElementById('btn-reveal').disabled = false;
+  updateSlotList();
+  buildCardBoard();
+  renderTimeline(selectedSlotId, { animate: false });
+  updatePtsDisplay();
+  setStatus('전 슬롯 MAX 데모 상태입니다.', 'ok');
+}
+
+// 하이브리드: 공개 중 Reroll/Skip 버튼 표시·숨김
+function showChoiceButtons() {
+  document.getElementById('btn-reveal').style.display = 'none';
+  const rr = document.getElementById('btn-reroll');
+  document.getElementById('reroll-cost').textContent = rerollUsed ? '티켓 1' : '무료';
+  rr.style.display = '';
+  document.getElementById('btn-skip').style.display = '';
+}
+function hideChoiceButtons() {
+  document.getElementById('btn-reroll').style.display = 'none';
+  document.getElementById('btn-skip').style.display = 'none';
+  document.getElementById('btn-reveal').style.display = '';
+}
+
+// Reroll = 세션 무료 1회, 이후 티켓 1(소멸 아님: 새 3장 재생성)
+function doReroll() {
+  if (demoState !== 'choosing') return;
+  if (rerollUsed) {
+    if (points < 1) { setStatus('티켓이 부족합니다. 필요 1', 'err'); return; }
+    points -= 1; updatePtsDisplay();
+  }
+  rerollUsed = true;
+  hideChoiceButtons();
+  demoState = 'idle';
+  buildCardBoard(); // 새 3장 생성 + 보드 재구성(generateOffer)
+  setStatus('다시 뽑았습니다.');
+  setTimeout(doRevealNoCost, 50);
+}
+
+// Skip = 소멸: 카드 폐기 + 티켓 소진(이미 공개 시 차감됨)
+function doSkip() {
+  if (demoState !== 'choosing') return;
+  hideChoiceButtons();
+  setStatus('장비 카드를 넘겼습니다.');
+  doReset();
+}
+
+// Reroll 재공개(공개비용 없음) — doReveal의 비용 차감을 건너뛴 버전
+function doRevealNoCost() {
+  if (demoState !== 'idle') return;
+  demoState = 'revealing';
+  document.getElementById('btn-reveal').disabled = true;
+  cardWraps.forEach((wrap, i) => {
+    const curtain = wrap.querySelector('.curtain');
+    setTimeout(() => curtain.classList.add('up'), i * 90);
+  });
+  setTimeout(() => {
+    currentOffer.forEach((offer, i) => {
+      setTimeout(() => {
+        drawRevealedCard(cardCanvases[i], offer.slot, offer.tierIdx);
+        const era = getEra(offer.tierIdx);
+        const grade = getGrade(offer.tierIdx);
+        cardWraps[i].classList.add('era-' + era, 'jitter-' + era, 'grade-' + grade, 'materialize');
+        setTimeout(() => cardWraps[i].classList.remove('materialize'), 500);
+        setTimeout(() => spawnRevealVfx(era, cardWraps[i]), 60);
+        spawnGradeImpact(grade, cardWraps[i]);
+      }, i * 140);
+    });
+    setTimeout(() => {
+      demoState = 'choosing';
+      cardWraps.forEach(w => w.classList.add('selectable'));
+      setStatus('장착할 장비를 선택하세요. (다시뽑기 / 넘기기 가능)');
+      document.getElementById('btn-reset').classList.add('show');
+      showChoiceButtons();
+    }, currentOffer.length * 140 + 400);
+  }, 580);
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status-line');
+  el.textContent = msg;
+  el.className = cls ? 'status-line ' + cls : 'status-line';
+  // mimic id-based styling via inline
+  el.setAttribute('id', 'status-line');
+  el.style.color = cls === 'ok' ? '#57d1b8' : cls === 'err' ? '#ff6b6b' : '#4a5a6a';
+}
+
+function closePanel() { setStatus('패널을 닫았습니다.', 'ok'); }
+
+// ═══════════════════════════════════════════════════
+// SLOT SIDEBAR
+// ═══════════════════════════════════════════════════
+
+function renderTimeline(slotId, opts) {
+  opts = opts || {};
+  const animate = !!opts.animate;
+  const container = document.getElementById('tier-timeline');
+  if (!container) return;
+  const slot = SLOTS.find(s => s.id === slotId);
+  if (!slot) return;
+  const cur = playerState[slotId];
+  const curTier = cur + 1;
+  const fromTier = (typeof opts.fromTier === 'number') ? opts.fromTier : curTier;
+
+  const fillPct = curTier / 7 * 100;
+  const startPct = animate ? (fromTier / 7 * 100) : fillPct;
+
+  const headText = curTier >= 7
+    ? `${slot.name} · 현재 단계 MAX`
+    : curTier > 0
+      ? `${slot.name} · 현재 단계 T${curTier} ${slot.tiers[cur]}`
+      : `${slot.name} · 미보유`;
+
+  const eraKeyOf = (step) => step <= 2 ? 'legacy' : step <= 5 ? 'mid' : 'current';
+
+  const segs = [
+    { key:'legacy',  left:0,        width:2/7*100 },
+    { key:'mid',     left:2/7*100,  width:3/7*100 },
+    { key:'current', left:5/7*100,  width:2/7*100 },
+  ];
+  let segHtml = '';
+  for (const s of segs) {
+    const c = ERA[s.key].border;
+    segHtml += `<div class="tl-seg" style="left:${s.left}%;width:${s.width}%;background:${c};"></div>`;
+  }
+
+  let markHtml = '';
+  for (let step = 1; step <= 7; step++) {
+    const left = step / 7 * 100;
+    const reached = curTier >= step;
+    const isCurrent = step === curTier;
+    const key = eraKeyOf(step);
+    const cls = ['tl-marker', reached ? 'reached' : '', isCurrent ? 'current' : ''].filter(Boolean).join(' ');
+    const bg = reached ? ERA[key].border : '#2a3a4a';
+    const glow = reached ? `--tl-glow:${ERA[key].glow};box-shadow:0 0 6px ${ERA[key].glow};` : '';
+    markHtml += `<div class="${cls}" data-step="${step}" style="left:${left}%;background:${bg};${glow}"></div>`;
+    markHtml += `<div class="tl-tier" style="left:${left}%;${reached ? 'color:'+ERA[key].text+';' : ''}">${step === 7 ? 'MAX' : 'T'+step}</div>`;
+    markHtml += `<div class="tl-year" style="left:${left}%;${reached ? 'color:#8aa0b4;' : ''}">${slot.years[step-1]}</div>`;
+  }
+
+  const fillKey = curTier > 0 ? eraKeyOf(curTier) : 'legacy';
+  container.innerHTML = `
+    <div class="tl-header">${headText}</div>
+    <div class="tl-track">
+      ${segHtml}
+      <div class="tl-fill" style="width:${startPct}%;background:${ERA[fillKey].border};box-shadow:0 0 8px ${ERA[fillKey].glow};"></div>
+      ${markHtml}
+    </div>`;
+
+  const fillEl = container.querySelector('.tl-fill');
+  if (animate && fillEl) {
+    fillEl.offsetWidth;
+    requestAnimationFrame(() => {
+      fillEl.style.width = fillPct + '%';
+    });
+    const onEnd = () => {
+      fillEl.removeEventListener('transitionend', onEnd);
+      const m = container.querySelector(`.tl-marker[data-step="${curTier}"]`);
+      if (m) {
+        m.classList.remove('pop');
+        void m.offsetWidth;
+        m.classList.add('pop');
+        setTimeout(() => m.classList.remove('pop'), 380);
+      }
+    };
+    fillEl.addEventListener('transitionend', onEnd);
+  }
+}
+
+function updateSlotList() {
+  const list = document.getElementById('slot-list');
+  list.innerHTML = '';
+
+  SLOTS.forEach((slot, si) => {
+    const curTierIdx = playerState[slot.id];
+    const owned = curTierIdx >= 0;
+    const era   = owned ? getEra(curTierIdx) : null;
+    const eraData = owned ? ERA[era] : null;
+
+    const row = document.createElement('div');
+    row.className = 'slot-row' + (si === 0 ? ' active' : '');
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'slot-icon-wrap';
+    const ic = document.createElement('canvas');
+    ic.width = 32; ic.height = 32;
+    drawSlotIcon(ic, slot.id, owned, curTierIdx);
+    iconWrap.appendChild(ic);
+
+    const info = document.createElement('div');
+    info.className = 'slot-info';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'slot-name';
+    nameEl.textContent = slot.name;
+    if (eraData) nameEl.style.color = eraData.text;
+
+    const tierEl = document.createElement('div');
+    tierEl.className = 'slot-tier-text' + (owned ? ' owned' : '');
+    if (owned) {
+      tierEl.textContent = `T${curTierIdx+1}  ${slot.tiers[curTierIdx]}`;
+      tierEl.style.color = eraData.labelColor;
+    } else {
+      tierEl.textContent = '미보유';
+    }
+
+    info.appendChild(nameEl);
+    info.appendChild(tierEl);
+
+    const badge = document.createElement('div');
+    badge.className = 'slot-effect-badge';
+    if (owned) {
+      badge.textContent = slot.effects[curTierIdx];
+      badge.style.background = `rgba(${hex2rgb(eraData.border).join(',')},0.1)`;
+      badge.style.color = eraData.text;
+      badge.style.border = `1px solid rgba(${hex2rgb(eraData.border).join(',')},0.25)`;
+    } else {
+      badge.textContent = slot.effectShort;
+      badge.style.background = '#0e1620';
+      badge.style.color = '#2a3a4a';
+      badge.style.border = '1px solid #1a2434';
+    }
+
+    row.appendChild(iconWrap);
+    row.appendChild(info);
+    row.appendChild(badge);
+
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.slot-row').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+      selectedSlotId = slot.id;
+      renderTimeline(slot.id, { animate: false });
+    });
+
+    // Tooltip
+    row.addEventListener('mouseenter', () => {
+      const tip = document.getElementById('slot-tooltip');
+      const rect = row.getBoundingClientRect();
+      tip.innerHTML = `
+        <div style="color:#6a7a8a;font-size:9px;letter-spacing:.08em;margin-bottom:3px;">${slot.name} — ${slot.effect}</div>
+        <div style="color:${owned ? (eraData?.text || '#e2e8f0') : '#4a5a6a'};font-weight:bold;font-size:12px;">${owned ? slot.effects[curTierIdx] : '—'}</div>
+        ${owned ? `<div style="color:#3a5060;font-size:9px;margin-top:2px;">${slot.tiers[curTierIdx]} (${slot.years[curTierIdx]})</div>` : ''}
+        ${(curTierIdx < slot.tiers.length - 1) ? `<div style="color:#2a4050;font-size:9px;margin-top:3px;">다음: T${curTierIdx+2} ${slot.tiers[curTierIdx+1]}</div>` : '<div style="color:#3a4050;font-size:9px;margin-top:3px;">최고 티어</div>'}`;
+      tip.style.left = (rect.right + 8) + 'px';
+      tip.style.top  = (rect.top + rect.height/2 - 36) + 'px';
+      tip.classList.add('show');
+    });
+    row.addEventListener('mouseleave', () => document.getElementById('slot-tooltip').classList.remove('show'));
+
+    list.appendChild(row);
+  });
+}
+
+function updatePtsDisplay() {
+  document.getElementById('hud-gold-val').textContent = gold.toLocaleString();
+  document.getElementById('hud-pts').textContent = points;
+  document.getElementById('hdr-pts').textContent = points;
+  document.getElementById('hdr-lvl').textContent = equipmentMenuLevel();
+  updateRevealButton();
+}
+
+function updateRevealButton() {
+  const btn = document.getElementById('btn-reveal');
+  if (!btn) return;
+  if (getAvailableEquipmentOfferCount() <= 0) {
+    btn.innerHTML = `모든 장비 MAX · 보물티켓 1 → 골드 +${gachaGoldRewardAmount()}`;
+  } else {
+    btn.innerHTML = `★ 카드 공개 &nbsp;·&nbsp; 티켓 <span id="reveal-cost">${revealCost()}</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+
+updateSlotList();
+buildCardBoard();
+updatePtsDisplay();
+resizeVfx();
+renderTimeline(selectedSlotId, { animate: false });
+window.addEventListener('resize', () => { resizeVfx(); });
+
+// ── T0 · G2 (b) 세대 교체 데모 (gacha-presentation-overhaul-plan) ──
+// 패널 본체 상태와 완전 분리된 재생기 — 기존 doReveal/카드 로직 무접촉(회귀 0).
+function g2bPlay() {
+  const demo = document.getElementById('g2b-demo');
+  demo.classList.remove('g2b-play');
+  void demo.offsetWidth; // 애니메이션 재생 리셋
+  demo.classList.add('g2b-play');
+}
+</script>
+</body>
+</html>
